@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import BaseButton from '../base/button/BaseButton';
 import CancelButton from '../button/CancelButton';
 import { Save } from 'lucide-react';
-import { useDocumentLayout } from '../../hooks/useDocumentLayout';
+import { updateDocumentTitle } from '../../utils/domUtils';
+import { useHeaderApi } from '../../context/HeaderContext';
 
 export interface BaseDetailDialogProps {
     isOpen: boolean;
@@ -22,6 +23,7 @@ export interface BaseDetailDialogProps {
 }
 
 const FullScreenContent: React.FC<BaseDetailDialogProps> = (props) => {
+    const headerApi = useHeaderApi();
     const headerContent = useMemo(() => (
         <div className="flex items-center gap-16 flex-1 min-w-0" style={{ paddingLeft: '8px' }}>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -32,7 +34,17 @@ const FullScreenContent: React.FC<BaseDetailDialogProps> = (props) => {
         </div>
     ), [props.title]);
 
-    useDocumentLayout(props.title, props.onClose, headerContent);
+    React.useEffect(() => {
+        updateDocumentTitle(props.title);
+        if (headerApi?.setHeader) {
+            headerApi.setHeader(props.title, headerContent, null);
+        }
+        return () => {
+            if (headerApi?.clearHeader) {
+                headerApi.clearHeader();
+            }
+        };
+    }, [props.title, headerContent, headerApi]);
 
     return (
         <div style={{ 

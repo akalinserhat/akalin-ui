@@ -19,7 +19,6 @@ import BasePage from './BasePage';
 import TabLayout from '../../components/tab/TabLayout';
 import SpreadsheetGrid from '../../components/grid/spreadsheet/SpreadsheetGrid';
 import FieldError from '../../components/common/FieldError';
-import { useFormAutoFocus } from '../../hooks/useFormAutoFocus';
 import ActionMenu, { ActionMenuItem } from '../../components/menu/ActionMenu';
 import DocumentSaveButton from '../../components/button/DocumentSaveButton';
 import { Cloud, Coins, AlertCircle, X, Save, Loader2, Sparkles } from 'lucide-react';
@@ -30,9 +29,8 @@ import BaseAiAssistantModal from '../../components/modal/BaseAiAssistantModal';
 import AlertDialog from '../../components/dialog/AlertDialog';
 import AlertDialogContext from '../../alerts/AlertDialogContext';
 import { useTranslation } from 'react-i18next';
-import { usePageTitle } from '../../hooks/usePageTitle';
 import { useHeaderApi } from '../../context/HeaderContext';
-import { DocumentDraftManager } from '../../utils/DocumentDraftManager';
+import { updateDocumentTitle, autoFocusFirstInput } from '../../utils/domUtils';
 
 // Hata nesnelerini ve diğer form context verilerini taşımak için
 export const DocumentFormContext = createContext<{ 
@@ -201,6 +199,22 @@ const getCurrencySymbolHelper = (code?: string): string => {
  * Header (Üst Bilgiler) - Detail (Kalemler Grid'i) - Footer (Alt Toplamlar)
  * yapısını standartlaştıran OOP mimarisi base bileşeni.
  */
+const normalizeDocFormData = (data: any): string => {
+    if (!data || typeof data !== 'object') return '';
+    const { _gridId, _isDraftTemplate, _draftData, tempId, ...rest } = data;
+    return JSON.stringify(rest);
+};
+
+const isDocDataMeaningful = (data: any): boolean => {
+    if (!data || typeof data !== 'object') return false;
+    return Object.keys(data).some(k => {
+        const val = data[k];
+        if (val === null || val === undefined || val === '' || val === 0) return false;
+        if (Array.isArray(val)) return val.length > 0;
+        return true;
+    });
+};
+
 const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
     formId = 'documentForm',
     onSubmit,
@@ -435,7 +449,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         }
 
         // Formda hiçbir veri yoksa ve kullanıcı hiçbir şey değiştirmemişse doğrudan çık
-        const isMeaningful = isDocumentDirty || DocumentDraftManager.isDraftMeaningful(formData) || Boolean(documentId);
+        const isMeaningful = isDocumentDirty || isDocDataMeaningful(formData) || Boolean(documentId);
         if (!isMeaningful) {
             return true;
         }
@@ -517,7 +531,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
     useEffect(() => {
         const markDirty = () => {
             if (!isDirtyControlled) {
-                if (!documentId && !DocumentDraftManager.isDraftMeaningful(formData)) {
+                if (!documentId && !isDocDataMeaningful(formData)) {
                     return;
                 }
                 if (setIsDocumentDirty) {
@@ -547,7 +561,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
                 return;
             }
             try {
-                initialFormDataRef.current = DocumentDraftManager.normalizeFormDataForComparison(formData, documentId);
+                initialFormDataRef.current = normalizeDocFormData(formData);
                 hasInitializedFormDataRef.current = true;
                 if (!isDirtyControlled && setIsDocumentDirty) {
                     setIsDocumentDirty(false);
@@ -561,7 +575,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         // Form başlatıldıktan sonra formData değişmişse dirty yap, eski haline döndüyse temizle
         if (initialFormDataRef.current !== null) {
             try {
-                const currentStr = DocumentDraftManager.normalizeFormDataForComparison(formData, documentId);
+                const currentStr = normalizeDocFormData(formData);
                 const isDirty = currentStr !== initialFormDataRef.current;
 
                 if (!isDirtyControlled) {
@@ -576,8 +590,12 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         }
     }, [formData, documentId, isDirtyControlled, setIsDocumentDirty, onDirtyChange]);
 
-    // Yalnızca açıkça pageTitle verilmişse sekme başlığını güncelle; aksi halde useDocumentLayout'un başlığını koru
-    usePageTitle(pageTitle);
+    // Yalnızca açıkça pageTitle verilmişse sekme başlığını güncelle
+    useEffect(() => {
+        if (pageTitle) {
+            updateDocumentTitle(pageTitle);
+        }
+    }, [pageTitle]);
 
 
     // Belge başlığındaki Breadcrumb adımını senkronize et (Yeni Belge veya Belge Numarası)
@@ -650,10 +668,11 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
     const dragStartY = useRef(0);
     const initialHeight = useRef(0);
 
-    // Global auto-focus hook (Document açıldığında ilk input'a odaklanır)
-    // NOT: Sekme değişiminde yeniden tetiklenmesin diye activeTabId bağımlılığı kaldırıldı.
-    // Sadece mount'ta bir kez çalışır.
-    useFormAutoFocus(containerRef, []);
+    // Global auto-focus (Document açıldığında ilk input'a odaklanır)
+    useEffect(() => {
+        const timer = setTimeout(() => autoFocusFirstInput(containerRef.current), 150);
+        return () => clearTimeout(timer);
+    }, []);
 
     // Para birimlerini yükleme (ParaBirimiSelector altyapısıyla uyumlu)
     const [availableCurrencies, setAvailableCurrencies] = useState<any[]>(currencyProps?.currencies || []);

@@ -13,7 +13,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
 import BackButton from '../../components/button/BackButton';
-import { useFormAutoFocus } from '../../hooks/useFormAutoFocus';
+import { autoFocusFirstInput } from '../../utils/domUtils';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -39,7 +39,12 @@ const Modal: React.FC<ModalProps> = ({
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Modal her açıldığında form içerisindeki ilk input'a odaklan
-  useFormAutoFocus(containerRef, [isOpen]);
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => autoFocusFirstInput(containerRef.current), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

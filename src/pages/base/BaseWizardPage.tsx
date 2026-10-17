@@ -32,7 +32,7 @@ import BackButton from '../../components/button/BackButton';
 import { useHeaderApi } from '../../context/HeaderContext';
 import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { usePageTitle } from '../../hooks/usePageTitle';
+import { updateDocumentTitle } from '../../utils/domUtils';
 import NextButton from '../../components/button/NextButton';
 import PrevButton from '../../components/button/PrevButton';
 import FinishButton from '../../components/button/FinishButton';
@@ -181,7 +181,9 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
         // Router context dışında render edilirse
     }
 
-    usePageTitle(pageTitle || title);
+    useEffect(() => {
+        updateDocumentTitle(pageTitle || title);
+    }, [pageTitle, title]);
 
     const steps = Children.toArray(children).filter((child) => isValidElement(child)) as React.ReactElement<WizardStepProps>[];
     const totalSteps = steps.length;

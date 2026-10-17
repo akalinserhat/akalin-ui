@@ -26,14 +26,12 @@ import { Plus, Edit2, Trash2, Layers, Archive, RotateCcw, FileEdit } from 'lucid
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { DocumentDraftManager } from '../../utils/DocumentDraftManager';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import DataTable from '../../components/grid/DataTable';
 import AlertDialog from '../../components/dialog/AlertDialog';
 import ActionMenu, { ActionMenuItem } from '../../components/menu/ActionMenu';
-import { useTableNavigation } from '../../hooks/useTableNavigation';
-import { useTableAction } from '../../hooks/useTableAction';
+import { useInternalTableNavigation, useInternalTableAction } from '../../utils/tableUtils';
 import BaseFloatCircleButton from '../../components/base/button/BaseFloatCircleButton';
 import EkleFloatCircleButton from '../../components/button/EkleFloatCircleButton';
 import { MenuButtonItem } from '../../components/base/button/BaseMenuButton';
@@ -41,7 +39,7 @@ import BackButton from '../../components/button/BackButton';
 import { useHeaderApi } from '../../context/HeaderContext';
 import BaseCardPageHeader, { BaseCardPageHeaderProps } from '../../components/card/BaseCardPageHeader';
 import UndoDeleteBar from '../../components/notification/UndoDeleteBar';
-import { usePageTitle } from '../../hooks/usePageTitle';
+import { updateDocumentTitle } from '../../utils/domUtils';
 
 export interface BaseListPageProps<T = any> {
     title?: string;
@@ -117,6 +115,26 @@ const normalizeListResponse = <T,>(res: any): { data: T[]; totalCount?: number }
  * BaseListPage
  * Merkezi listeleme sayfası iskeleti.
  */
+const getStoredDraft = (route?: string, docType?: string) => {
+    if (typeof window === 'undefined' || !window.sessionStorage) return null;
+    try {
+        const key = route ? `akalin_draft_${route.replace(/^\/+|\/+$/g, '').replace(/\//g, '_').toLowerCase()}` : (docType ? `akalin_draft_${docType.toLowerCase()}` : null);
+        if (!key) return null;
+        const raw = sessionStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+};
+
+const clearStoredDraft = (route?: string, docType?: string) => {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    try {
+        const key = route ? `akalin_draft_${route.replace(/^\/+|\/+$/g, '').replace(/\//g, '_').toLowerCase()}` : (docType ? `akalin_draft_${docType.toLowerCase()}` : null);
+        if (key) sessionStorage.removeItem(key);
+    } catch (e) {}
+};
+
 const BaseListPage = <T extends any = any>({
     title,
     subtitle,
@@ -181,7 +199,9 @@ const BaseListPage = <T extends any = any>({
     const navigate = useNavigate();
     const location = useLocation();
 
-    usePageTitle(title);
+    useEffect(() => {
+        if (title) updateDocumentTitle(title);
+    }, [title]);
     const { setHeader, clearHeader } = useHeaderApi();
     const headerIdRef = useRef(Math.random().toString(36).substr(2, 9));
     const listStorageKey = `akalin_active_row_${baseRoute || location.pathname}`;
@@ -436,7 +456,7 @@ const BaseListPage = <T extends any = any>({
 
         const injectDraftTemplateIfApplicable = (result: { data: T[]; totalCount?: number }) => {
             if (page === 1 && (!enableViewModeToggle || viewMode === 'active')) {
-                const draft = DocumentDraftManager.getDocumentDraft(baseRoute, aiDocumentType);
+                const draft = getStoredDraft(baseRoute, aiDocumentType);
                 if (draft) {
                     const rawData = draft.formData || draft;
                     const draftRow: any = {
@@ -554,7 +574,7 @@ const BaseListPage = <T extends any = any>({
         };
     }, [Boolean(customRenderContent), searchableFieldsJson]);
 
-    const { highlightedId, triggerAction } = useTableAction();
+    const { highlightedId, triggerAction } = useInternalTableAction();
 
     const handleEdit = useCallback((item: T, e?: React.MouseEvent) => {
         if ((item as any)?._isDraftTemplate) {
@@ -721,7 +741,7 @@ const BaseListPage = <T extends any = any>({
 
     const handleDelete = useCallback(async (item: T) => {
         if ((item as any)?._isDraftTemplate) {
-            DocumentDraftManager.clearDocumentDraft(baseRoute, aiDocumentType);
+            clearStoredDraft(baseRoute, aiDocumentType);
             setRefreshKey(prev => prev + 1);
             toast.success(t('auto_sablon_silindi', 'Şablon başarıyla temizlendi.'));
             return;
@@ -1049,7 +1069,7 @@ const BaseListPage = <T extends any = any>({
 
     const handleRowDoubleClickRef = useRef<(item: T, e?: any) => void>();
 
-    const { selectedIndex, setSelectedIndex } = useTableNavigation({
+    const { selectedIndex, setSelectedIndex } = useInternalTableNavigation({
         data,
         isActive: true,
         highlightedId,

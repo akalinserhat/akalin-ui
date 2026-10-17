@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useHeaderApi } from '../../context/HeaderContext';
 import { useAlertDialog } from '../../alerts/AlertDialogContext';
 import BaseCardPageHeader, { BaseCardPageHeaderProps } from '../../components/card/BaseCardPageHeader';
-import { usePageTitle } from '../../hooks/usePageTitle';
+import { updateDocumentTitle } from '../../utils/domUtils';
 
 export interface BasePageProps {
   id?: string;
@@ -92,7 +92,9 @@ const BasePage: React.FC<BasePageProps> = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  usePageTitle(pageTitle || title);
+  useEffect(() => {
+    updateDocumentTitle(pageTitle || title);
+  }, [pageTitle, title]);
 
   const onSaveRef = useRef(onSave);
   useEffect(() => {

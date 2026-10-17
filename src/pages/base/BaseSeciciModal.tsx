@@ -9,7 +9,7 @@ import axios from 'axios';
 import { Search, CheckSquare, Square } from 'lucide-react';
 import BasePopup from './BasePopup';
 import DataTable from '../../components/grid/DataTable';
-import { useTableNavigation } from '../../hooks/useTableNavigation';
+import { useInternalTableNavigation } from '../../utils/tableUtils';
 import AramaInput from '../../components/input/AramaInput';
 
 export interface BaseSeciciModalProps {
@@ -114,7 +114,7 @@ const BaseSeciciModal: React.FC<BaseSeciciModalProps> = ({
         }
     };
 
-    const { selectedIndex, setSelectedIndex } = useTableNavigation({
+    const { selectedIndex, setSelectedIndex } = useInternalTableNavigation({
         data: items,
         isActive: isOpen && !isFocused, // Table navigation only when search input is not focused
         onEdit: (item) => {

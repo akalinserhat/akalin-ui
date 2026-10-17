@@ -1,6 +1,6 @@
 /**
  * Akalin UI - Modern, Standalone UI Component Library
- * Design system, base pages, components, hooks, alerts, context, and utilities.
+ * Design system, base pages, components, alerts, context, and utilities.
  */
 
 // 1. Base Pages & Layouts
@@ -145,21 +145,9 @@ export { default as LLMSeciciInput, type LLMSeciciInputProps, type LLMSaglayiciO
 export { default as YZModelSecici, type YZModelSeciciProps, type YZModelOption } from './components/customs/select/YZModelSecici';
 export { default as BaseAiAssistantModal, type BaseAiAssistantModalProps } from './components/modal/BaseAiAssistantModal';
 
-// 7. Alerts, Context, Hooks & Utils
+// 7. Alerts, Context & Utils
 export * from './alerts';
 export { HeaderProvider, useHeader, useHeaderApi, useDocumentDirty, type HeaderContextType } from './context/HeaderContext';
-export { usePageTitle, formatBrowserTabTitle, extractTextFromNode } from './hooks/usePageTitle';
-export { useTableNavigation, type TableNavigationProps } from './hooks/useTableNavigation';
-export { useTableAction } from './hooks/useTableAction';
-export { useFormAutoFocus } from './hooks/useFormAutoFocus';
-export { useDocumentLayout } from './hooks/useDocumentLayout';
-export { useCardValidation } from './hooks/UI/useCardValidation';
-export { useCardRules } from './hooks/UI/useCardRules';
-export { useDocumentRules } from './hooks/UI/useDocumentRules';
-export { useDocumentItems, type UseDocumentItemsOptions } from './hooks/UI/useDocumentItems';
-export { useDocumentDraft } from './hooks/UI/useDocumentDraft';
-export { useAdminValidation } from './hooks/admin/useAdminValidation';
-export { useAdminAutoFocus } from './hooks/admin/useAdminAutoFocus';
 export { formatCurrency } from './utils/formatters';
-export { DocumentDraftManager, getDraftKey, getAllPossibleKeys, isDraftMeaningful, getDocumentDraft, saveDocumentDraft, clearDocumentDraft, type DocumentDraftPayload } from './utils/DocumentDraftManager';
+export { extractTextFromNode, updateDocumentTitle, autoFocusFirstInput } from './utils/domUtils';
 export { isNativePlatform, isMobileBrowser, isMobileDevice } from './utils/device';

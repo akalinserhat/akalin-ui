@@ -1,32 +1,37 @@
+/**
+ * @file tableUtils.ts
+ * @description Akalin UI - Internal Table Navigation and Action Utilities
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export interface TableNavigationProps<T> {
+export interface InternalTableNavProps<T = any> {
   data: T[];
+  isActive?: boolean;
   onEdit?: (item: T, e?: any) => void;
   onDelete?: (item: T) => void;
   onAddNew?: (e?: any) => void;
   onAddChild?: (item: T, e?: any) => void;
   onArrowRight?: (item: T) => void;
   onArrowLeft?: (item: T) => void;
-  isActive?: boolean;
   highlightedId?: string | number | null;
   storageKey?: string;
   initialSelectedId?: string | number | null;
 }
 
-export const useTableNavigation = <T extends any>({
+export const useInternalTableNavigation = <T = any>({
   data,
+  isActive = true,
   onEdit,
   onDelete,
   onAddNew,
   onAddChild,
   onArrowRight,
   onArrowLeft,
-  isActive = true,
   highlightedId = null,
   storageKey,
   initialSelectedId = null
-}: TableNavigationProps<T>) => {
+}: InternalTableNavProps<T>) => {
   const [selectedIndex, setSelectedIndexState] = useState(0);
   const initialTargetIdRef = useRef<string | number | null>(null);
   const hasInitializedTargetRef = useRef(false);
@@ -36,29 +41,26 @@ export const useTableNavigation = <T extends any>({
     hasRestoredRef.current = true;
     setSelectedIndexState(valOrUpdater);
   }, []);
-  
-  // Ref'ler ile en güncel değerleri tutalım ki event listener sürekli kopup bağlanmasın
+
   const stateRef = useRef({ data, selectedIndex, onEdit, onDelete, onAddNew, onAddChild, onArrowRight, onArrowLeft });
-  
   useEffect(() => {
     stateRef.current = { data, selectedIndex, onEdit, onDelete, onAddNew, onAddChild, onArrowRight, onArrowLeft };
   });
 
   const lastHighlightedId = useRef<string | number | null>(null);
 
-  // Vurgulanan (yeni eklenen/güncellenen) kaydı otomatik olarak seçili hale getir (Sadece 1 kez)
   useEffect(() => {
     if (highlightedId && highlightedId !== lastHighlightedId.current && data && data.length > 0) {
       const index = data.findIndex((item: any) => String(item?.id ?? item?.Id ?? item?.kod) === String(highlightedId));
       if (index !== -1) {
         setSelectedIndex(index);
-        lastHighlightedId.current = highlightedId; // Bu id için işlemi tamamladık
+        lastHighlightedId.current = highlightedId;
       }
     }
     if (!highlightedId) {
       lastHighlightedId.current = null;
     }
-  }, [highlightedId, data]);
+  }, [highlightedId, data, setSelectedIndex]);
 
   if (!hasInitializedTargetRef.current) {
     initialTargetIdRef.current = initialSelectedId ?? (storageKey ? (() => {
@@ -71,12 +73,10 @@ export const useTableNavigation = <T extends any>({
     hasInitializedTargetRef.current = true;
   }
 
-  // Formdan dönüldüğünde veya sayfa açıldığında hedeflenen kaydı otomatik seçili hale getir
   useEffect(() => {
     const targetId = initialSelectedId || initialTargetIdRef.current;
-
     if (targetId && data && data.length > 0) {
-      const index = data.findIndex((item: any) => 
+      const index = data.findIndex((item: any) =>
         String(item?.id ?? item?.Id ?? item?.kod) === String(targetId)
       );
       if (index !== -1) {
@@ -84,16 +84,12 @@ export const useTableNavigation = <T extends any>({
         hasRestoredRef.current = true;
       }
     }
-  }, [initialSelectedId, data]);
+  }, [initialSelectedId, data, setSelectedIndex]);
 
-  // Seçili satır değiştikçe storage'a kaydet (Listeden form açılıp geri dönüldüğünde hatırlanması için)
   useEffect(() => {
-    // Başlangıçta hedeflenen bir kayıt varsa ve henüz veri içinde restore edilmediyse,
-    // varsayılan indeks 0'ın o hedefi ezmesine izin verme!
     if (initialTargetIdRef.current && !hasRestoredRef.current) {
       return;
     }
-
     if (storageKey && data && data[selectedIndex]) {
       const item = data[selectedIndex];
       const itemId = (item as any)?.id ?? (item as any)?.Id ?? (item as any)?.kod;
@@ -106,7 +102,6 @@ export const useTableNavigation = <T extends any>({
   }, [selectedIndex, data, storageKey]);
 
   useEffect(() => {
-    // Veri değiştiğinde veya silindiğinde indeksin sınırları aşmamasını sağla
     if (data && data.length > 0) {
       if (selectedIndex >= data.length) {
         setSelectedIndex(Math.max(0, data.length - 1));
@@ -114,86 +109,59 @@ export const useTableNavigation = <T extends any>({
     } else {
       setSelectedIndex(0);
     }
-  }, [data, selectedIndex]);
-
-  // Seçili satırı ekranda (scroll içinde) görünür tut (Auto-Scroll)
-  useEffect(() => {
-    // DOM'un render edilmesi için kısa bir gecikme
-    const timer = setTimeout(() => {
-      const selectedEl = document.querySelector('.row-selected');
-      if (selectedEl) {
-        // block: 'nearest' -> Eleman görünmüyorsa en yakın kenara hizalayacak kadar kaydırır
-        selectedEl.scrollIntoView({ block: 'nearest', behavior: 'auto' });
-      }
-    }, 40);
-    return () => clearTimeout(timer);
-  }, [selectedIndex, data]);
+  }, [data, selectedIndex, setSelectedIndex]);
 
   useEffect(() => {
     if (!isActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const { data, selectedIndex, onEdit, onDelete, onAddNew, onAddChild, onArrowRight, onArrowLeft } = stateRef.current;
-      if (!data || data.length === 0) return;
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+        return;
+      }
+
+      const { data: currentData, selectedIndex: currentIndex, onEdit: editCb, onDelete: delCb, onAddNew: addCb } = stateRef.current;
+      if (!currentData || currentData.length === 0) {
+        if (e.key === 'Insert' && addCb) {
+          e.preventDefault();
+          addCb(e);
+        }
+        return;
+      }
 
       switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault(); // Sayfanın scroll olmasını engelle
-          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-          break;
         case 'ArrowDown':
-          e.preventDefault(); // Sayfanın scroll olmasını engelle
-          setSelectedIndex((prev) => (prev < data.length - 1 ? prev + 1 : prev));
+          e.preventDefault();
+          setSelectedIndex(prev => Math.min(prev + 1, currentData.length - 1));
           break;
-        case 'ArrowRight':
-          if (onArrowRight && data[selectedIndex]) {
-            e.preventDefault();
-            onArrowRight(data[selectedIndex]);
-          }
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => Math.max(prev - 1, 0));
           break;
-        case 'ArrowLeft':
-          if (onArrowLeft && data[selectedIndex]) {
-            e.preventDefault();
-            onArrowLeft(data[selectedIndex]);
-          }
+        case 'Home':
+          e.preventDefault();
+          setSelectedIndex(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          setSelectedIndex(currentData.length - 1);
           break;
         case 'Enter':
-          // Ctrl + Enter (veya Mac için Cmd + Enter): Yeni Kayıt / Alt Grup Ekle
-          if (e.ctrlKey || e.metaKey) {
+          if (editCb && currentData[currentIndex]) {
             e.preventDefault();
-            if (onAddChild && data[selectedIndex]) {
-              onAddChild(data[selectedIndex], e);
-            } else if (onAddNew) {
-              onAddNew(e);
-            }
-            break;
-          }
-          
-          // Sadece Enter veya Shift + Enter: Düzenle (Popup veya Modal)
-          if (onEdit && data[selectedIndex]) {
-            e.preventDefault();
-            onEdit(data[selectedIndex], e);
-          }
-          break;
-        case 'F2':
-          if (onEdit && data[selectedIndex]) {
-            e.preventDefault();
-            onEdit(data[selectedIndex], e);
-          }
-          break;
-        case 'Insert':
-          e.preventDefault();
-          if (onAddChild && data[selectedIndex]) {
-            onAddChild(data[selectedIndex], e);
-          } else if (onAddNew) {
-            onAddNew(e);
+            editCb(currentData[currentIndex], e);
           }
           break;
         case 'Delete':
-        case 'Del':
-          if (onDelete && data[selectedIndex]) {
+          if (delCb && currentData[currentIndex]) {
             e.preventDefault();
-            onDelete(data[selectedIndex]);
+            delCb(currentData[currentIndex]);
+          }
+          break;
+        case 'Insert':
+          if (addCb) {
+            e.preventDefault();
+            addCb(e);
           }
           break;
         default:
@@ -203,7 +171,37 @@ export const useTableNavigation = <T extends any>({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive]);
+  }, [isActive, setSelectedIndex]);
 
   return { selectedIndex, setSelectedIndex };
+};
+
+export const useInternalTableAction = (onRefresh?: () => void) => {
+  const [highlightedId, setHighlightedId] = useState<string | number | null>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'RECORD_ADDED') {
+        const newId = event.data.id;
+        if (newId) {
+          setHighlightedId(newId);
+          if (typeof onRefresh === 'function') {
+            onRefresh();
+          }
+          setTimeout(() => {
+            setHighlightedId(null);
+          }, 5000);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onRefresh]);
+
+  return {
+    highlightedId,
+    setHighlightedId,
+    triggerAction: setHighlightedId
+  };
 };

@@ -20,7 +20,7 @@ import { useHeaderApi } from '../../context/HeaderContext';
 import SistemKart from '../../components/card/SistemKart';
 import TabLayout, { BaseTabItem } from '../../components/tab/TabLayout';
 import ActionMenu, { ActionMenuItem } from '../../components/menu/ActionMenu';
-import { usePageTitle } from '../../hooks/usePageTitle';
+import { updateDocumentTitle } from '../../utils/domUtils';
 
 export { type BaseTabItem, type ActionMenuItem };
 
@@ -269,7 +269,9 @@ const BaseSystemPage: React.FC<BaseSystemPageProps> = ({
     return title ? (typeof title === 'string' ? t(title) : title) : t('auto_sistem_ayarlari_93b5', 'Sistem Ayarları');
   }, [pageTitle, activeModule, modules, selectedModuleId, moduleId, effectiveModuleId, title, t]);
 
-  usePageTitle(effectivePageTitle);
+  useEffect(() => {
+    updateDocumentTitle(effectivePageTitle);
+  }, [effectivePageTitle]);
   const { setHeader, clearHeader } = useHeaderApi();
   const headerIdRef = useRef(Math.random().toString(36).substr(2, 9));
   

@@ -23,8 +23,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { useDocumentLayout } from '../../hooks/useDocumentLayout';
-import { useFormAutoFocus } from '../../hooks/useFormAutoFocus';
+import { updateDocumentTitle, autoFocusFirstInput } from '../../utils/domUtils';
 import AlertDialog from '../../components/dialog/AlertDialog';
 import SaveButton from '../../components/button/SaveButton';
 import CancelButton from '../../components/button/CancelButton';
@@ -80,15 +79,19 @@ const BaseFormPage = <T extends any = any>({
     // Eğer state'ten veri geldiyse yükleniyor ekranında bekletme
     const [loading, setLoading] = useState(id ? !location.state?.item : false);
     
-    // Merkezi Auto-Focus Hook'u (Sayfa yüklendiğinde veya data geldiğinde ilk input'a odaklanır)
-    useFormAutoFocus(undefined, [loading]);
+    // Merkezi Auto-Focus (Sayfa yüklendiğinde veya data geldiğinde ilk input'a odaklanır)
+    useEffect(() => {
+        const timer = setTimeout(() => autoFocusFirstInput(), 150);
+        return () => clearTimeout(timer);
+    }, [loading]);
 
     const [isFormDirty, setIsFormDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [formTitle, setFormTitle] = useState('');
     const [alertDialog, setAlertDialog] = useState({ isOpen: false, type: 'info', title: '', message: '', onConfirm: null, confirmText: 'Tamam' });
 
-    const { setHeaderBreadcrumbOptions } = useHeaderApi() || {};
+    const headerApi = useHeaderApi();
+    const { setHeaderBreadcrumbOptions } = headerApi || {};
 
     const displayTitle = id 
         ? `${titlePrefix} Düzenle${formTitle ? ' - ' + formTitle : ''}` 
@@ -135,7 +138,28 @@ const BaseFormPage = <T extends any = any>({
         }
     };
 
-    useDocumentLayout(displayTitle, handleFormClose, null, null, isDocument);
+    useEffect(() => {
+        updateDocumentTitle(displayTitle);
+        if (headerApi?.setHeader) {
+            headerApi.setHeader(displayTitle, null, null, handleFormClose);
+        }
+        return () => {
+            if (headerApi?.clearHeader) {
+                headerApi.clearHeader();
+            }
+        };
+    }, [displayTitle, headerApi]);
+
+    useEffect(() => {
+        if (!isDocument) return;
+        const contentArea = document.querySelector('.content-area');
+        if (contentArea) {
+            contentArea.classList.add('content-area-document');
+            return () => {
+                contentArea.classList.remove('content-area-document');
+            };
+        }
+    }, [isDocument]);
 
     useEffect(() => {
         if (id && apiEndpoint) {
