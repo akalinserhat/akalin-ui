@@ -22,11 +22,21 @@ export interface ActionMenuItem {
 }
 
 export interface ActionMenuProps {
-  actions: ActionMenuItem[];
+  actions?: ActionMenuItem[];
+  /**
+   * @deprecated 'actions' yerine 'items' kullanımı geriye dönük uyumluluk için desteklenmektedir.
+   * @see actions
+   */
+  items?: ActionMenuItem[];
   triggerIcon?: React.ReactNode;
   triggerLabel?: React.ReactNode;
   triggerBadge?: React.ReactNode;
   triggerVariant?: ActionMenuButtonVariant;
+  /**
+   * @deprecated 'triggerVariant' yerine 'buttonVariant' kullanımı geriye dönük uyumluluk için desteklenmektedir.
+   * @see triggerVariant
+   */
+  buttonVariant?: ActionMenuButtonVariant;
   onTriggerLabelClick?: (e: React.MouseEvent) => void;
   triggerDisabled?: boolean;
   triggerClassName?: string;
@@ -38,6 +48,11 @@ export interface ActionMenuProps {
   showDefaultActionAsButton?: boolean;
   showDefaultButton?: boolean;
   splitButton?: boolean;
+  /**
+   * @deprecated 'showDefaultActionAsButton' yerine 'showSplitButton' kullanımı geriye dönük uyumluluk için desteklenmektedir.
+   * @see showDefaultActionAsButton
+   */
+  showSplitButton?: boolean;
   dropdownHeader?: React.ReactNode;
   dropdownFooter?: React.ReactNode;
   title?: string;
@@ -46,16 +61,19 @@ export interface ActionMenuProps {
 
 const ActionMenu: React.FC<ActionMenuProps> = ({ 
   actions,
+  items,
   triggerIcon,
   triggerLabel,
   triggerBadge,
   triggerVariant,
+  buttonVariant,
   onTriggerLabelClick,
   triggerDisabled,
   triggerClassName = '',
   showDefaultActionAsButton,
   showDefaultButton,
   splitButton,
+  showSplitButton,
   dropdownHeader,
   dropdownFooter,
   title,
@@ -122,13 +140,16 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     setIsOpen(!isOpen);
   };
 
+  // Defensive programming: fallback to safeActions
+  const safeActions = actions || items || [];
+
   // Sadece tek bir menü öğesi varsayılan olabilir (Strict Single Default Rule)
   // 1. Explicit olarak isDefault veya default olan İLK görünür öğeyi bul
-  const explicitDefaultIndex = actions.findIndex(a => !a.hidden && (a.isDefault || a.default));
+  const explicitDefaultIndex = safeActions.findIndex(a => !a.hidden && (a.isDefault || a.default));
 
   // 2. Explicit yoksa fallback (Düzenle/Edit) öğesini bul
   const fallbackDefaultIndex = explicitDefaultIndex === -1
-    ? actions.findIndex(a => !a.hidden && !a.danger && (
+    ? safeActions.findIndex(a => !a.hidden && !a.danger && (
         a.label === t('auto_duzenle', 'Düzenle') ||
         a.label === t('Düzenle') ||
         (typeof a.label === 'string' && (
@@ -140,7 +161,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     : -1;
 
   const singleDefaultIndex = explicitDefaultIndex !== -1 ? explicitDefaultIndex : fallbackDefaultIndex;
-  const singleDefaultAction = singleDefaultIndex !== -1 ? actions[singleDefaultIndex] : undefined;
+  const singleDefaultAction = singleDefaultIndex !== -1 ? safeActions[singleDefaultIndex] : undefined;
 
   // Custom trigger tespiti: Caller açıkça triggerLabel veya onTriggerLabelClick vermişse,
   // bu tetikleyici bağımsız bir düğmedir ve dropdown'daki varsayılan aksiyonla BİRLEŞTİRİLMEZ!
@@ -149,7 +170,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   // Varsayılan seçeneğin harici bir düğme (split button) olarak gösterilme özelliği.
   // Bu özellik varsayılan olarak KAPALIDIR (false). Caller açıkça açmadıkça normal 3-nokta menü gösterilir.
   const isDefaultButtonEnabled = Boolean(
-    showDefaultActionAsButton ?? showDefaultButton ?? splitButton ?? false
+    showDefaultActionAsButton ?? showDefaultButton ?? splitButton ?? showSplitButton ?? false
   );
 
   // Split-Button modunun tespiti:
@@ -186,6 +207,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     : Boolean(splitDefaultAction?.disabled);
 
   const effectiveVariant: ActionMenuButtonVariant = triggerVariant ||
+    buttonVariant ||
     splitDefaultAction?.variant ||
     (splitDefaultAction?.isDefault ? 'primary' : 'default');
 
@@ -193,7 +215,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     splitDefaultAction?.title ||
     (typeof effectiveLabel === 'string' ? effectiveLabel : undefined);
 
-  const visibleActions = actions.filter(a => !a.hidden);
+  const visibleActions = safeActions.filter(a => !a.hidden);
   const hasContent = Boolean(dropdownHeader || visibleActions.length > 0 || dropdownFooter);
 
   return (

@@ -66,7 +66,9 @@ import {
     Layers,
     Share2,
     Code2,
-    CheckCircle2
+    CheckCircle2,
+    Pin,
+    Sliders
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -108,6 +110,11 @@ export interface ChatMessage {
     status?: 'sending' | 'streaming' | 'done' | 'error';
     isError?: boolean;
     feedback?: 'like' | 'dislike' | null;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    latencyMs?: number;
+    ttftMs?: number;
 }
 
 export interface ChatSession {
@@ -140,6 +147,7 @@ export interface PromptSuggestion {
     prompt: string;
     icon?: ReactNode;
     category?: string;
+    description?: string;
 }
 
 export interface BaseChatPageProps extends BasePageProps {
@@ -155,12 +163,23 @@ export interface BaseChatPageProps extends BasePageProps {
     onNewSession?: () => void;
     onDeleteSession?: (sessionId: string | number) => void;
     onRenameSession?: (sessionId: string | number, newTitle: string) => void;
+    onPinSession?: (sessionId: string | number, pinned: boolean) => void;
 
     // Mesajlar & Gönderme Eylemleri
     messages?: ChatMessage[];
-    onSendMessage?: (content: string, attachments: ChatAttachment[], session: ChatSession) => Promise<void> | void;
+    onSendMessage?: (content: string, attachments: ChatAttachment[], session: ChatSession) => Promise<ChatMessage | string | void> | ChatMessage | string | void;
     onRegenerateMessage?: (messageId: string | number) => void;
+    onMessageFeedback?: (messageId: string | number, feedback: 'like' | 'dislike' | null) => void;
+    onClearMessages?: (sessionId: string | number) => void;
     onApplyToForm?: (data: any, bulutDosyaId?: number | null) => void;
+
+    // Kontrollü Üretim Durumu (Streaming & Stop)
+    isGenerating?: boolean;
+    onStopGeneration?: () => void;
+
+    // Sistem Yönergesi (System Prompt)
+    systemPrompt?: string;
+    onSystemPromptChange?: (prompt: string) => void;
 
     // Ajanlar ve Modeller
     agents?: ChatAgent[];
@@ -171,6 +190,8 @@ export interface BaseChatPageProps extends BasePageProps {
     // Öneriler ve Hızlı Başlatıcılar
     suggestions?: PromptSuggestion[];
     placeholder?: string;
+    welcomeTitle?: ReactNode;
+    welcomeSubtitle?: ReactNode;
 
     // Arayüz Özelleştirmeleri
     showHistorySidebar?: boolean;
@@ -204,24 +225,28 @@ const defaultSuggestionsList: PromptSuggestion[] = [
     {
         id: 'sug_1',
         title: '📊 Satış ve Karlılık Analizi',
+        description: 'Son 30 günün en çok satan ürünleri ve ciro analizi',
         prompt: 'Son 30 günün en çok satan ürünlerini ve ciroya katkısını analiz et, özet tablo hazırla.',
         category: 'Rapor'
     },
     {
         id: 'sug_2',
         title: '📝 Yeni Sipariş Taslağı',
+        description: 'İndirimli beyaz eşya kalemleri için sipariş formu',
         prompt: 'Standart fiyat listesindeki beyaz eşya kalemlerine %10 indirim ekleyerek yeni bir sipariş taslağı oluştur.',
         category: 'Belge'
     },
     {
         id: 'sug_3',
         title: '🔍 Kritik Stok Durumu',
+        description: 'Minimum seviyenin altındaki ürünler ve tedarik önerileri',
         prompt: 'Depo bazında minimum stok seviyesinin altına düşen ürünleri tespit et ve acil tedarik önerileri sun.',
         category: 'Stok'
     },
     {
         id: 'sug_4',
         title: '💡 Kampanya ve İndirim Kurgusu',
+        description: 'Hafta sonu duyuru metni ve kural taslağı',
         prompt: 'Mevcut stok fazlası ürünler için hafta sonuna özel bir kampanya duyuru metni ve kural taslağı hazırla.',
         category: 'Pazarlama'
     }
@@ -313,16 +338,25 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     onNewSession,
     onDeleteSession,
     onRenameSession,
+    onPinSession,
     messages: externalMessages,
     onSendMessage,
     onRegenerateMessage,
+    onMessageFeedback,
+    onClearMessages,
     onApplyToForm,
+    isGenerating: externalIsGenerating,
+    onStopGeneration,
+    systemPrompt: externalSystemPrompt,
+    onSystemPromptChange,
     agents: externalAgents,
     selectedAgentId: externalSelectedAgentId,
     onAgentChange,
     defaultModel,
     suggestions = defaultSuggestionsList,
     placeholder,
+    welcomeTitle,
+    welcomeSubtitle,
     showHistorySidebar = true,
     defaultHistoryOpen = true,
     enableAttachments = true,
@@ -395,6 +429,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         return agentsList[0]?.id || null;
     });
 
+    // Kontrollü mod: Dışarıdan selectedAgentId değiştiğinde içerideki state'i senkronize et
+    useEffect(() => {
+        if (externalSelectedAgentId !== undefined) {
+            setSelectedAgentId(externalSelectedAgentId);
+        }
+    }, [externalSelectedAgentId]);
+
     useEffect(() => {
         if (externalAgents && externalAgents.length > 0) {
             setAgentsList(externalAgents);
@@ -420,6 +461,18 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         return agentsList.find(a => a.id?.toString() === selectedAgentId?.toString()) || agentsList[0] || null;
     }, [agentsList, selectedAgentId]);
 
+    // ─── Sistem Yönergesi (System Prompt) ───────────────────────────────────
+    const [localSystemPrompt, setLocalSystemPrompt] = useState<string>(externalSystemPrompt || '');
+    const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false);
+
+    useEffect(() => {
+        if (externalSystemPrompt !== undefined) {
+            setLocalSystemPrompt(externalSystemPrompt);
+        }
+    }, [externalSystemPrompt]);
+
+    const effectiveSystemPrompt = externalSystemPrompt !== undefined ? externalSystemPrompt : localSystemPrompt;
+
     // ─── Oturumları LocalStorage'a Kaydet ────────────────────────────────────
     useEffect(() => {
         if (!externalSessions && persistKey && typeof window !== 'undefined') {
@@ -435,7 +488,14 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     const currentMessages: ChatMessage[] = externalMessages || activeSession?.messages || [];
     const [inputText, setInputText] = useState('');
     const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
-    const [isGenerating, setIsGenerating] = useState(false);
+    
+    // Kontrollü veya yerel üretim durumu (Streaming / Generating)
+    const [localIsGenerating, setLocalIsGenerating] = useState(false);
+    const isGenerating = externalIsGenerating !== undefined ? externalIsGenerating : localIsGenerating;
+    const setIsGenerating = useCallback((val: boolean) => {
+        setLocalIsGenerating(val);
+    }, []);
+
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [searchSessionQuery, setSearchSessionQuery] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(defaultHistoryOpen);
@@ -594,6 +654,29 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         toast.success(t('auto_sohbet_adi_guncellendi', 'Sohbet başlığı güncellendi.'));
     };
 
+    const handleTogglePinSession = (sessionId: string | number, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        const targetSession = sessions.find(s => s.id?.toString() === sessionId.toString());
+        const nextPinned = !targetSession?.pinned;
+
+        if (onPinSession) {
+            onPinSession(sessionId, nextPinned);
+        }
+
+        if (!externalSessions) {
+            setLocalSessions(prev => prev.map(s => 
+                s.id?.toString() === sessionId.toString() 
+                    ? { ...s, pinned: nextPinned, updatedAt: new Date().toISOString() } 
+                    : s
+            ));
+        }
+
+        toast.success(nextPinned 
+            ? t('auto_sohbet_sabitlendi', 'Sohbet başa sabitlendi.') 
+            : t('auto_sabitleme_kaldirildi', 'Sabitleme kaldırıldı.')
+        );
+    };
+
     const handleClearCurrentMessages = () => {
         setAlertConfig({
             isOpen: true,
@@ -601,6 +684,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             title: t('auto_sohbeti_temizle_baslik', 'Sohbeti Temizle'),
             message: t('auto_sohbeti_temizle_uyari', 'Mevcut oturumdaki tüm mesajlar silinecektir. Emin misiniz?'),
             onConfirm: () => {
+                if (onClearMessages && activeSessionId) {
+                    onClearMessages(activeSessionId);
+                }
                 if (!externalMessages) {
                     setLocalSessions(prev => prev.map(s => 
                         s.id?.toString() === activeSessionId?.toString()
@@ -659,7 +745,38 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         // Harici onSendMessage verilmişse ona devret
         if (onSendMessage) {
             try {
-                await onSendMessage(userMessage.content, userMessage.attachments || [], activeSession);
+                const result = await onSendMessage(userMessage.content, userMessage.attachments || [], activeSession);
+                
+                // onSendMessage bir ChatMessage veya metin döndürmüşse ve externalMessages yoksa asistan yanıtını ekle
+                if (!externalMessages && result) {
+                    const assistantMessage: ChatMessage = typeof result === 'string' ? {
+                        id: assistantMsgId,
+                        role: 'assistant',
+                        content: result,
+                        timestamp: new Date().toISOString(),
+                        agentName: activeAgent?.ad || t('auto_erp_asistani', 'ERP Asistanı'),
+                        model: activeAgent?.modelAdi || defaultModel
+                    } : {
+                        id: result.id || assistantMsgId,
+                        role: result.role || 'assistant',
+                        content: result.content || '',
+                        timestamp: result.timestamp || new Date().toISOString(),
+                        agentName: result.agentName || activeAgent?.ad || t('auto_erp_asistani', 'ERP Asistanı'),
+                        model: result.model || activeAgent?.modelAdi || defaultModel,
+                        ...result
+                    };
+
+                    setLocalSessions(prev => prev.map(s => {
+                        if (s.id?.toString() === activeSessionId?.toString()) {
+                            return {
+                                ...s,
+                                updatedAt: new Date().toISOString(),
+                                messages: [...s.messages, assistantMessage]
+                            };
+                        }
+                        return s;
+                    }));
+                }
             } catch (err: any) {
                 toast.error(err?.message || t('auto_mesaj_gonderilemedi', 'Mesaj gönderilemedi.'));
             } finally {
@@ -670,6 +787,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
         // Yerleşik Axios Yapay Zeka Çağrısı
         abortControllerRef.current = new AbortController();
+        const requestStartTime = Date.now();
 
         try {
             const payload = {
@@ -679,6 +797,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 belgeTuru: documentType,
                 ekler: userMessage.attachments,
                 model: defaultModel || activeAgent?.modelAdi || 'default',
+                sistemPromptu: effectiveSystemPrompt || activeAgent?.sistemPromptu || undefined,
                 gecmis: currentMessages.map(m => ({ role: m.role, content: m.content }))
             };
 
@@ -686,6 +805,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 signal: abortControllerRef.current.signal
             });
 
+            const reqDuration = Date.now() - requestStartTime;
             const resData = response.data;
             const assistantText = resData?.yanit || resData?.mesaj || resData?.cevap || resData?.content || '';
             const thinking = resData?.dusunme || resData?.thinking || resData?.teknikAnaliz || '';
@@ -700,7 +820,12 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 provider: resData?.provider || activeAgent?.saglayiciTuruAdi || 'AI Provider',
                 agentName: activeAgent?.ad || t('auto_erp_asistani', 'ERP Asistanı'),
                 thinkingContent: thinking,
-                eylemPayload: eylemPayload
+                eylemPayload: eylemPayload,
+                promptTokens: resData?.promptTokens || resData?.kullanim?.promptTokens || resData?.usage?.prompt_tokens,
+                completionTokens: resData?.completionTokens || resData?.kullanim?.completionTokens || resData?.usage?.completion_tokens,
+                totalTokens: resData?.totalTokens || resData?.kullanim?.toplamToken || resData?.usage?.total_tokens,
+                latencyMs: resData?.latencyMs || resData?.sureMs || reqDuration,
+                ttftMs: resData?.ttftMs
             };
 
             setLocalSessions(prev => prev.map(s => {
@@ -746,12 +871,60 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         }
     };
 
+    // ─── Yanıtı Yeniden Üretme (Regenerate Message) ─────────────────────────
+    const handleRegenerateMessage = (messageId: string | number) => {
+        if (onRegenerateMessage) {
+            onRegenerateMessage(messageId);
+            return;
+        }
+
+        // Yerel fallback: Bu asistan mesajından önceki kullanıcı mesajını bul ve yeniden gönder
+        const msgIdx = currentMessages.findIndex(m => m.id?.toString() === messageId?.toString());
+        if (msgIdx !== -1) {
+            for (let i = msgIdx - 1; i >= 0; i--) {
+                if (currentMessages[i].role === 'user') {
+                    handleSendMessage(currentMessages[i].content);
+                    break;
+                }
+            }
+        }
+    };
+
+    // ─── Mesaj Geri Bildirimi (Feedback: Like / Dislike) ────────────────────
+    const handleFeedback = (messageId: string | number, feedbackType: 'like' | 'dislike') => {
+        const targetMsg = currentMessages.find(m => m.id?.toString() === messageId?.toString());
+        const nextFeedback: 'like' | 'dislike' | null = targetMsg?.feedback === feedbackType ? null : feedbackType;
+
+        if (onMessageFeedback) {
+            onMessageFeedback(messageId, nextFeedback);
+        }
+
+        if (!externalMessages) {
+            setLocalSessions(prev => prev.map(s => {
+                if (s.id?.toString() === activeSessionId?.toString()) {
+                    return {
+                        ...s,
+                        messages: s.messages.map(m => m.id?.toString() === messageId?.toString() ? { ...m, feedback: nextFeedback } : m)
+                    };
+                }
+                return s;
+            }));
+        }
+
+        if (nextFeedback === 'like') {
+            toast.success(t('auto_tesekkurler', 'Geri bildiriminiz için teşekkürler!'));
+        } else if (nextFeedback === 'dislike') {
+            toast(t('auto_geri_bildirim_alindi', 'Geri bildirim kaydedildi.'));
+        }
+    };
+
     // ─── Yanıtı Durdurma (Stop Generation) ────────────────────────────────────
     const handleStopGeneration = () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
         setIsGenerating(false);
+        onStopGeneration?.();
     };
 
     // ─── Dosya Ekleme İşlemleri ──────────────────────────────────────────────
@@ -853,6 +1026,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     }, [sessions, searchSessionQuery]);
 
     const sessionGroups = useMemo(() => {
+        const pinnedItems: ChatSession[] = [];
         const today: ChatSession[] = [];
         const yesterday: ChatSession[] = [];
         const pastWeek: ChatSession[] = [];
@@ -864,6 +1038,10 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         const startOfPastWeek = startOfToday - 7 * 24 * 60 * 60 * 1000;
 
         filteredSessions.forEach(s => {
+            if (s.pinned) {
+                pinnedItems.push(s);
+                return;
+            }
             const time = new Date(s.updatedAt || s.createdAt || 0).getTime();
             if (time >= startOfToday) {
                 today.push(s);
@@ -876,12 +1054,16 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             }
         });
 
-        return [
-            { title: t('auto_bugun', 'Bugün'), items: today },
-            { title: t('auto_dun', 'Dün'), items: yesterday },
-            { title: t('auto_onceki_7_gun', 'Önceki 7 Gün'), items: pastWeek },
-            { title: t('auto_daha_eski', 'Daha Eski'), items: older }
-        ].filter(g => g.items.length > 0);
+        const groups: { title: string; items: ChatSession[]; isPinned?: boolean }[] = [];
+        if (pinnedItems.length > 0) {
+            groups.push({ title: t('auto_sabitlenenler', 'Sabitlenenler'), items: pinnedItems, isPinned: true });
+        }
+        if (today.length > 0) groups.push({ title: t('auto_bugun', 'Bugün'), items: today });
+        if (yesterday.length > 0) groups.push({ title: t('auto_dun', 'Dün'), items: yesterday });
+        if (pastWeek.length > 0) groups.push({ title: t('auto_onceki_7_gun', 'Önceki 7 Gün'), items: pastWeek });
+        if (older.length > 0) groups.push({ title: t('auto_daha_eski', 'Daha Eski'), items: older });
+
+        return groups;
     }, [filteredSessions, t]);
 
     // ─── ActionMenu Eylemleri ─────────────────────────────────────────────────
@@ -898,6 +1080,12 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 label: isSidebarOpen ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle') : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster'),
                 icon: isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />,
                 onClick: () => setIsSidebarOpen(prev => !prev)
+            },
+            {
+                key: 'system-prompt',
+                label: t('auto_sistem_yonergesi', 'Sistem Yönergesi (System Prompt)'),
+                icon: <Sliders size={15} />,
+                onClick: () => setIsSystemPromptOpen(prev => !prev)
             },
             {
                 key: 'clear-chat',
@@ -966,9 +1154,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             )}
 
             <ActionMenu
-                items={standardActionMenuItems}
-                buttonVariant="primary"
-                showSplitButton={false}
+                actions={standardActionMenuItems}
+                triggerVariant="primary"
+                showDefaultActionAsButton={false}
             />
         </div>
     );
@@ -1124,10 +1312,21 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                                 {s.title}
                                                             </span>
                                                         )}
+                                                        {s.pinned && !isEditing && (
+                                                            <Pin size={11} className="base-chat-pin-indicator text-primary shrink-0" />
+                                                        )}
                                                     </div>
 
                                                     {!isEditing && (
                                                         <div className="base-chat-session-actions">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleTogglePinSession(s.id, e)}
+                                                                className={`base-chat-session-btn ${s.pinned ? 'active' : ''}`}
+                                                                title={s.pinned ? t('auto_sabitlemeyi_kaldir', 'Sabitlemeyi Kaldır') : t('auto_sabitle', 'Sabitle')}
+                                                            >
+                                                                <Pin size={12} className={s.pinned ? 'text-primary' : ''} />
+                                                            </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => handleStartRename(s, e)}
@@ -1186,6 +1385,20 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                         </div>
 
                         <div className="base-chat-toolbar-right">
+                            {/* Sistem Yönergesi (System Prompt) Butonu */}
+                            <button
+                                type="button"
+                                onClick={() => setIsSystemPromptOpen(prev => !prev)}
+                                className={`base-chat-toolbar-btn ${isSystemPromptOpen ? 'active' : ''} ${effectiveSystemPrompt.trim() ? 'has-custom' : ''}`}
+                                title={t('auto_sistem_yonergesi', 'Sistem Yönergesi (System Prompt)')}
+                            >
+                                <Sliders size={13} />
+                                <span className="hidden sm:inline">{t('auto_sistem_promptu', 'Sistem Promptu')}</span>
+                                {effectiveSystemPrompt.trim() && (
+                                    <span className="base-chat-badge-dot" />
+                                )}
+                            </button>
+
                             {currentMessages.length > 0 && (
                                 <button
                                     type="button"
@@ -1200,6 +1413,72 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                         </div>
                     </div>
 
+                    {/* Oturum Sistem Yönergesi (System Prompt) Açılır Çekmecesi */}
+                    {isSystemPromptOpen && (
+                        <div className="base-chat-system-prompt-drawer">
+                            <div className="base-chat-system-prompt-header">
+                                <div className="flex items-center gap-6">
+                                    <Sliders size={14} className="text-primary" />
+                                    <span className="font-600 text-12 text-primary">
+                                        {t('auto_sistem_yonergesi_baslik', 'Oturum Sistem Yönergesi (System Prompt)')}
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSystemPromptOpen(false)}
+                                    className="base-chat-system-prompt-close"
+                                    title={t('auto_kapat', 'Kapat')}
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                            <p className="base-chat-system-prompt-desc">
+                                {t('auto_sistem_yonergesi_aciklama', 'Yapay zekanın bu sohbetteki rolünü, yanıt tonunu, kurumsal kurallarını veya ERP kısıtlamalarını özelleştirin.')}
+                            </p>
+                            <textarea
+                                className="base-chat-system-prompt-textarea"
+                                rows={3}
+                                value={effectiveSystemPrompt}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setLocalSystemPrompt(val);
+                                    if (onSystemPromptChange) onSystemPromptChange(val);
+                                }}
+                                placeholder={activeAgent?.sistemPromptu || t('auto_sistem_yonergesi_placeholder', 'Örn: Sen kıdemli bir ERP uzmanısın. Yanıtlarını maddeleyerek ve tablo halinde sun...')}
+                            />
+                            <div className="base-chat-system-prompt-footer">
+                                <span className="base-chat-system-prompt-counter">
+                                    {effectiveSystemPrompt.length} {t('auto_karakter', 'karakter')}
+                                </span>
+                                <div className="flex items-center gap-6">
+                                    {effectiveSystemPrompt && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setLocalSystemPrompt('');
+                                                if (onSystemPromptChange) onSystemPromptChange('');
+                                                toast.success(t('auto_sistem_yonergesi_temizlendi', 'Sistem yönergesi sıfırlandı.'));
+                                            }}
+                                            className="btn btn-secondary text-11 py-2 px-8"
+                                        >
+                                            {t('auto_sifirla', 'Sıfırla')}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsSystemPromptOpen(false);
+                                            toast.success(t('auto_sistem_yonergesi_uygulandi', 'Sistem yönergesi uygulandı.'));
+                                        }}
+                                        className="btn btn-primary text-11 py-2 px-10"
+                                    >
+                                        {t('auto_tamam', 'Tamam')}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Mesaj Akışı Konteyneri */}
                     <div
                         ref={messagesContainerRef}
@@ -1213,10 +1492,10 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                     <Sparkles size={32} />
                                 </div>
                                 <h3 className="base-chat-welcome-title">
-                                    {t('auto_size_nasil_yardimci_olabilirim', 'Size bugün nasıl yardımcı olabilirim?')}
+                                    {welcomeTitle || t('auto_size_nasil_yardimci_olabilirim', 'Size bugün nasıl yardımcı olabilirim?')}
                                 </h3>
                                 <p className="base-chat-welcome-subtitle">
-                                    {activeAgent?.aciklama || t('auto_welcome_desc', 'Yapay zeka asistanınız ERP kayıtlarınızı inceleyebilir, analizler yapabilir veya yeni form taslakları hazırlayabilir.')}
+                                    {welcomeSubtitle || activeAgent?.aciklama || t('auto_welcome_desc', 'Yapay zeka asistanınız ERP kayıtlarınızı inceleyebilir, analizler yapabilir veya yeni form taslakları hazırlayabilir.')}
                                 </p>
 
                                 {/* Hızlı Başlatıcı Öneri Kartları */}
@@ -1232,6 +1511,11 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     {sug.icon || <Lightbulb size={16} className="text-primary" />}
                                                     <span>{sug.title}</span>
                                                 </div>
+                                                {sug.description && (
+                                                    <span className="base-chat-suggestion-desc">
+                                                        {sug.description}
+                                                    </span>
+                                                )}
                                                 <span className="base-chat-suggestion-text">
                                                     {sug.prompt}
                                                 </span>
@@ -1267,6 +1551,27 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                         {msg.model}
                                                     </span>
                                                 )}
+                                                {!isUser && (msg.totalTokens !== undefined || msg.promptTokens !== undefined || msg.completionTokens !== undefined || msg.latencyMs !== undefined || msg.ttftMs !== undefined) && (() => {
+                                                    const totalTok = msg.totalTokens ?? ((msg.promptTokens || 0) + (msg.completionTokens || 0) || undefined);
+                                                    const badgeParts: string[] = [];
+                                                    if (totalTok !== undefined) badgeParts.push(`${totalTok} token`);
+                                                    if (msg.latencyMs !== undefined) badgeParts.push(`${msg.latencyMs} ms`);
+                                                    if (msg.ttftMs !== undefined) badgeParts.push(`TTFT ${msg.ttftMs} ms`);
+                                                    if (badgeParts.length === 0) return null;
+                                                    return (
+                                                        <span 
+                                                            className="base-chat-perf-badge"
+                                                            title={[
+                                                                totalTok !== undefined ? `Toplam Token: ${totalTok}${msg.promptTokens ? ` (Prompt: ${msg.promptTokens}, Yanıt: ${msg.completionTokens})` : ''}` : '',
+                                                                msg.latencyMs !== undefined ? `Gecikme (Latency): ${msg.latencyMs} ms` : '',
+                                                                msg.ttftMs !== undefined ? `İlk Token Süresi (TTFT): ${msg.ttftMs} ms` : ''
+                                                            ].filter(Boolean).join(' · ')}
+                                                        >
+                                                            <Cpu size={11} className="shrink-0" />
+                                                            <span>{badgeParts.join(' · ')}</span>
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
 
                                             {/* Düşünce ve Çıkarım Detayı (AiThinkingDetails) */}
@@ -1325,7 +1630,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                             </div>
 
                                             {/* Mesaj Altı Aksiyonlar */}
-                                            <div className="ai-chat-message-actions">
+                                            <div className="ai-chat-message-actions base-chat-msg-actions">
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -1338,24 +1643,29 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     <Copy size={13} />
                                                 </button>
 
-                                                {!isUser && (
+                                                {!isUser && !isError && (
                                                     <>
                                                         <button
                                                             type="button"
-                                                            onClick={() => {
-                                                                toast.success(t('auto_tesekkurler', 'Geri bildiriminiz için teşekkürler!'));
-                                                            }}
+                                                            onClick={() => handleRegenerateMessage(msg.id)}
+                                                            disabled={isGenerating}
                                                             className="ai-chat-action-btn"
+                                                            title={t('auto_yeniden_uret', 'Yanıtı Yeniden Üret')}
+                                                        >
+                                                            <RotateCcw size={13} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFeedback(msg.id, 'like')}
+                                                            className={`ai-chat-action-btn ${msg.feedback === 'like' ? 'active like' : ''}`}
                                                             title={t('auto_bunu_begendim', 'Beğendim')}
                                                         >
                                                             <ThumbsUp size={13} />
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            onClick={() => {
-                                                                toast(t('auto_geri_bildirim_alindi', 'Geri bildirim kaydedildi.'));
-                                                            }}
-                                                            className="ai-chat-action-btn"
+                                                            onClick={() => handleFeedback(msg.id, 'dislike')}
+                                                            className={`ai-chat-action-btn ${msg.feedback === 'dislike' ? 'active dislike' : ''}`}
                                                             title={t('auto_begenmedim', 'Geliştirilmeli')}
                                                         >
                                                             <ThumbsDown size={13} />
