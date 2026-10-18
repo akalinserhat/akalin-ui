@@ -36,12 +36,13 @@ const FullScreenContent: React.FC<BaseDetailDialogProps> = (props) => {
 
     React.useEffect(() => {
         updateDocumentTitle(props.title);
+        const headerId = `dialog-${props.title}`;
         if (headerApi?.setHeader) {
-            headerApi.setHeader(props.title, headerContent, null);
+            headerApi.setHeader(headerId, headerContent);
         }
         return () => {
             if (headerApi?.clearHeader) {
-                headerApi.clearHeader();
+                headerApi.clearHeader(headerId);
             }
         };
     }, [props.title, headerContent, headerApi]);

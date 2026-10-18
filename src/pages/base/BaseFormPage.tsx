@@ -27,6 +27,7 @@ import { updateDocumentTitle, autoFocusFirstInput } from '../../utils/domUtils';
 import AlertDialog from '../../components/dialog/AlertDialog';
 import SaveButton from '../../components/button/SaveButton';
 import CancelButton from '../../components/button/CancelButton';
+import BackButton from '../../components/button/BackButton';
 import { useTranslation } from 'react-i18next';
 import { useHeaderApi } from '../../context/HeaderContext';
 
@@ -141,14 +142,17 @@ const BaseFormPage = <T extends any = any>({
     useEffect(() => {
         updateDocumentTitle(displayTitle);
         if (headerApi?.setHeader) {
-            headerApi.setHeader(displayTitle, null, null, handleFormClose);
+            headerApi.setHeader(
+                displayTitle,
+                <BackButton onClick={handleFormClose} title={t('auto_geri_don', 'Geri Dön')} />
+            );
         }
         return () => {
             if (headerApi?.clearHeader) {
-                headerApi.clearHeader();
+                headerApi.clearHeader(displayTitle);
             }
         };
-    }, [displayTitle, headerApi]);
+    }, [displayTitle, headerApi, handleFormClose, t]);
 
     useEffect(() => {
         if (!isDocument) return;
