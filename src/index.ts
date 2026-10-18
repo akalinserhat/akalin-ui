@@ -18,6 +18,7 @@ export { default as BaseModalCrud, type BaseModalCrudProps } from './pages/base/
 export { default as BaseSeciciModal, type BaseSeciciModalProps } from './pages/base/BaseSeciciModal';
 export { default as Modal, type ModalProps } from './pages/base/Modal';
 export { default as BaseListAiModal, type BaseListAiModalProps } from './pages/base/BaseListAiModal';
+export { default as BaseChatPage, BaseAiChatPage, type BaseChatPageProps, type ChatMessage, type ChatSession, type ChatAgent, type ChatAttachment, type PromptSuggestion } from './pages/base/BaseChatPage';
 export { default as BasePromptDialog, type BasePromptDialogProps } from './alerts/BasePromptDialog';
 
 // 2. Base Components

@@ -1,0 +1,1511 @@
+// @ts-nocheck
+/**
+ * ============================================================================
+ * AGENT KNOWLEDGE & USAGE GUIDE
+ * ============================================================================
+ * Akalin UI - BaseChatPage (Yapay Zeka Sohbet & Ajan Temel Sayfa İskeleti)
+ * 
+ * Başlıca Sorumlulukları ve Yetenekleri:
+ * - BasePage ve BaseCardPageHeader altyapısı üzerine inşa edilmiş, kütüphanenin
+ *   diğer base sayfalarıyla (BaseCardPage, BaseListPage, BaseDocumentPage vb.)
+ *   birebir görsel ve mimari uyum içinde çalışan yapay zeka sohbet arayüzü sunar.
+ * - Çoklu sohbet oturumlarını (ChatSession) yönetir: Yeni sohbet başlatma,
+ *   oturumu yeniden adlandırma, silme, oturumlar içi arama ve tarihe göre gruplama (Bugün, Dün, vb.).
+ * - Yapay zeka ajanları (ChatAgent) ve LLM modelleri (ChatModel) arasında anlık geçiş imkanı.
+ * - Zengin mesajlaşma yetenekleri:
+ *     * Kullanıcı ve Asistan baloncukları, avatarlar, zaman damgaları
+ *     * Düşünce ve teknik çıkarım detayları (AiThinkingDetails entegrasyonu)
+ *     * Canlı yanıt süresi ve bekleme sayacı (AiResponseTimer entegrasyonu)
+ *     * Yazıyor / Üretiliyor göstergesi (AiTypingIndicator entegrasyonu)
+ *     * Kod blokları (Syntax highlighting tarzı koyu tema ve tek tıkla kopyalama)
+ *     * Dosya ve belge ekleri (PDF, XLSX, CSV, Resim, JSON)
+ *     * ERP belge taslağı önizlemesi ve "Forma Aktar" (akalin:mcp-apply) eylemi
+ * - Üst başlıkta ActionMenu entegrasyonu: Yeni Sohbet, Sohbeti Temizle, Dışa Aktar (MD/JSON),
+ *   Ajan Ayarları ve özel eylemler.
+ * - Otomatik kaydırma (auto-scroll) ve yukarı çıkıldığında "Aşağı Kaydır" düğmesi.
+ * - İsteğe bağlı localStorage hafızası (persistKey) ile sayfa yenilenmelerinde sohbeti koruma.
+ * ============================================================================
+ */
+
+import React, { 
+    useState, 
+    useEffect, 
+    useRef, 
+    useMemo, 
+    useCallback, 
+    ReactNode 
+} from 'react';
+import { 
+    Sparkles, 
+    Bot, 
+    Send, 
+    Square, 
+    Plus, 
+    Trash2, 
+    History, 
+    MessageSquare, 
+    Paperclip, 
+    Copy, 
+    Check, 
+    ThumbsUp, 
+    ThumbsDown, 
+    RotateCcw, 
+    Edit2, 
+    X, 
+    Search, 
+    Download, 
+    ArrowDown, 
+    Clock, 
+    Cpu, 
+    FileText, 
+    FileUp, 
+    ExternalLink, 
+    PanelLeftClose, 
+    PanelLeft, 
+    Lightbulb, 
+    Layers,
+    Share2,
+    Code2,
+    CheckCircle2
+} from 'lucide-react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import BasePage, { BasePageProps } from './BasePage';
+import BaseCardPageHeader, { BaseCardPageHeaderProps } from '../../components/card/BaseCardPageHeader';
+import ActionMenu, { ActionMenuItem } from '../../components/menu/ActionMenu';
+import AlertDialog from '../../components/dialog/AlertDialog';
+import AiTypingIndicator from '../../components/progress/AiTypingIndicator';
+import AiResponseTimer from '../../components/progress/AiResponseTimer';
+import AiThinkingDetails from '../../components/progress/AiThinkingDetails';
+import { updateDocumentTitle } from '../../utils/domUtils';
+import './BaseChatPage.css';
+
+// ─── TİP TANIMLAMALARI (TYPES & INTERFACES) ──────────────────────────────────
+
+export interface ChatAttachment {
+    id?: string | number;
+    name: string;
+    size?: number;
+    type?: string;
+    url?: string;
+    file?: File;
+    cloudFileId?: number | string;
+}
+
+export interface ChatMessage {
+    id: string | number;
+    role: 'user' | 'assistant' | 'system' | 'error';
+    content: string;
+    timestamp?: Date | string | number;
+    model?: string;
+    provider?: string;
+    agentName?: string;
+    thinkingContent?: string;
+    toolCalls?: any[];
+    eylemPayload?: any; // ERP formu veya belgesine aktarılacak taslak veri
+    attachments?: ChatAttachment[];
+    status?: 'sending' | 'streaming' | 'done' | 'error';
+    isError?: boolean;
+    feedback?: 'like' | 'dislike' | null;
+}
+
+export interface ChatSession {
+    id: string | number;
+    title: string;
+    createdAt: Date | string | number;
+    updatedAt: Date | string | number;
+    messages: ChatMessage[];
+    agentId?: string | number;
+    modelId?: string;
+    pinned?: boolean;
+}
+
+export interface ChatAgent {
+    id: string | number;
+    ad: string;
+    kod?: string;
+    rol?: string;
+    modelAdi?: string;
+    saglayiciTuru?: number;
+    saglayiciTuruAdi?: string;
+    aciklama?: string;
+    avatar?: string;
+    sistemPromptu?: string;
+}
+
+export interface PromptSuggestion {
+    id?: string | number;
+    title: string;
+    prompt: string;
+    icon?: ReactNode;
+    category?: string;
+}
+
+export interface BaseChatPageProps extends BasePageProps {
+    // API & Backend Entegrasyonu
+    apiEndpoint?: string;
+    agentsEndpoint?: string;
+    documentType?: string;
+
+    // Oturum (Session) Yönetimi
+    sessions?: ChatSession[];
+    activeSessionId?: string | number;
+    onSessionChange?: (session: ChatSession) => void;
+    onNewSession?: () => void;
+    onDeleteSession?: (sessionId: string | number) => void;
+    onRenameSession?: (sessionId: string | number, newTitle: string) => void;
+
+    // Mesajlar & Gönderme Eylemleri
+    messages?: ChatMessage[];
+    onSendMessage?: (content: string, attachments: ChatAttachment[], session: ChatSession) => Promise<void> | void;
+    onRegenerateMessage?: (messageId: string | number) => void;
+    onApplyToForm?: (data: any, bulutDosyaId?: number | null) => void;
+
+    // Ajanlar ve Modeller
+    agents?: ChatAgent[];
+    selectedAgentId?: string | number;
+    onAgentChange?: (agent: ChatAgent) => void;
+    defaultModel?: string;
+
+    // Öneriler ve Hızlı Başlatıcılar
+    suggestions?: PromptSuggestion[];
+    placeholder?: string;
+
+    // Arayüz Özelleştirmeleri
+    showHistorySidebar?: boolean;
+    defaultHistoryOpen?: boolean;
+    enableAttachments?: boolean;
+    enableCloudFiles?: boolean;
+    enableThinkingDetails?: boolean;
+    enableResponseTimer?: boolean;
+
+    // Ekstra Aksiyonlar
+    headerActions?: ReactNode;
+    extraDropdownActions?: ActionMenuItem[];
+
+    // Yerel Hafıza (Persistence)
+    persistKey?: string;
+    embedded?: boolean;
+}
+
+// ─── YARDIMCI METOTLAR ───────────────────────────────────────────────────────
+
+const generateId = () => `chat_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`;
+
+const formatTime = (ts?: Date | string | number): string => {
+    if (!ts) return '';
+    const date = new Date(ts);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const defaultSuggestionsList: PromptSuggestion[] = [
+    {
+        id: 'sug_1',
+        title: '📊 Satış ve Karlılık Analizi',
+        prompt: 'Son 30 günün en çok satan ürünlerini ve ciroya katkısını analiz et, özet tablo hazırla.',
+        category: 'Rapor'
+    },
+    {
+        id: 'sug_2',
+        title: '📝 Yeni Sipariş Taslağı',
+        prompt: 'Standart fiyat listesindeki beyaz eşya kalemlerine %10 indirim ekleyerek yeni bir sipariş taslağı oluştur.',
+        category: 'Belge'
+    },
+    {
+        id: 'sug_3',
+        title: '🔍 Kritik Stok Durumu',
+        prompt: 'Depo bazında minimum stok seviyesinin altına düşen ürünleri tespit et ve acil tedarik önerileri sun.',
+        category: 'Stok'
+    },
+    {
+        id: 'sug_4',
+        title: '💡 Kampanya ve İndirim Kurgusu',
+        prompt: 'Mevcut stok fazlası ürünler için hafta sonuna özel bir kampanya duyuru metni ve kural taslağı hazırla.',
+        category: 'Pazarlama'
+    }
+];
+
+// ─── MESAJ İÇERİĞİ PARSER (KOD BLOKLARI VE METİN) ───────────────────────────
+
+interface CodeBlockProps {
+    language: string;
+    code: string;
+}
+
+const CodeBlockView: React.FC<CodeBlockProps> = ({ language, code }) => {
+    const { t } = useTranslation();
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code);
+        setCopied(true);
+        toast.success(t('auto_kod_panoya_kopyalandi', 'Kod panoya kopyalandı'));
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="ai-chat-code-block-container">
+            <div className="ai-chat-code-header">
+                <span>{language || 'code'}</span>
+                <button type="button" onClick={handleCopy} className="ai-chat-code-copy-btn">
+                    {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                    <span>{copied ? t('auto_kopyalandi', 'Kopyalandı') : t('auto_kopyala', 'Kopyala')}</span>
+                </button>
+            </div>
+            <pre className="ai-chat-code-pre">
+                <code>{code}</code>
+            </pre>
+        </div>
+    );
+};
+
+const FormattedMessageContent: React.FC<{ content: string }> = ({ content }) => {
+    if (!content) return null;
+
+    // Fenced code blocks ```lang ... ``` ayır
+    const parts = content.split(/(```[\s\S]*?```)/g);
+
+    return (
+        <div className="ai-chat-formatted-text">
+            {parts.map((part, index) => {
+                if (part.startsWith('```') && part.endsWith('```')) {
+                    const match = part.match(/^```(\w+)?\n?([\s\S]*?)```$/);
+                    const lang = match ? match[1] || '' : '';
+                    const code = match ? match[2].trim() : part.slice(3, -3).trim();
+                    return <CodeBlockView key={index} language={lang} code={code} />;
+                }
+
+                // Normal metin paragrafları
+                return (
+                    <span key={index} style={{ whiteSpace: 'pre-wrap' }}>
+                        {part}
+                    </span>
+                );
+            })}
+        </div>
+    );
+};
+
+// ─── ANA BİLEŞEN: BaseChatPage ───────────────────────────────────────────────
+
+const BaseChatPage: React.FC<BaseChatPageProps> = ({
+    id = 'base-ai-chat-page',
+    title,
+    pageTitle,
+    subtitle,
+    icon,
+    breadcrumb,
+    showBackButton = true,
+    onBack,
+    onClose,
+    headerExtra,
+    headerProps,
+    headerActions,
+    extraDropdownActions,
+    apiEndpoint = '/api/AiAjanlar/sohbet',
+    agentsEndpoint = '/api/AiAjanlar',
+    documentType = 'GenelSohbet',
+    sessions: externalSessions,
+    activeSessionId: externalActiveSessionId,
+    onSessionChange,
+    onNewSession,
+    onDeleteSession,
+    onRenameSession,
+    messages: externalMessages,
+    onSendMessage,
+    onRegenerateMessage,
+    onApplyToForm,
+    agents: externalAgents,
+    selectedAgentId: externalSelectedAgentId,
+    onAgentChange,
+    defaultModel,
+    suggestions = defaultSuggestionsList,
+    placeholder,
+    showHistorySidebar = true,
+    defaultHistoryOpen = true,
+    enableAttachments = true,
+    enableCloudFiles = true,
+    enableThinkingDetails = true,
+    enableResponseTimer = true,
+    persistKey = 'akalin_ai_chat_sessions_v1',
+    embedded = false,
+    className = '',
+    style = {},
+    ...restBaseProps
+}) => {
+    const { t } = useTranslation();
+
+    // ─── Sayfa Başlığı ve Doküman İsmi ────────────────────────────────────────
+    const effectiveTitle = title || t('auto_ai_sohbet_asistani', 'Yapay Zeka Sohbet & Asistan');
+    const effectiveSubtitle = subtitle || t('auto_ai_sohbet_alt_baslik', 'ERP verilerinizi sorgulayın, akıllı kararlar alın ve otomatik belgeler oluşturun.');
+
+    useEffect(() => {
+        updateDocumentTitle(pageTitle || effectiveTitle);
+    }, [pageTitle, effectiveTitle]);
+
+    // ─── Oturumlar (Sessions) Durumu ─────────────────────────────────────────
+    const [localSessions, setLocalSessions] = useState<ChatSession[]>(() => {
+        if (externalSessions && externalSessions.length > 0) return externalSessions;
+        if (typeof window !== 'undefined' && persistKey) {
+            try {
+                const cached = localStorage.getItem(persistKey);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                }
+            } catch (e) {
+                console.error('Sohbet geçmişi yüklenemedi:', e);
+            }
+        }
+        // Başlangıç ilk boş oturumu
+        const initialSession: ChatSession = {
+            id: generateId(),
+            title: t('auto_yeni_sohbet', 'Yeni Sohbet'),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            messages: []
+        };
+        return [initialSession];
+    });
+
+    const sessions = externalSessions || localSessions;
+
+    const [activeSessionId, setActiveSessionId] = useState<string | number>(() => {
+        if (externalActiveSessionId !== undefined) return externalActiveSessionId;
+        return sessions[0]?.id || '';
+    });
+
+    useEffect(() => {
+        if (externalActiveSessionId !== undefined) {
+            setActiveSessionId(externalActiveSessionId);
+        }
+    }, [externalActiveSessionId]);
+
+    // Aktif Oturum Nesnesi
+    const activeSession = useMemo(() => {
+        return sessions.find(s => s.id?.toString() === activeSessionId?.toString()) || sessions[0] || null;
+    }, [sessions, activeSessionId]);
+
+    // ─── Ajanlar (Agents) Listesi ve Seçimi ───────────────────────────────────
+    const [agentsList, setAgentsList] = useState<ChatAgent[]>(externalAgents || []);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | number | null>(() => {
+        if (externalSelectedAgentId !== undefined) return externalSelectedAgentId;
+        return agentsList[0]?.id || null;
+    });
+
+    useEffect(() => {
+        if (externalAgents && externalAgents.length > 0) {
+            setAgentsList(externalAgents);
+        } else {
+            // Ajanları API'den yükle
+            const fetchAgents = async () => {
+                try {
+                    const res = await axios.get(agentsEndpoint);
+                    const list = res.data || [];
+                    setAgentsList(list);
+                    if (!selectedAgentId && list.length > 0) {
+                        setSelectedAgentId(list[0].id);
+                    }
+                } catch (err) {
+                    console.warn('Yapay zeka ajanları API üzerinden yüklenemedi, varsayılan ajan kullanılıyor.');
+                }
+            };
+            fetchAgents();
+        }
+    }, [externalAgents, agentsEndpoint]);
+
+    const activeAgent = useMemo(() => {
+        return agentsList.find(a => a.id?.toString() === selectedAgentId?.toString()) || agentsList[0] || null;
+    }, [agentsList, selectedAgentId]);
+
+    // ─── Oturumları LocalStorage'a Kaydet ────────────────────────────────────
+    useEffect(() => {
+        if (!externalSessions && persistKey && typeof window !== 'undefined') {
+            try {
+                localStorage.setItem(persistKey, JSON.stringify(localSessions));
+            } catch (err) {
+                console.error('Sohbetler kaydedilemedi:', err);
+            }
+        }
+    }, [localSessions, externalSessions, persistKey]);
+
+    // ─── Mesaj Akışı ve Gönderme Durumu ──────────────────────────────────────
+    const currentMessages: ChatMessage[] = externalMessages || activeSession?.messages || [];
+    const [inputText, setInputText] = useState('');
+    const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [searchSessionQuery, setSearchSessionQuery] = useState('');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(defaultHistoryOpen);
+    const [showScrollBottom, setShowScrollBottom] = useState(false);
+    const [editingSessionId, setEditingSessionId] = useState<string | number | null>(null);
+    const [editingSessionTitle, setEditingSessionTitle] = useState('');
+
+    // Onay Kutusu Durumu
+    const [alertConfig, setAlertConfig] = useState<{
+        isOpen: boolean;
+        type?: 'info' | 'warning' | 'error' | 'confirm';
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    });
+
+    // Ref'ler
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const timerIntervalRef = useRef<any>(null);
+
+    // ─── Zaman Sayacı (AiResponseTimer) ──────────────────────────────────────
+    useEffect(() => {
+        if (isGenerating) {
+            setElapsedSeconds(0);
+            timerIntervalRef.current = setInterval(() => {
+                setElapsedSeconds(prev => prev + 1);
+            }, 1000);
+        } else {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+        }
+        return () => {
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        };
+    }, [isGenerating]);
+
+    // ─── Otomatik Aşağı Kaydırma (Auto-Scroll) ────────────────────────────────
+    const scrollToBottom = useCallback((smooth = true) => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+        }
+    }, []);
+
+    useEffect(() => {
+        scrollToBottom(true);
+    }, [currentMessages.length, isGenerating, scrollToBottom]);
+
+    const handleScroll = () => {
+        if (messagesContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+            const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+            setShowScrollBottom(distanceToBottom > 150);
+        }
+    };
+
+    // ─── Oturum Ekleme / Değiştirme / Silme ───────────────────────────────────
+    const handleCreateNewSession = () => {
+        if (onNewSession) {
+            onNewSession();
+            return;
+        }
+
+        const newSess: ChatSession = {
+            id: generateId(),
+            title: t('auto_yeni_sohbet', 'Yeni Sohbet'),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            messages: [],
+            agentId: selectedAgentId || undefined
+        };
+
+        setLocalSessions(prev => [newSess, ...prev]);
+        setActiveSessionId(newSess.id);
+        if (onSessionChange) onSessionChange(newSess);
+        toast.success(t('auto_yeni_sohbet_baslatildi', 'Yeni sohbet başlatıldı.'));
+        
+        setTimeout(() => {
+            textareaRef.current?.focus();
+        }, 100);
+    };
+
+    const handleSelectSession = (session: ChatSession) => {
+        setActiveSessionId(session.id);
+        if (onSessionChange) onSessionChange(session);
+    };
+
+    const handleDeleteSessionConfirm = (sessionId: string | number, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+
+        setAlertConfig({
+            isOpen: true,
+            type: 'confirm',
+            title: t('auto_sohbeti_sil_baslik', 'Sohbeti Sil'),
+            message: t('auto_sohbeti_sil_uyari', 'Bu sohbet oturumu ve tüm mesaj geçmişi kalıcı olarak silinecektir. Devam etmek istiyor musunuz?'),
+            onConfirm: () => {
+                if (onDeleteSession) {
+                    onDeleteSession(sessionId);
+                } else {
+                    setLocalSessions(prev => {
+                        const filtered = prev.filter(s => s.id?.toString() !== sessionId.toString());
+                        if (filtered.length === 0) {
+                            const fresh: ChatSession = {
+                                id: generateId(),
+                                title: t('auto_yeni_sohbet', 'Yeni Sohbet'),
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString(),
+                                messages: []
+                            };
+                            setActiveSessionId(fresh.id);
+                            return [fresh];
+                        }
+                        if (sessionId?.toString() === activeSessionId?.toString()) {
+                            setActiveSessionId(filtered[0].id);
+                        }
+                        return filtered;
+                    });
+                }
+                toast.success(t('auto_sohbet_silindi', 'Sohbet oturumu silindi.'));
+                setAlertConfig(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    const handleStartRename = (session: ChatSession, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setEditingSessionId(session.id);
+        setEditingSessionTitle(session.title);
+    };
+
+    const handleSaveRename = (sessionId: string | number) => {
+        if (!editingSessionTitle.trim()) {
+            setEditingSessionId(null);
+            return;
+        }
+
+        if (onRenameSession) {
+            onRenameSession(sessionId, editingSessionTitle.trim());
+        } else {
+            setLocalSessions(prev => prev.map(s => 
+                s.id?.toString() === sessionId.toString() 
+                    ? { ...s, title: editingSessionTitle.trim(), updatedAt: new Date().toISOString() } 
+                    : s
+            ));
+        }
+        setEditingSessionId(null);
+        toast.success(t('auto_sohbet_adi_guncellendi', 'Sohbet başlığı güncellendi.'));
+    };
+
+    const handleClearCurrentMessages = () => {
+        setAlertConfig({
+            isOpen: true,
+            type: 'confirm',
+            title: t('auto_sohbeti_temizle_baslik', 'Sohbeti Temizle'),
+            message: t('auto_sohbeti_temizle_uyari', 'Mevcut oturumdaki tüm mesajlar silinecektir. Emin misiniz?'),
+            onConfirm: () => {
+                if (!externalMessages) {
+                    setLocalSessions(prev => prev.map(s => 
+                        s.id?.toString() === activeSessionId?.toString()
+                            ? { ...s, messages: [], updatedAt: new Date().toISOString() }
+                            : s
+                    ));
+                }
+                toast.success(t('auto_mesajlar_temizlendi', 'Mesajlar temizlendi.'));
+                setAlertConfig(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    // ─── Mesaj Gönderme & Yapay Zeka Çağrısı ─────────────────────────────────
+    const handleSendMessage = async (customPrompt?: string) => {
+        const textToSend = customPrompt || inputText;
+        if (!textToSend.trim() && pendingAttachments.length === 0) return;
+        if (isGenerating) return;
+
+        const userMsgId = generateId();
+        const assistantMsgId = generateId();
+
+        const userMessage: ChatMessage = {
+            id: userMsgId,
+            role: 'user',
+            content: textToSend.trim(),
+            timestamp: new Date().toISOString(),
+            attachments: [...pendingAttachments]
+        };
+
+        // Oturumu güncelle ve ilk kullanıcı mesajı ise başlığı otomatik adlandır
+        const isFirstMessage = currentMessages.length === 0;
+        const autoTitle = isFirstMessage 
+            ? (textToSend.trim().length > 32 ? textToSend.trim().substring(0, 32) + '...' : textToSend.trim())
+            : activeSession?.title;
+
+        // UI'ya hemen kullanıcı mesajını ekle
+        if (!externalMessages) {
+            setLocalSessions(prev => prev.map(s => {
+                if (s.id?.toString() === activeSessionId?.toString()) {
+                    return {
+                        ...s,
+                        title: isFirstMessage ? autoTitle : s.title,
+                        updatedAt: new Date().toISOString(),
+                        messages: [...s.messages, userMessage]
+                    };
+                }
+                return s;
+            }));
+        }
+
+        setInputText('');
+        setPendingAttachments([]);
+        setIsGenerating(true);
+
+        // Harici onSendMessage verilmişse ona devret
+        if (onSendMessage) {
+            try {
+                await onSendMessage(userMessage.content, userMessage.attachments || [], activeSession);
+            } catch (err: any) {
+                toast.error(err?.message || t('auto_mesaj_gonderilemedi', 'Mesaj gönderilemedi.'));
+            } finally {
+                setIsGenerating(false);
+            }
+            return;
+        }
+
+        // Yerleşik Axios Yapay Zeka Çağrısı
+        abortControllerRef.current = new AbortController();
+
+        try {
+            const payload = {
+                sohbetId: activeSessionId,
+                ajanId: selectedAgentId,
+                mesaj: userMessage.content,
+                belgeTuru: documentType,
+                ekler: userMessage.attachments,
+                model: defaultModel || activeAgent?.modelAdi || 'default',
+                gecmis: currentMessages.map(m => ({ role: m.role, content: m.content }))
+            };
+
+            const response = await axios.post(apiEndpoint, payload, {
+                signal: abortControllerRef.current.signal
+            });
+
+            const resData = response.data;
+            const assistantText = resData?.yanit || resData?.mesaj || resData?.cevap || resData?.content || '';
+            const thinking = resData?.dusunme || resData?.thinking || resData?.teknikAnaliz || '';
+            const eylemPayload = resData?.eylemPayload || resData?.belgeVerisi || null;
+
+            const assistantMessage: ChatMessage = {
+                id: assistantMsgId,
+                role: 'assistant',
+                content: assistantText,
+                timestamp: new Date().toISOString(),
+                model: resData?.model || activeAgent?.modelAdi || defaultModel || 'LLM',
+                provider: resData?.provider || activeAgent?.saglayiciTuruAdi || 'AI Provider',
+                agentName: activeAgent?.ad || t('auto_erp_asistani', 'ERP Asistanı'),
+                thinkingContent: thinking,
+                eylemPayload: eylemPayload
+            };
+
+            setLocalSessions(prev => prev.map(s => {
+                if (s.id?.toString() === activeSessionId?.toString()) {
+                    return {
+                        ...s,
+                        updatedAt: new Date().toISOString(),
+                        messages: [...s.messages, assistantMessage]
+                    };
+                }
+                return s;
+            }));
+
+        } catch (err: any) {
+            if (axios.isCancel(err) || err.name === 'CanceledError') {
+                toast(t('auto_yanit_durduruldu', 'Yanıt üretimi durduruldu.'));
+            } else {
+                const errMsg = err.response?.data?.mesaj || err.response?.data?.message || err.message || t('auto_ai_baglanti_hatasi', 'Yapay zeka servisiyle bağlantı kurulamadı.');
+                toast.error(errMsg);
+
+                const errorAssistantMsg: ChatMessage = {
+                    id: assistantMsgId,
+                    role: 'error',
+                    content: `⚠️ ${errMsg}`,
+                    timestamp: new Date().toISOString(),
+                    isError: true
+                };
+
+                setLocalSessions(prev => prev.map(s => {
+                    if (s.id?.toString() === activeSessionId?.toString()) {
+                        return {
+                            ...s,
+                            updatedAt: new Date().toISOString(),
+                            messages: [...s.messages, errorAssistantMsg]
+                        };
+                    }
+                    return s;
+                }));
+            }
+        } finally {
+            setIsGenerating(false);
+            abortControllerRef.current = null;
+        }
+    };
+
+    // ─── Yanıtı Durdurma (Stop Generation) ────────────────────────────────────
+    const handleStopGeneration = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        setIsGenerating(false);
+    };
+
+    // ─── Dosya Ekleme İşlemleri ──────────────────────────────────────────────
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            const newAttachments: ChatAttachment[] = files.map(f => ({
+                id: generateId(),
+                name: f.name,
+                size: f.size,
+                type: f.type,
+                file: f
+            }));
+            setPendingAttachments(prev => [...prev, ...newAttachments]);
+            toast.success(t('auto_dosya_eklendi', '{{count}} dosya sohbete eklendi.', { count: files.length }));
+            e.target.value = '';
+        }
+    };
+
+    const handleRemoveAttachment = (attId?: string | number) => {
+        setPendingAttachments(prev => prev.filter(a => a.id !== attId));
+    };
+
+    // ─── Taslak Veriyi Forma / MCP'ye Uygula (Apply Draft to Form) ────────────
+    const handleApplyDraft = (eylemPayload: any) => {
+        if (!eylemPayload) return;
+
+        if (onApplyToForm) {
+            onApplyToForm(eylemPayload);
+        } else {
+            // Global CustomEvent ile tüm sayfaya/forma yay
+            const customEvent = new CustomEvent('akalin:mcp-apply', {
+                detail: {
+                    documentType,
+                    data: eylemPayload
+                }
+            });
+            window.dispatchEvent(customEvent);
+            toast.success(t('auto_mcp_taslak_uygulandi', 'Yapay zeka taslağı aktif belge formuna aktarıldı.'));
+        }
+    };
+
+    // ─── Dışa Aktarma Eylemleri (Export Markdown / JSON) ─────────────────────
+    const handleExportMarkdown = () => {
+        if (currentMessages.length === 0) {
+            toast.error(t('auto_aktarilacak_mesaj_yok', 'Dışa aktarılacak mesaj bulunmuyor.'));
+            return;
+        }
+
+        let md = `# ${activeSession?.title || 'Sohbet'}\n\n`;
+        md += `*Oluşturulma: ${new Date(activeSession?.createdAt || Date.now()).toLocaleString()}*\n\n---\n\n`;
+
+        currentMessages.forEach(m => {
+            const sender = m.role === 'user' ? '👤 **Kullanıcı**' : `🤖 **${m.agentName || 'Yapay Zeka'}**`;
+            md += `### ${sender} (${formatTime(m.timestamp)})\n\n${m.content}\n\n`;
+            if (m.thinkingContent) {
+                md += `> **Düşünce Detayı:**\n> ${m.thinkingContent.replace(/\n/g, '\n> ')}\n\n`;
+            }
+        });
+
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${(activeSession?.title || 'sohbet').replace(/[^a-zA-Z0-9_-]/g, '_')}.md`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success(t('auto_sohbet_md_indirildi', 'Sohbet Markdown olarak indirildi.'));
+    };
+
+    const handleExportJson = () => {
+        if (!activeSession) return;
+        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(activeSession, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute('href', dataStr);
+        downloadAnchor.setAttribute('download', `${(activeSession.title || 'sohbet').replace(/[^a-zA-Z0-9_-]/g, '_')}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        toast.success(t('auto_sohbet_json_indirildi', 'Sohbet JSON formatında dışa aktarıldı.'));
+    };
+
+    // ─── Klavye Kısayolları (Keyboard Shortcuts) ──────────────────────────────
+    const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
+    };
+
+    // ─── Oturum Filtreleme ve Tarihe Göre Gruplama ───────────────────────────
+    const filteredSessions = useMemo(() => {
+        if (!searchSessionQuery.trim()) return sessions;
+        const q = searchSessionQuery.toLowerCase();
+        return sessions.filter(s => 
+            s.title?.toLowerCase().includes(q) ||
+            s.messages.some(m => m.content?.toLowerCase().includes(q))
+        );
+    }, [sessions, searchSessionQuery]);
+
+    const sessionGroups = useMemo(() => {
+        const today: ChatSession[] = [];
+        const yesterday: ChatSession[] = [];
+        const pastWeek: ChatSession[] = [];
+        const older: ChatSession[] = [];
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
+        const startOfPastWeek = startOfToday - 7 * 24 * 60 * 60 * 1000;
+
+        filteredSessions.forEach(s => {
+            const time = new Date(s.updatedAt || s.createdAt || 0).getTime();
+            if (time >= startOfToday) {
+                today.push(s);
+            } else if (time >= startOfYesterday) {
+                yesterday.push(s);
+            } else if (time >= startOfPastWeek) {
+                pastWeek.push(s);
+            } else {
+                older.push(s);
+            }
+        });
+
+        return [
+            { title: t('auto_bugun', 'Bugün'), items: today },
+            { title: t('auto_dun', 'Dün'), items: yesterday },
+            { title: t('auto_onceki_7_gun', 'Önceki 7 Gün'), items: pastWeek },
+            { title: t('auto_daha_eski', 'Daha Eski'), items: older }
+        ].filter(g => g.items.length > 0);
+    }, [filteredSessions, t]);
+
+    // ─── ActionMenu Eylemleri ─────────────────────────────────────────────────
+    const standardActionMenuItems: ActionMenuItem[] = useMemo(() => {
+        const items: ActionMenuItem[] = [
+            {
+                key: 'new-chat',
+                label: t('auto_yeni_sohbet_baslat', 'Yeni Sohbet Başlat'),
+                icon: <Plus size={15} />,
+                onClick: handleCreateNewSession
+            },
+            {
+                key: 'toggle-sidebar',
+                label: isSidebarOpen ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle') : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster'),
+                icon: isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />,
+                onClick: () => setIsSidebarOpen(prev => !prev)
+            },
+            {
+                key: 'clear-chat',
+                label: t('auto_sohbeti_temizle', 'Sohbeti Temizle'),
+                icon: <Trash2 size={15} className="text-danger" />,
+                onClick: handleClearCurrentMessages,
+                disabled: currentMessages.length === 0
+            },
+            {
+                key: 'export-md',
+                label: t('auto_disa_aktar_md', 'Markdown Olarak İndir (.md)'),
+                icon: <Download size={15} />,
+                onClick: handleExportMarkdown,
+                disabled: currentMessages.length === 0
+            },
+            {
+                key: 'export-json',
+                label: t('auto_disa_aktar_json', 'JSON Olarak İndir (.json)'),
+                icon: <Code2 size={15} />,
+                onClick: handleExportJson,
+                disabled: currentMessages.length === 0
+            }
+        ];
+
+        if (extraDropdownActions && extraDropdownActions.length > 0) {
+            items.push(...extraDropdownActions);
+        }
+
+        return items;
+    }, [
+        t, 
+        isSidebarOpen, 
+        currentMessages.length, 
+        handleCreateNewSession, 
+        handleClearCurrentMessages, 
+        handleExportMarkdown, 
+        handleExportJson, 
+        extraDropdownActions
+    ]);
+
+    // ─── Header Aksiyonları ve HeaderProps Birleştirme ──────────────────────
+    const finalHeaderExtra = (
+        <div className="flex items-center gap-8">
+            {headerExtra}
+            {headerActions}
+
+            {/* Hızlı Ajan Seçici Dropdown */}
+            {agentsList.length > 1 && (
+                <select
+                    className="form-input text-12 py-4 px-8 rounded-8 bg-transparent"
+                    value={selectedAgentId || ''}
+                    onChange={(e) => {
+                        const nextId = e.target.value;
+                        setSelectedAgentId(nextId);
+                        const found = agentsList.find(a => a.id?.toString() === nextId);
+                        if (found && onAgentChange) onAgentChange(found);
+                    }}
+                    title={t('auto_ajan_sec', 'Görevli Ajan Seç')}
+                >
+                    {agentsList.map(a => (
+                        <option key={a.id} value={a.id}>
+                            🤖 {a.ad} ({a.rol || a.modelAdi || 'Ajan'})
+                        </option>
+                    ))}
+                </select>
+            )}
+
+            <ActionMenu
+                items={standardActionMenuItems}
+                buttonVariant="primary"
+                showSplitButton={false}
+            />
+        </div>
+    );
+
+    const mergedHeaderProps: Partial<BaseCardPageHeaderProps> = useMemo(() => {
+        if (!headerProps) {
+            return {
+                headerExtra: finalHeaderExtra,
+                actions: finalHeaderExtra
+            };
+        }
+        return {
+            ...headerProps,
+            headerExtra: headerProps.headerExtra ? (
+                <div className="flex items-center gap-8">
+                    {headerProps.headerExtra}
+                    {finalHeaderExtra}
+                </div>
+            ) : finalHeaderExtra,
+            actions: headerProps.actions ? (
+                <div className="flex items-center gap-8">
+                    {headerProps.actions}
+                    {finalHeaderExtra}
+                </div>
+            ) : finalHeaderExtra
+        };
+    }, [headerProps, finalHeaderExtra]);
+
+    // ─── RENDER ──────────────────────────────────────────────────────────────
+    return (
+        <BasePage
+            id={id}
+            pageTitle={pageTitle || (typeof effectiveTitle === 'string' ? effectiveTitle : undefined)}
+            title={effectiveTitle}
+            subtitle={effectiveSubtitle}
+            icon={icon || <Sparkles size={24} className="text-primary" />}
+            breadcrumb={breadcrumb}
+            showBackButton={showBackButton}
+            onBack={onBack}
+            onClose={onClose}
+            asForm={false}
+            disableContentWrapper={false}
+            hideSaveButton={true}
+            subtitleLeft={
+                subtitleLeft !== undefined ? subtitleLeft : (
+                    activeAgent ? (
+                        <span className="chip-primary text-11 font-600 flex items-center gap-4">
+                            <Bot size={13} />
+                            {activeAgent.ad} {activeAgent.modelAdi ? `(${activeAgent.modelAdi})` : ''}
+                        </span>
+                    ) : null
+                )
+            }
+            subtitleRight={
+                subtitleRight !== undefined ? subtitleRight : (
+                    currentMessages.length > 0 ? (
+                        <span className="text-11 text-secondary font-500">
+                            {currentMessages.length} {t('auto_mesaj', 'Mesaj')}
+                        </span>
+                    ) : null
+                )
+            }
+            headerExtra={finalHeaderExtra}
+            headerProps={mergedHeaderProps}
+            className={`base-chat-page ${className}`}
+            {...restBaseProps}
+        >
+            <div className="base-chat-layout" style={style}>
+                {/* ─── 1. SOHBET GEÇMİŞİ KENAR ÇUBUĞU (SIDEBAR) ─────────────── */}
+                {showHistorySidebar && (
+                    <aside className={`base-chat-sidebar ${!isSidebarOpen ? 'collapsed' : ''}`}>
+                        <div className="base-chat-sidebar-header">
+                            <div className="base-chat-sidebar-top-row">
+                                <button
+                                    type="button"
+                                    onClick={handleCreateNewSession}
+                                    className="base-chat-new-btn"
+                                    title={t('auto_yeni_sohbet_aciklama', 'Yeni bir sohbet oturumu aç')}
+                                >
+                                    <Plus size={16} />
+                                    <span>{t('auto_yeni_sohbet', 'Yeni Sohbet')}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className="base-chat-sidebar-close-btn"
+                                    title={t('auto_gecmisi_gizle', 'Geçmişi Gizle')}
+                                >
+                                    <PanelLeftClose size={16} />
+                                </button>
+                            </div>
+
+                            <div className="base-chat-search-box">
+                                <Search size={14} className="text-secondary shrink-0" />
+                                <input
+                                    type="text"
+                                    placeholder={t('auto_sohbetlerde_ara', 'Sohbetlerde ara...')}
+                                    value={searchSessionQuery}
+                                    onChange={(e) => setSearchSessionQuery(e.target.value)}
+                                />
+                                {searchSessionQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchSessionQuery('')}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                                    >
+                                        <X size={12} className="text-secondary" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Oturumlar Listesi */}
+                        <div className="base-chat-sessions-list">
+                            {sessionGroups.length === 0 ? (
+                                <div className="text-center p-16 text-12 text-secondary">
+                                    {t('auto_sohbet_bulunamadi', 'Kayıtlı sohbet bulunamadı.')}
+                                </div>
+                            ) : (
+                                sessionGroups.map(group => (
+                                    <div key={group.title} className="flex flex-col gap-4">
+                                        <div className="base-chat-session-group-title">
+                                            {group.title}
+                                        </div>
+                                        {group.items.map(s => {
+                                            const isActive = s.id?.toString() === activeSessionId?.toString();
+                                            const isEditing = editingSessionId?.toString() === s.id?.toString();
+
+                                            return (
+                                                <div
+                                                    key={s.id}
+                                                    onClick={() => !isEditing && handleSelectSession(s)}
+                                                    className={`base-chat-session-item ${isActive ? 'active' : ''}`}
+                                                >
+                                                    <div className="base-chat-session-content">
+                                                        <MessageSquare size={15} className="shrink-0" />
+                                                        {isEditing ? (
+                                                            <input
+                                                                type="text"
+                                                                value={editingSessionTitle}
+                                                                onChange={(e) => setEditingSessionTitle(e.target.value)}
+                                                                onBlur={() => handleSaveRename(s.id)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') handleSaveRename(s.id);
+                                                                    if (e.key === 'Escape') setEditingSessionId(null);
+                                                                }}
+                                                                autoFocus
+                                                                className="form-input text-12 py-2 px-6 rounded-6 w-full"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            />
+                                                        ) : (
+                                                            <span className="base-chat-session-title">
+                                                                {s.title}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {!isEditing && (
+                                                        <div className="base-chat-session-actions">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleStartRename(s, e)}
+                                                                className="base-chat-session-btn"
+                                                                title={t('auto_yeniden_adlandir', 'Yeniden Adlandır')}
+                                                            >
+                                                                <Edit2 size={12} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleDeleteSessionConfirm(s.id, e)}
+                                                                className="base-chat-session-btn delete"
+                                                                title={t('auto_sil', 'Sil')}
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </aside>
+                )}
+
+                {/* ─── 2. ANA SOHBET ALANI (MAIN CHAT AREA) ─────────────────── */}
+                <main className="base-chat-main">
+                    {/* Üst İkincil Araç Çubuğu (Toolbar) */}
+                    <div className="base-chat-toolbar">
+                        <div className="base-chat-toolbar-left">
+                            {showHistorySidebar && !isSidebarOpen && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSidebarOpen(true)}
+                                    className="base-chat-toolbar-toggle-btn"
+                                    title={t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster')}
+                                >
+                                    <PanelLeft size={16} />
+                                </button>
+                            )}
+
+                            {activeAgent && (
+                                <div className="base-chat-agent-pill">
+                                    <Bot size={15} />
+                                    <span>{activeAgent.ad}</span>
+                                    {activeAgent.modelAdi && (
+                                        <span className="base-chat-model-badge">
+                                            {activeAgent.modelAdi}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="base-chat-toolbar-right">
+                            {currentMessages.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={handleClearCurrentMessages}
+                                    className="btn btn-secondary text-11 py-4 px-8 flex items-center gap-4"
+                                    title={t('auto_sohbeti_temizle', 'Sohbeti Temizle')}
+                                >
+                                    <Trash2 size={13} className="text-secondary" />
+                                    <span className="hidden sm:inline">{t('auto_temizle', 'Temizle')}</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Mesaj Akışı Konteyneri */}
+                    <div
+                        ref={messagesContainerRef}
+                        onScroll={handleScroll}
+                        className="base-chat-messages-container"
+                    >
+                        {currentMessages.length === 0 ? (
+                            /* Boş Durum & Karşılama Ekranı */
+                            <div className="base-chat-welcome">
+                                <div className="base-chat-welcome-icon-box">
+                                    <Sparkles size={32} />
+                                </div>
+                                <h3 className="base-chat-welcome-title">
+                                    {t('auto_size_nasil_yardimci_olabilirim', 'Size bugün nasıl yardımcı olabilirim?')}
+                                </h3>
+                                <p className="base-chat-welcome-subtitle">
+                                    {activeAgent?.aciklama || t('auto_welcome_desc', 'Yapay zeka asistanınız ERP kayıtlarınızı inceleyebilir, analizler yapabilir veya yeni form taslakları hazırlayabilir.')}
+                                </p>
+
+                                {/* Hızlı Başlatıcı Öneri Kartları */}
+                                {suggestions && suggestions.length > 0 && (
+                                    <div className="base-chat-suggestions-grid">
+                                        {suggestions.map((sug, i) => (
+                                            <div
+                                                key={sug.id || i}
+                                                className="base-chat-suggestion-card"
+                                                onClick={() => handleSendMessage(sug.prompt)}
+                                            >
+                                                <div className="base-chat-suggestion-header">
+                                                    {sug.icon || <Lightbulb size={16} className="text-primary" />}
+                                                    <span>{sug.title}</span>
+                                                </div>
+                                                <span className="base-chat-suggestion-text">
+                                                    {sug.prompt}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* Mesajlar Listesi */
+                            currentMessages.map((msg, index) => {
+                                const isUser = msg.role === 'user';
+                                const isError = msg.role === 'error' || msg.isError;
+
+                                return (
+                                    <div
+                                        key={msg.id || index}
+                                        className={`ai-chat-message-row ${isUser ? 'user' : 'assistant'}`}
+                                    >
+                                        <div className={`ai-chat-avatar ${isUser ? 'user' : 'assistant'}`}>
+                                            {isUser ? '👤' : <Sparkles size={16} />}
+                                        </div>
+
+                                        <div className="ai-chat-message-body">
+                                            <div className="ai-chat-message-header">
+                                                <span className="ai-chat-message-sender">
+                                                    {isUser ? t('auto_siz', 'Siz') : (msg.agentName || activeAgent?.ad || t('auto_ai_asistan', 'AI Asistanı'))}
+                                                </span>
+                                                <span>•</span>
+                                                <span>{formatTime(msg.timestamp)}</span>
+                                                {msg.model && (
+                                                    <span className="base-chat-model-badge">
+                                                        {msg.model}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Düşünce ve Çıkarım Detayı (AiThinkingDetails) */}
+                                            {enableThinkingDetails && msg.thinkingContent && (
+                                                <AiThinkingDetails
+                                                    content={msg.thinkingContent}
+                                                    title={t('auto_dusunme_sureci', 'Yapay Zeka Düşünce & Analiz Süreci')}
+                                                />
+                                            )}
+
+                                            {/* Baloncuk İçeriği */}
+                                            <div className={`ai-chat-bubble ${isUser ? 'user' : 'assistant'} ${isError ? 'error' : ''}`}>
+                                                <FormattedMessageContent content={msg.content} />
+
+                                                {/* Mesaja Eklenmiş Dosyalar */}
+                                                {msg.attachments && msg.attachments.length > 0 && (
+                                                    <div className="flex flex-wrap gap-6 mt-6">
+                                                        {msg.attachments.map((att, attIdx) => (
+                                                            <div key={attIdx} className="ai-chat-attachment-pill">
+                                                                <FileText size={13} />
+                                                                <span>{att.name}</span>
+                                                                {att.size && (
+                                                                    <span className="opacity-75">
+                                                                        ({Math.round(att.size / 1024)} KB)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Yapay Zeka Tarafından Üretilen ERP Taslağı Önizleme Kartı */}
+                                                {msg.eylemPayload && (
+                                                    <div className="ai-chat-draft-preview-card">
+                                                        <div className="ai-chat-draft-preview-header">
+                                                            <div className="flex items-center gap-6">
+                                                                <CheckCircle2 size={16} className="text-success" />
+                                                                <strong className="text-13 text-primary">
+                                                                    {msg.eylemPayload.adi || msg.eylemPayload.header?.adi || t('auto_erp_taslak_belgesi', 'ERP Taslak Belgesi')}
+                                                                </strong>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleApplyDraft(msg.eylemPayload)}
+                                                                className="ai-chat-draft-apply-btn"
+                                                            >
+                                                                <ExternalLink size={13} />
+                                                                <span>{t('auto_forma_aktar', 'Forma Aktar')}</span>
+                                                            </button>
+                                                        </div>
+                                                        <span className="text-11 text-secondary">
+                                                            {t('auto_taslak_aciklama', 'Bu taslak sisteminizdeki ilgili forma veya belge düzenleyiciye anında yüklenebilir.')}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Mesaj Altı Aksiyonlar */}
+                                            <div className="ai-chat-message-actions">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(msg.content);
+                                                        toast.success(t('auto_kopyalandi', 'Kopyalandı'));
+                                                    }}
+                                                    className="ai-chat-action-btn"
+                                                    title={t('auto_metni_kopyala', 'Metni Kopyala')}
+                                                >
+                                                    <Copy size={13} />
+                                                </button>
+
+                                                {!isUser && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                toast.success(t('auto_tesekkurler', 'Geri bildiriminiz için teşekkürler!'));
+                                                            }}
+                                                            className="ai-chat-action-btn"
+                                                            title={t('auto_bunu_begendim', 'Beğendim')}
+                                                        >
+                                                            <ThumbsUp size={13} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                toast(t('auto_geri_bildirim_alindi', 'Geri bildirim kaydedildi.'));
+                                                            }}
+                                                            className="ai-chat-action-btn"
+                                                            title={t('auto_begenmedim', 'Geliştirilmeli')}
+                                                        >
+                                                            <ThumbsDown size={13} />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+
+                        {/* Yapay Zeka Yanıt Üretirken Canlı Göstergeler */}
+                        {isGenerating && (
+                            <div className="flex flex-col gap-6">
+                                <AiTypingIndicator
+                                    showAvatar={true}
+                                    statusText={t('auto_ai_yanit_hazirliyor', 'Yapay zeka yanıtı hazırlıyor...')}
+                                />
+                                {enableResponseTimer && (
+                                    <AiResponseTimer
+                                        elapsedSeconds={elapsedSeconds}
+                                        onStop={handleStopGeneration}
+                                        agentName={activeAgent?.ad}
+                                        providerName={activeAgent?.saglayiciTuruAdi}
+                                        modelName={activeAgent?.modelAdi || defaultModel}
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Aşağı Kaydır Butonu */}
+                    {showScrollBottom && (
+                        <button
+                            type="button"
+                            onClick={() => scrollToBottom(true)}
+                            className="base-chat-scroll-bottom-btn"
+                            title={t('auto_asagi_kaydir', 'Aşağı Kaydır')}
+                        >
+                            <ArrowDown size={18} />
+                        </button>
+                    )}
+
+                    {/* ─── 3. ALT GİRİŞ PANELİ (INPUT AREA) ─────────────────── */}
+                    <div className="base-chat-input-area">
+                        {/* Bekleyen Ekler */}
+                        {pendingAttachments.length > 0 && (
+                            <div className="base-chat-pending-attachments">
+                                {pendingAttachments.map(att => (
+                                    <div key={att.id} className="base-chat-pending-file">
+                                        <FileText size={13} className="text-primary" />
+                                        <span>{att.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveAttachment(att.id)}
+                                            className="base-chat-pending-file-remove"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Gizli Dosya Input'u */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            multiple
+                            accept=".pdf,.txt,.docx,.xlsx,.csv,.json,.png,.jpg,.jpeg"
+                            className="hidden"
+                        />
+
+                        {/* Giriş Çerçevesi */}
+                        <div className="base-chat-input-box">
+                            <textarea
+                                ref={textareaRef}
+                                className="base-chat-textarea"
+                                rows={2}
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                onKeyDown={handleTextareaKeyDown}
+                                placeholder={placeholder || t('auto_chat_placeholder', 'Bir mesaj yazın veya ERP komutu verin... (Göndermek için Enter, yeni satır için Shift+Enter)')}
+                                autoFocus
+                            />
+
+                            <div className="base-chat-input-footer">
+                                <div className="base-chat-input-footer-left">
+                                    {enableAttachments && (
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="base-chat-input-tool-btn"
+                                            title={t('auto_dosya_ekle', 'Dosya Ekle (PDF, XLSX, TXT, Resim)')}
+                                        >
+                                            <Paperclip size={15} />
+                                            <span className="hidden sm:inline">{t('auto_ekle', 'Dosya Ekle')}</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="base-chat-input-footer-right">
+                                    {isGenerating ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleStopGeneration}
+                                            className="base-chat-stop-btn"
+                                            title={t('auto_yaniti_durdur', 'Yanıtı Durdur')}
+                                        >
+                                            <Square size={14} fill="currentColor" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSendMessage()}
+                                            disabled={!inputText.trim() && pendingAttachments.length === 0}
+                                            className="base-chat-send-btn"
+                                            title={t('auto_gonder', 'Gönder (Enter)')}
+                                        >
+                                            <Send size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="base-chat-footer-hint">
+                            {t('auto_ai_uyari_notu', 'Yapay zeka asistanı hata yapabilir. Kritik muhasebe ve finansal kararlarda kayıtları doğrulayınız.')}
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            {/* ─── ONAY / UYARI DİALOGU (AlertDialog) ────────────────────────── */}
+            <AlertDialog
+                isOpen={alertConfig.isOpen}
+                type={alertConfig.type || 'info'}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                onConfirm={alertConfig.onConfirm}
+                onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+            />
+        </BasePage>
+    );
+};
+
+export const BaseAiChatPage = BaseChatPage;
+export default BaseChatPage;
