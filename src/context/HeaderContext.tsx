@@ -28,26 +28,26 @@ export type DocumentBackInterceptor = () => boolean | Promise<boolean>;
  * HeaderContext'in tüm durumlarını ve değiştiricilerini barındıran ana context tipi.
  */
 export interface HeaderContextType {
-  /** Aktif üst başlık alanı içeriği (React Node) */
-  headerContent: any;
-  /** Üst başlık alanını doğrudan ayarlamak için state setter */
-  setHeaderContent: React.Dispatch<React.SetStateAction<any>>;
-  /** Belirli bir bileşene ait başlığı yığına ekler veya günceller */
-  setHeader: (id: string, content: any) => void;
-  /** Belirtilen ID'ye sahip başlığı yığından kaldırır ve önceki başlığı aktif yapar */
-  clearHeader: (id: string) => void;
-  /** Aktif breadcrumb seçenekleri */
-  headerBreadcrumbOptions: any;
-  /** Breadcrumb seçeneklerini güncelleyen setter */
-  setHeaderBreadcrumbOptions: React.Dispatch<React.SetStateAction<any>>;
-  /** Belge veya formda kaydedilmemiş değişiklik olup olmadığını belirten bayrak */
-  isDocumentDirty: boolean;
-  /** Belgenin kirli (dirty) durumunu güncelleyen setter */
-  setIsDocumentDirty: React.Dispatch<React.SetStateAction<boolean>>;
-  /** Aktif geri dönüş interceptor fonksiyonu */
-  documentBackInterceptor: DocumentBackInterceptor | null;
-  /** Geri dönüş interceptor fonksiyonunu tanımlayan setter */
-  setDocumentBackInterceptor: (fn: DocumentBackInterceptor | null) => void;
+    /** Aktif üst başlık alanı içeriği (React Node) */
+    headerContent: any;
+    /** Üst başlık alanını doğrudan ayarlamak için state setter */
+    setHeaderContent: React.Dispatch<React.SetStateAction<any>>;
+    /** Belirli bir bileşene ait başlığı yığına ekler veya günceller */
+    setHeader: (id: string, content: any) => void;
+    /** Belirtilen ID'ye sahip başlığı yığından kaldırır ve önceki başlığı aktif yapar */
+    clearHeader: (id: string) => void;
+    /** Aktif breadcrumb seçenekleri */
+    headerBreadcrumbOptions: any;
+    /** Breadcrumb seçeneklerini güncelleyen setter */
+    setHeaderBreadcrumbOptions: React.Dispatch<React.SetStateAction<any>>;
+    /** Belge veya formda kaydedilmemiş değişiklik olup olmadığını belirten bayrak */
+    isDocumentDirty: boolean;
+    /** Belgenin kirli (dirty) durumunu güncelleyen setter */
+    setIsDocumentDirty: React.Dispatch<React.SetStateAction<boolean>>;
+    /** Aktif geri dönüş interceptor fonksiyonu */
+    documentBackInterceptor: DocumentBackInterceptor | null;
+    /** Geri dönüş interceptor fonksiyonunu tanımlayan setter */
+    setDocumentBackInterceptor: (fn: DocumentBackInterceptor | null) => void;
 }
 
 /**
@@ -55,43 +55,43 @@ export interface HeaderContextType {
  * `headerContent` state değişimlerinden etkilenmeden metotlara erişim sağlar.
  */
 export interface HeaderApiContextType {
-  /** Belirli bir bileşene ait başlığı yığına ekler veya günceller */
-  setHeader: (id: string, content: any) => void;
-  /** Belirtilen ID'ye sahip başlığı yığından kaldırır ve önceki başlığı aktif yapar */
-  clearHeader: (id: string) => void;
-  /** Breadcrumb seçeneklerini günceller */
-  setHeaderBreadcrumbOptions: (options: any) => void;
-  /** Belge veya formda kaydedilmemiş değişiklik olup olmadığını belirten bayrak */
-  isDocumentDirty: boolean;
-  /** Belgenin kirli (dirty) durumunu güncelleyen setter */
-  setIsDocumentDirty: React.Dispatch<React.SetStateAction<boolean>>;
-  /** Aktif geri dönüş interceptor fonksiyonu */
-  documentBackInterceptor: DocumentBackInterceptor | null;
-  /** Geri dönüş interceptor fonksiyonunu tanımlayan setter */
-  setDocumentBackInterceptor: (fn: DocumentBackInterceptor | null) => void;
+    /** Belirli bir bileşene ait başlığı yığına ekler veya günceller */
+    setHeader: (id: string, content: any) => void;
+    /** Belirtilen ID'ye sahip başlığı yığından kaldırır ve önceki başlığı aktif yapar */
+    clearHeader: (id: string) => void;
+    /** Breadcrumb seçeneklerini günceller */
+    setHeaderBreadcrumbOptions: (options: any) => void;
+    /** Belge veya formda kaydedilmemiş değişiklik olup olmadığını belirten bayrak */
+    isDocumentDirty: boolean;
+    /** Belgenin kirli (dirty) durumunu güncelleyen setter */
+    setIsDocumentDirty: React.Dispatch<React.SetStateAction<boolean>>;
+    /** Aktif geri dönüş interceptor fonksiyonu */
+    documentBackInterceptor: DocumentBackInterceptor | null;
+    /** Geri dönüş interceptor fonksiyonunu tanımlayan setter */
+    setDocumentBackInterceptor: (fn: DocumentBackInterceptor | null) => void;
 }
 
 const defaultHeaderContext: HeaderContextType = {
-  headerContent: null,
-  setHeaderContent: () => {},
-  setHeader: () => {},
-  clearHeader: () => {},
-  headerBreadcrumbOptions: null,
-  setHeaderBreadcrumbOptions: () => {},
-  isDocumentDirty: false,
-  setIsDocumentDirty: () => {},
-  documentBackInterceptor: null,
-  setDocumentBackInterceptor: () => {}
+    headerContent: null,
+    setHeaderContent: () => { },
+    setHeader: () => { },
+    clearHeader: () => { },
+    headerBreadcrumbOptions: null,
+    setHeaderBreadcrumbOptions: () => { },
+    isDocumentDirty: false,
+    setIsDocumentDirty: () => { },
+    documentBackInterceptor: null,
+    setDocumentBackInterceptor: () => { }
 };
 
 const defaultHeaderApiContext: HeaderApiContextType = {
-  setHeader: () => {},
-  clearHeader: () => {},
-  setHeaderBreadcrumbOptions: () => {},
-  isDocumentDirty: false,
-  setIsDocumentDirty: () => {},
-  documentBackInterceptor: null,
-  setDocumentBackInterceptor: () => {}
+    setHeader: () => { },
+    clearHeader: () => { },
+    setHeaderBreadcrumbOptions: () => { },
+    isDocumentDirty: false,
+    setIsDocumentDirty: () => { },
+    documentBackInterceptor: null,
+    setDocumentBackInterceptor: () => { }
 };
 
 const HeaderContext = createContext<HeaderContextType>(defaultHeaderContext);
@@ -136,26 +136,26 @@ export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const value = useMemo(() => ({
-      headerContent,
-      setHeaderContent,
-      setHeader,
-      clearHeader,
-      headerBreadcrumbOptions,
-      setHeaderBreadcrumbOptions,
-      isDocumentDirty,
-      setIsDocumentDirty,
-      documentBackInterceptor,
-      setDocumentBackInterceptor
+        headerContent,
+        setHeaderContent,
+        setHeader,
+        clearHeader,
+        headerBreadcrumbOptions,
+        setHeaderBreadcrumbOptions,
+        isDocumentDirty,
+        setIsDocumentDirty,
+        documentBackInterceptor,
+        setDocumentBackInterceptor
     }), [headerContent, setHeaderContent, setHeader, clearHeader, headerBreadcrumbOptions, setHeaderBreadcrumbOptions, isDocumentDirty, setIsDocumentDirty, documentBackInterceptor, setDocumentBackInterceptor]);
 
     const apiValue = useMemo(() => ({
-      setHeader,
-      clearHeader,
-      setHeaderBreadcrumbOptions,
-      isDocumentDirty,
-      setIsDocumentDirty,
-      documentBackInterceptor,
-      setDocumentBackInterceptor
+        setHeader,
+        clearHeader,
+        setHeaderBreadcrumbOptions,
+        isDocumentDirty,
+        setIsDocumentDirty,
+        documentBackInterceptor,
+        setDocumentBackInterceptor
     }), [setHeader, clearHeader, setHeaderBreadcrumbOptions, isDocumentDirty, setIsDocumentDirty, documentBackInterceptor, setDocumentBackInterceptor]);
 
     return (
