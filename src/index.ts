@@ -32,6 +32,19 @@ export { default as BaseFloatCircleButton, type BaseFloatCircleButtonProps } fro
 export { default as BaseMenuButton, type BaseMenuButtonProps, type MenuButtonItem } from './components/base/button/BaseMenuButton';
 export { BaseCard, type BaseCardProps, type CardVariant } from './components/base/card';
 export { default as BaseDashboardView, type BaseDashboardViewProps } from './components/base/view/BaseDashboardView';
+export { 
+  DashboardStatCard, 
+  type DashboardStatCardProps,
+  DashboardTimelineChartView, 
+  type DashboardTimelineChartViewProps, 
+  type DashboardTimelineChartSeries,
+  DashboardDistributionView, 
+  type DashboardDistributionViewProps, 
+  type DashboardDistributionItem,
+  DashboardActivityFeedView, 
+  type DashboardActivityFeedViewProps, 
+  type DashboardActivityEvent 
+} from './components/dashboard';
 export { default as BaseProgressBar, type BaseProgressBarProps } from './components/base/progress/BaseProgressBar';
 export { BaseSwitch, type BaseSwitchProps } from './components/base/switch';
 export { BaseTreeView, type BaseTreeViewProps, type TreeItem } from './components/base/treeview/BaseTreeView';
