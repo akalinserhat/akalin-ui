@@ -188,8 +188,8 @@ export default function ProvidersPage() {
 ### 3. Kart Bileşenleri (`components/card`)
 - `BaseSystemCard` (`SystemModuleCard`, `SystemCard`), `Card`, `BaseCardPageHeader` (`CardPageHeader`), `PolicySettingCard` (`AyarCard`), `SistemKart`, `UserCard`, `NotificationCard`, `AdminNotificationCard`, `EmailTemplateCard`, `BulutDepolamaCard`, `MigrationFieldCard`
 
-### 4. Tablo, Liste, Sekme & Menü (`components/grid`, `tab`, `menu`, `treeview`)
-- `DataTable`, `SpreadsheetGrid`, `CardList`, `TabLayout`, `Breadcrumb`, `ActionMenu`, `DrawerMenu`, `TreeTableView`, `CloudDirectoryView`
+### 4. Tablo, Liste, Sekme, Menü & Sidebar (`components/grid`, `tab`, `menu`, `sidebar`, `treeview`)
+- `DataTable`, `SpreadsheetGrid`, `CardList`, `TabLayout`, `Breadcrumb`, `ActionMenu`, `DrawerMenu`, `Sidebar`, `TreeTableView`, `CloudDirectoryView`
 
 ### 5. Özelleşmiş Input & Butonlar (`components/input`, `button`)
 - **Inputlar:** `BasitInput`, `AramaInput`, `TamsayiInput`, `YuzdelikInput`, `NotInput`, `DateInput`, `DateRangeInput` (`TarihAraligiSecici`), `PhoneInput`, `EmailInput`, `CurrencyInput`, `IbanInput`, `BarcodeScannerInput`

@@ -69,6 +69,8 @@ export { default as TabLayout, type TabLayoutProps, type BaseTabItem } from './c
 export { default as Breadcrumb, type BreadcrumbProps, type BreadcrumbItem } from './components/breadcrumb/Breadcrumb';
 export { default as ActionMenu, type ActionMenuProps, type ActionMenuItem, type ActionMenuButtonVariant } from './components/menu/ActionMenu';
 export { default as DrawerMenu, type DrawerMenuProps, type DrawerUser, type DrawerMenuItem } from './components/menu/DrawerMenu';
+export { default as Sidebar, type SidebarProps, type SidebarItem, type SidebarBadge, type FlyoutState } from './components/sidebar';
+export { SidebarFlyout, type SidebarFlyoutProps } from './components/sidebar/SidebarFlyout';
 export { CloudDirectoryView, type CloudDirectoryViewProps, type CloudFolderItem } from './components/treeview/CloudDirectoryView';
 export { 
   default as TreeTableView, 
