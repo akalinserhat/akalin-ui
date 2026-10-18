@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { useContext, useState } from 'react';
 import AlertDialog from './AlertDialog';
+import { createSingletonContext } from '../utils/createSingletonContext';
 
 export interface AlertDialogContextType {
   showAlert: (
@@ -15,7 +16,12 @@ export interface AlertDialogContextType {
   hideAlert: () => void;
 }
 
-const AlertDialogContext = createContext<AlertDialogContextType | null>(null);
+const GLOBAL_KEY = '__AKALIN_UI_ALERT_DIALOG_CONTEXT__';
+const AlertDialogContext = createSingletonContext<AlertDialogContextType | null>(
+  GLOBAL_KEY,
+  null,
+  'AlertDialogContext'
+);
 
 export const AlertDialogProvider = ({ children }: { children: React.ReactNode }) => {
   const [alertState, setAlertState] = useState<{

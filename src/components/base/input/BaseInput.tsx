@@ -7,6 +7,7 @@
 
 import React, { forwardRef, useContext } from 'react';
 import { DocumentFormContext, DocumentHeaderFieldContext } from '../../../pages/base/BaseDocumentPage';
+import { createSingletonContext } from '../../../utils/createSingletonContext';
 
 export type HarfDonusumu = 
     | 'hepsiBuyuk' 
@@ -74,7 +75,11 @@ export interface InputSettingsContextType {
     defaultCasing?: HarfDonusumu;
 }
 
-export const InputSettingsContext = React.createContext<InputSettingsContextType>({});
+export const InputSettingsContext = createSingletonContext<InputSettingsContextType>(
+    '__AKALIN_UI_INPUT_SETTINGS_CONTEXT__',
+    {},
+    'InputSettingsContext'
+);
 
 export const useInputSettings = () => React.useContext(InputSettingsContext);
 

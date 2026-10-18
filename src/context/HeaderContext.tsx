@@ -16,7 +16,8 @@
  * ============================================================================
  */
 
-import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useContext, useState, useRef, useCallback, useMemo } from 'react';
+import { createSingletonContext } from '../utils/createSingletonContext';
 
 /**
  * Sayfadan veya belgeden çıkış yapılmak istendiğinde tetiklenen önleyici fonksiyon tipi.
@@ -94,8 +95,16 @@ const defaultHeaderApiContext: HeaderApiContextType = {
     setDocumentBackInterceptor: () => { }
 };
 
-const HeaderContext = createContext<HeaderContextType>(defaultHeaderContext);
-const HeaderApiContext = createContext<HeaderApiContextType>(defaultHeaderApiContext);
+const HeaderContext = createSingletonContext<HeaderContextType>(
+    '__AKALIN_UI_HEADER_CONTEXT__',
+    defaultHeaderContext,
+    'HeaderContext'
+);
+const HeaderApiContext = createSingletonContext<HeaderApiContextType>(
+    '__AKALIN_UI_HEADER_API_CONTEXT__',
+    defaultHeaderApiContext,
+    'HeaderApiContext'
+);
 
 /**
  * HeaderProvider

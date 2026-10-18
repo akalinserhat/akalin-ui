@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useContext } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Sliders, AlertCircle, RefreshCw } from 'lucide-react';
+import { createSingletonContext } from '../../utils/createSingletonContext';
 import { useTranslation } from 'react-i18next';
 import BackButton from '../../components/button/BackButton';
 import EkleFloatCircleButton from '../../components/button/EkleFloatCircleButton';
@@ -85,18 +86,22 @@ export interface BaseSystemPageContextValue {
   setActiveTabId?: (id: string | number) => void;
 }
 
-export const BaseSystemPageContext = React.createContext<BaseSystemPageContextValue>({
-  searchTerm: '',
-  setSearchTerm: () => {},
-  isSearching: false,
-  searchType: 'Tumu',
-  searchPlaceholder: '',
-  filterItems: (items) => items,
-  tabs: undefined,
-  setTabs: () => {},
-  activeTabId: undefined,
-  setActiveTabId: () => {}
-});
+export const BaseSystemPageContext = createSingletonContext<BaseSystemPageContextValue>(
+  '__AKALIN_UI_BASE_SYSTEM_PAGE_CONTEXT__',
+  {
+    searchTerm: '',
+    setSearchTerm: () => {},
+    isSearching: false,
+    searchType: 'Tumu',
+    searchPlaceholder: '',
+    filterItems: (items) => items,
+    tabs: undefined,
+    setTabs: () => {},
+    activeTabId: undefined,
+    setActiveTabId: () => {}
+  },
+  'BaseSystemPageContext'
+);
 
 /**
  * BaseSystemPage içerisindeki alt bileşenlerin Global Search arama durumuna ve

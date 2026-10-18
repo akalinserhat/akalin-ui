@@ -148,6 +148,7 @@ export { default as BaseAiAssistantModal, type BaseAiAssistantModalProps } from 
 // 7. Alerts, Context & Utils
 export * from './alerts';
 export { HeaderProvider, useHeader, useHeaderApi, useDocumentDirty, type HeaderContextType } from './context/HeaderContext';
+export { createSingletonContext } from './utils/createSingletonContext';
 export { formatCurrency } from './utils/formatters';
 export { extractTextFromNode, updateDocumentTitle, autoFocusFirstInput } from './utils/domUtils';
 export { isNativePlatform, isMobileBrowser, isMobileDevice } from './utils/device';

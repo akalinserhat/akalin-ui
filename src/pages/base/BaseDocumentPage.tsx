@@ -31,15 +31,20 @@ import AlertDialogContext from '../../alerts/AlertDialogContext';
 import { useTranslation } from 'react-i18next';
 import { useHeaderApi } from '../../context/HeaderContext';
 import { updateDocumentTitle, autoFocusFirstInput } from '../../utils/domUtils';
+import { createSingletonContext } from '../../utils/createSingletonContext';
 
 // Hata nesnelerini ve diğer form context verilerini taşımak için
-export const DocumentFormContext = createContext<{ 
+export const DocumentFormContext = createSingletonContext<{ 
     errors?: Record<string, string>;
     isDirty?: boolean;
     setIsDirty?: (dirty: boolean) => void;
     markDirty?: () => void;
     clearDirty?: () => void;
-}>({});
+}>(
+    '__AKALIN_UI_DOCUMENT_FORM_CONTEXT__',
+    {},
+    'DocumentFormContext'
+);
 
 export interface DocumentHeaderPanelProps {
     children?: ReactNode;
@@ -71,7 +76,11 @@ export interface DocumentHeaderFieldProps {
     style?: CSSProperties;
 }
 
-export const DocumentHeaderFieldContext = createContext<{ name?: string; hasError?: boolean; error?: string | null }>({});
+export const DocumentHeaderFieldContext = createSingletonContext<{ name?: string; hasError?: boolean; error?: string | null }>(
+    '__AKALIN_UI_DOCUMENT_HEADER_FIELD_CONTEXT__',
+    {},
+    'DocumentHeaderFieldContext'
+);
 
 /**
  * Label ve Input ikilisini proje standartlarında alt alta dizecek bileşen.
