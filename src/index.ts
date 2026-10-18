@@ -146,7 +146,7 @@ export { default as YZModelSecici, type YZModelSeciciProps, type YZModelOption }
 export { default as BaseAiAssistantModal, type BaseAiAssistantModalProps } from './components/modal/BaseAiAssistantModal';
 
 // 7. Alerts, Context & Utils
-export * from './alerts';
+export { default as AlertDialogContext, AlertDialogProvider, useAlertDialog, type AlertDialogContextType } from './alerts/AlertDialogContext';
 export { HeaderProvider, useHeader, useHeaderApi, useDocumentDirty, type HeaderContextType } from './context/HeaderContext';
 export { createSingletonContext } from './utils/createSingletonContext';
 export { formatCurrency } from './utils/formatters';

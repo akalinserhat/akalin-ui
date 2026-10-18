@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { Camera } from 'lucide-react';
 import { isNativePlatform } from '../../../utils/device';
 
@@ -52,6 +51,13 @@ const BaseBarkodOkuyucu = ({
 
     const handleNativeScan = async () => {
         try {
+            const scannerModule = await import(/* @vite-ignore */ '@capacitor-mlkit/barcode-scanning').catch(() => null);
+            const BarcodeScanner = scannerModule?.BarcodeScanner || (typeof window !== 'undefined' && (window as any).BarcodeScanner);
+            if (!BarcodeScanner) {
+                toast.error("Barkod okuyucu modülü bulunamadı.");
+                return;
+            }
+
             // Request permissions if not granted
             const { camera } = await BarcodeScanner.requestPermissions();
             if (camera === 'granted' || camera === 'limited') {

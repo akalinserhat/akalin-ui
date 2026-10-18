@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-import * as signalR from '@microsoft/signalr';
 
 export interface SyncReport {
     bankaEklenen?: number;
@@ -47,54 +46,73 @@ export const SyncProgressModal: React.FC<SyncProgressModalProps> = ({
     const [message, setMessage] = useState<string>('Başlatılıyor...');
     const [isError, setIsError] = useState<boolean>(false);
     const [isFinished, setIsFinished] = useState<boolean>(false);
-    const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
+    const [connection, setConnection] = useState<any | null>(null);
     const [report, setReport] = useState<SyncReport | null>(null);
 
     useEffect(() => {
-        if (isOpen && !connection) {
+        let isMounted = true;
+        let activeConn: any = null;
+
+        if (isOpen) {
             setProgress(0);
             setMessage('Başlatılıyor...');
             setIsError(false);
             setIsFinished(false);
             setReport(null);
 
-            const newConnection = new signalR.HubConnectionBuilder()
-                .withUrl(hubUrl)
-                .withAutomaticReconnect()
-                .build();
+            (async () => {
+                try {
+                    const signalR = await import(/* @vite-ignore */ '@microsoft/signalr');
+                    if (!isMounted) return;
 
-            newConnection.on(eventName, (data: SyncProgressData) => {
-                if (data.progress !== undefined) {
-                    setProgress(data.progress);
-                }
-                if (data.message) {
-                    setMessage(data.message);
-                }
-                if (data.isError) {
-                    setIsError(true);
-                    setIsFinished(true);
-                }
-                if (data.report) {
-                    setReport(data.report);
-                }
-                if (data.progress === 100) {
-                    setIsFinished(true);
-                }
-            });
+                    const newConnection = new signalR.HubConnectionBuilder()
+                        .withUrl(hubUrl)
+                        .withAutomaticReconnect()
+                        .build();
 
-            newConnection.start()
-                .then(() => setConnection(newConnection))
-                .catch((err) => {
+                    newConnection.on(eventName, (data: SyncProgressData) => {
+                        if (data.progress !== undefined) {
+                            setProgress(data.progress);
+                        }
+                        if (data.message) {
+                            setMessage(data.message);
+                        }
+                        if (data.isError) {
+                            setIsError(true);
+                            setIsFinished(true);
+                        }
+                        if (data.report) {
+                            setReport(data.report);
+                        }
+                        if (data.progress === 100) {
+                            setIsFinished(true);
+                        }
+                    });
+
+                    await newConnection.start();
+                    if (isMounted) {
+                        activeConn = newConnection;
+                        setConnection(newConnection);
+                    } else {
+                        newConnection.stop();
+                    }
+                } catch (err) {
                     console.error('SignalR Bağlantı Hatası:', err);
-                    setMessage('Sunucuyla gerçek zamanlı bağlantı kurulamadı. İşlem arka planda devam ediyor olabilir.');
-                });
+                    if (isMounted) {
+                        setMessage('Sunucuyla gerçek zamanlı bağlantı kurulamadı. İşlem arka planda devam ediyor olabilir.');
+                    }
+                }
+            })();
         }
 
         return () => {
-            if (connection) {
+            isMounted = false;
+            if (activeConn) {
+                activeConn.stop();
+            } else if (connection) {
                 connection.stop();
-                setConnection(null);
             }
+            setConnection(null);
         };
     }, [isOpen, hubUrl, eventName]);
 

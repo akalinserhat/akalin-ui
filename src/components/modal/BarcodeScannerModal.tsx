@@ -5,7 +5,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import BasePopup from '../../pages/base/BasePopup';
 import toast from 'react-hot-toast';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { Camera } from 'lucide-react';
 import { isNativePlatform } from '../../utils/device';
 
@@ -15,6 +14,15 @@ export interface BarcodeScannerModalProps {
   onScan?: (decodedText: string) => void;
 }
 
+const getBarcodeScanner = async () => {
+  try {
+    const mod = await import(/* @vite-ignore */ '@capacitor-mlkit/barcode-scanning');
+    return mod.BarcodeScanner || mod;
+  } catch {
+    return (typeof window !== 'undefined' ? (window as any).BarcodeScanner : null);
+  }
+};
+
 const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClose, onScan }) => {
   const [isNative] = useState(() => isNativePlatform());
   const [isScanning, setIsScanning] = useState(false);
@@ -22,6 +30,12 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClo
 
   const handleScan = async () => {
       try {
+          const BarcodeScanner = await getBarcodeScanner();
+          if (!BarcodeScanner) {
+              toast.error("Barkod tarayıcı modülü bulunamadı.");
+              return;
+          }
+
           const { camera } = await BarcodeScanner.requestPermissions();
           if (camera === 'granted' || camera === 'limited' || camera === 'prompt') {
               if (isNative) {
@@ -50,25 +64,32 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClo
 
   useEffect(() => {
       let listener: any;
+      let isMounted = true;
       if (!isNative && isScanning && isOpen) {
-          BarcodeScanner.addListener('barcodesScanned', async (result) => {
-              if (result.barcodes.length > 0 && result.barcodes[0].rawValue) {
-                  const scannedValue = result.barcodes[0].rawValue;
-                  await BarcodeScanner.stopScan().catch(()=>{});
-                  setIsScanning(false);
-                  if (onScan) onScan(scannedValue);
-                  onClose();
-              }
-          }).then(l => listener = l);
+          getBarcodeScanner().then(BarcodeScanner => {
+              if (!BarcodeScanner || !isMounted) return;
+              BarcodeScanner.addListener('barcodesScanned', async (result: any) => {
+                  if (result.barcodes && result.barcodes.length > 0 && result.barcodes[0].rawValue) {
+                      const scannedValue = result.barcodes[0].rawValue;
+                      await BarcodeScanner.stopScan().catch(()=>{});
+                      if (isMounted) setIsScanning(false);
+                      if (onScan) onScan(scannedValue);
+                      onClose();
+                  }
+              }).then((l: any) => { if (isMounted) listener = l; });
+          });
       }
       return () => {
+          isMounted = false;
           if (listener) listener.remove();
       };
   }, [isNative, isScanning, isOpen, onScan, onClose]);
 
   useEffect(() => {
       if (!isOpen && !isNative) {
-          BarcodeScanner.stopScan().catch(()=>{});
+          getBarcodeScanner().then(BarcodeScanner => {
+              BarcodeScanner?.stopScan?.().catch(()=>{});
+          });
           setIsScanning(false);
       }
   }, [isOpen, isNative]);

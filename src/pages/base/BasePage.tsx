@@ -7,7 +7,7 @@ import TabLayout from '../../components/tab/TabLayout';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useHeaderApi } from '../../context/HeaderContext';
-import { useAlertDialog } from '../../alerts/AlertDialogContext';
+import AlertDialogContext, { type AlertDialogContextType } from '../../alerts/AlertDialogContext';
 import BaseCardPageHeader, { BaseCardPageHeaderProps } from '../../components/card/BaseCardPageHeader';
 import { updateDocumentTitle } from '../../utils/domUtils';
 
@@ -123,7 +123,18 @@ const BasePage: React.FC<BasePageProps> = ({
 
   const hasOnSave = !!onSave && !hideSaveButton;
   const { setHeader, clearHeader, isDocumentDirty, setIsDocumentDirty, documentBackInterceptor } = useHeaderApi() || {};
-  const { showAlert } = useAlertDialog();
+  const alertContext = React.useContext(AlertDialogContext);
+  const showAlert = alertContext?.showAlert || useCallback<AlertDialogContextType['showAlert']>((type, title, message, onConfirm) => {
+    if (type === 'confirm' || onConfirm) {
+      if (typeof window !== 'undefined' && window.confirm(typeof message === 'string' ? `${title}\n\n${message}` : title)) {
+        onConfirm?.();
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        window.alert(typeof message === 'string' ? `${title}\n\n${message}` : title);
+      }
+    }
+  }, []);
   const headerIdRef = useRef(`base-page-back-${Math.random().toString(36).substr(2, 9)}`);
   const documentBackInterceptorRef = useRef(documentBackInterceptor);
 
@@ -253,6 +264,7 @@ const BasePage: React.FC<BasePageProps> = ({
         onSubmit={asForm ? handleFormSubmit : undefined}
         noValidate={asForm ? true : undefined}
         className="border-0 shadow-none rounded-none bg-transparent flex-1 flex flex-col min-h-0"
+        style={{ background: 'transparent', border: 'none', boxShadow: 'none', borderRadius: 0, display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 }}
       >
         {!isDocument && (
           <BaseCardPageHeader
@@ -272,11 +284,9 @@ const BasePage: React.FC<BasePageProps> = ({
         )}
 
         {tabs && tabs.length > 1 && activeTabId !== undefined && onTabChange && (
-          <Card.Tabs>
-            <div className="pb-16">
-              <TabLayout tabs={tabs} activeTabId={activeTabId} onChange={onTabChange} />
-            </div>
-          </Card.Tabs>
+          <div className="form-header-tabs">
+            <TabLayout tabs={tabs} activeTabId={activeTabId} onChange={onTabChange} />
+          </div>
         )}
 
         {disableContentWrapper ? (

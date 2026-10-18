@@ -6,7 +6,6 @@
 import React, { useState } from 'react';
 import { ScanBarcode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import BarcodeScannerModal from '../modal/BarcodeScannerModal';
 import AlertDialog from '../../alerts/AlertDialog';
 import { isNativePlatform, isMobileBrowser } from '../../utils/device';
@@ -35,6 +34,9 @@ export const canOpenBarcodeScanner = async (): Promise<boolean> => {
         return false;
     }
     try {
+        const scannerModule = await import(/* @vite-ignore */ '@capacitor-mlkit/barcode-scanning').catch(() => null);
+        const BarcodeScanner = scannerModule?.BarcodeScanner || (typeof window !== 'undefined' && (window as any).BarcodeScanner);
+        if (!BarcodeScanner?.isSupported) return false;
         const result = await BarcodeScanner.isSupported();
         return !!result?.supported;
     } catch {

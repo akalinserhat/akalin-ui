@@ -79,6 +79,11 @@ export const Card = ({ children, className = '', as = 'div', onSubmit, id, noVal
           )}
         </div>
       )}
+      {!header && tabs && (
+        <div className="form-header-tabs">
+          {tabs.props.children}
+        </div>
+      )}
       {detail}
       {footer && (
         <div className={`form-footer ${footer.props.className || ''}`} {...footer.props} style={footer.props.style}>
