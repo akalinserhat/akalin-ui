@@ -33,7 +33,8 @@ import React, {
     useRef, 
     useMemo, 
     useCallback, 
-    ReactNode 
+    ReactNode,
+    CSSProperties 
 } from 'react';
 import { 
     Sparkles, 
@@ -208,6 +209,7 @@ export interface BaseChatPageProps extends BasePageProps {
     // Yerel Hafıza (Persistence)
     persistKey?: string;
     embedded?: boolean;
+    style?: CSSProperties;
 }
 
 // ─── YARDIMCI METOTLAR ───────────────────────────────────────────────────────
@@ -286,6 +288,218 @@ const CodeBlockView: React.FC<CodeBlockProps> = ({ language, code }) => {
     );
 };
 
+// ─── ZENGİN MARKDOWN & TABLO PARSER ──────────────────────────────────────────
+
+const renderInlineMarkdown = (text: string): ReactNode => {
+    if (!text) return null;
+
+    // Inline kod, kalın, italik ve kalın-italik regexi
+    const regex = /(\*\*\*[^*]+\*\*\*|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    const parts = text.split(regex);
+
+    return parts.map((part, idx) => {
+        if (!part) return null;
+        if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+            return (
+                <code key={idx} className="ai-chat-inline-code">
+                    {part.slice(1, -1)}
+                </code>
+            );
+        }
+        if (part.startsWith('***') && part.endsWith('***') && part.length >= 6) {
+            return (
+                <strong key={idx}>
+                    <em>{part.slice(3, -3)}</em>
+                </strong>
+            );
+        }
+        if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+            return (
+                <strong key={idx}>
+                    {part.slice(2, -2)}
+                </strong>
+            );
+        }
+        if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
+            return (
+                <em key={idx}>
+                    {part.slice(1, -1)}
+                </em>
+            );
+        }
+        return part;
+    });
+};
+
+const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode => {
+    if (!text) return null;
+    const rawLines = text.split('\n');
+    const elements: ReactNode[] = [];
+    let i = 0;
+
+    while (i < rawLines.length) {
+        const line = rawLines[i];
+        const trimmed = line.trim();
+
+        // 1. Markdown Tabloları (| Başlık 1 | Başlık 2 |)
+        if (trimmed.startsWith('|') && trimmed.endsWith('|') && i + 1 < rawLines.length) {
+            const nextTrimmed = rawLines[i + 1].trim();
+            const isSeparator = /^\|[\s\-:|]+\|$/.test(nextTrimmed);
+            if (isSeparator) {
+                const tableLines: string[] = [trimmed];
+                i++; // ayraç satırı
+                tableLines.push(nextTrimmed);
+                i++;
+                while (i < rawLines.length && rawLines[i].trim().startsWith('|') && rawLines[i].trim().endsWith('|')) {
+                    tableLines.push(rawLines[i].trim());
+                    i++;
+                }
+
+                const parseRow = (rowStr: string) => {
+                    const content = rowStr.replace(/^\|/, '').replace(/\|$/, '');
+                    return content.split('|').map(cell => cell.trim());
+                };
+
+                const headerCells = parseRow(tableLines[0]);
+                const bodyRows = tableLines.slice(2).map(parseRow);
+
+                elements.push(
+                    <div key={`table-${baseKey}-${i}`} className="ai-chat-table-wrapper">
+                        <table className="ai-chat-markdown-table">
+                            <thead>
+                                <tr>
+                                    {headerCells.map((cell, cIdx) => (
+                                        <th key={cIdx}>{renderInlineMarkdown(cell)}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {bodyRows.map((row, rIdx) => (
+                                    <tr key={rIdx}>
+                                        {row.map((cell, cIdx) => (
+                                            <td key={cIdx}>{renderInlineMarkdown(cell)}</td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+                continue;
+            }
+        }
+
+        // 2. Başlıklar (###, ##, #)
+        if (trimmed.startsWith('### ')) {
+            elements.push(
+                <h5 key={`h3-${baseKey}-${i}`} className="ai-chat-heading-3">
+                    {renderInlineMarkdown(trimmed.slice(4))}
+                </h5>
+            );
+            i++;
+            continue;
+        }
+        if (trimmed.startsWith('## ')) {
+            elements.push(
+                <h4 key={`h2-${baseKey}-${i}`} className="ai-chat-heading-2">
+                    {renderInlineMarkdown(trimmed.slice(3))}
+                </h4>
+            );
+            i++;
+            continue;
+        }
+        if (trimmed.startsWith('# ')) {
+            elements.push(
+                <h3 key={`h1-${baseKey}-${i}`} className="ai-chat-heading-1">
+                    {renderInlineMarkdown(trimmed.slice(2))}
+                </h3>
+            );
+            i++;
+            continue;
+        }
+
+        // 3. Sırasız Madde Listesi (- veya *)
+        if (/^[-*]\s+/.test(trimmed)) {
+            const listItems: string[] = [];
+            while (i < rawLines.length && /^[-*]\s+/.test(rawLines[i].trim())) {
+                listItems.push(rawLines[i].trim().replace(/^[-*]\s+/, ''));
+                i++;
+            }
+            elements.push(
+                <ul key={`ul-${baseKey}-${i}`} className="ai-chat-list">
+                    {listItems.map((item, idx) => (
+                        <li key={idx}>{renderInlineMarkdown(item)}</li>
+                    ))}
+                </ul>
+            );
+            continue;
+        }
+
+        // 4. Numaralı Liste (1., 2. ...)
+        if (/^\d+\.\s+/.test(trimmed)) {
+            const listItems: string[] = [];
+            while (i < rawLines.length && /^\d+\.\s+/.test(rawLines[i].trim())) {
+                listItems.push(rawLines[i].trim().replace(/^\d+\.\s+/, ''));
+                i++;
+            }
+            elements.push(
+                <ol key={`ol-${baseKey}-${i}`} className="ai-chat-ordered-list">
+                    {listItems.map((item, idx) => (
+                        <li key={idx}>{renderInlineMarkdown(item)}</li>
+                    ))}
+                </ol>
+            );
+            continue;
+        }
+
+        // 5. Alıntı Bloğu (> )
+        if (trimmed.startsWith('> ')) {
+            const quoteLines: string[] = [];
+            while (i < rawLines.length && rawLines[i].trim().startsWith('> ')) {
+                quoteLines.push(rawLines[i].trim().slice(2));
+                i++;
+            }
+            elements.push(
+                <blockquote key={`quote-${baseKey}-${i}`} className="ai-chat-blockquote">
+                    {renderInlineMarkdown(quoteLines.join('\n'))}
+                </blockquote>
+            );
+            continue;
+        }
+
+        // 6. Boş Satır
+        if (!trimmed) {
+            elements.push(<div key={`spacer-${baseKey}-${i}`} className="ai-chat-spacer" />);
+            i++;
+            continue;
+        }
+
+        // 7. Normal Paragraf Satırları
+        const paragraphLines: string[] = [line];
+        i++;
+        while (
+            i < rawLines.length &&
+            rawLines[i].trim() &&
+            !rawLines[i].trim().startsWith('#') &&
+            !rawLines[i].trim().startsWith('|') &&
+            !/^[-*]\s+/.test(rawLines[i].trim()) &&
+            !/^\d+\.\s+/.test(rawLines[i].trim()) &&
+            !rawLines[i].trim().startsWith('> ')
+        ) {
+            paragraphLines.push(rawLines[i]);
+            i++;
+        }
+
+        elements.push(
+            <p key={`p-${baseKey}-${i}`} className="ai-chat-paragraph">
+                {renderInlineMarkdown(paragraphLines.join('\n'))}
+            </p>
+        );
+    }
+
+    return <>{elements}</>;
+};
+
 const FormattedMessageContent: React.FC<{ content: string }> = ({ content }) => {
     if (!content) return null;
 
@@ -302,11 +516,11 @@ const FormattedMessageContent: React.FC<{ content: string }> = ({ content }) => 
                     return <CodeBlockView key={index} language={lang} code={code} />;
                 }
 
-                // Normal metin paragrafları
+                // Normal metin blokları (Markdown tablo, başlık, liste, kalın, italik, satır içi kod)
                 return (
-                    <span key={index} style={{ whiteSpace: 'pre-wrap' }}>
-                        {part}
-                    </span>
+                    <div key={index} className="ai-chat-markdown-block">
+                        {renderMarkdownBlocks(part, index)}
+                    </div>
                 );
             })}
         </div>
@@ -320,6 +534,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     title,
     pageTitle,
     subtitle,
+    subtitleLeft,
+    subtitleRight,
     icon,
     breadcrumb,
     showBackButton = true,
@@ -1135,7 +1351,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             {/* Hızlı Ajan Seçici Dropdown */}
             {agentsList.length > 1 && (
                 <select
-                    className="form-input text-12 py-4 px-8 rounded-8 bg-transparent"
+                    className="base-chat-agent-select"
                     value={selectedAgentId || ''}
                     onChange={(e) => {
                         const nextId = e.target.value;
@@ -1147,7 +1363,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 >
                     {agentsList.map(a => (
                         <option key={a.id} value={a.id}>
-                            🤖 {a.ad} ({a.rol || a.modelAdi || 'Ajan'})
+                            🤖 {a.ad || a.modelAdi || 'Ajan'}
                         </option>
                     ))}
                 </select>
@@ -1203,21 +1419,19 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             subtitleLeft={
                 subtitleLeft !== undefined ? subtitleLeft : (
                     activeAgent ? (
-                        <span className="chip-primary text-11 font-600 flex items-center gap-4">
-                            <Bot size={13} />
-                            {activeAgent.ad} {activeAgent.modelAdi ? `(${activeAgent.modelAdi})` : ''}
+                        <span className="flex items-center gap-4 text-12 text-secondary font-500">
+                            <Bot size={14} className="text-primary" />
+                            <span>{activeAgent.ad}</span>
                         </span>
                     ) : null
                 )
             }
             subtitleRight={
-                subtitleRight !== undefined ? subtitleRight : (
-                    currentMessages.length > 0 ? (
-                        <span className="text-11 text-secondary font-500">
-                            {currentMessages.length} {t('auto_mesaj', 'Mesaj')}
-                        </span>
-                    ) : null
-                )
+                subtitleRight !== undefined
+                    ? subtitleRight
+                    : currentMessages.length > 0
+                        ? `${currentMessages.length} ${t('auto_mesaj', 'Mesaj')}`
+                        : null
             }
             headerExtra={finalHeaderExtra}
             headerProps={mergedHeaderProps}
@@ -1360,28 +1574,28 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                     {/* Üst İkincil Araç Çubuğu (Toolbar) */}
                     <div className="base-chat-toolbar">
                         <div className="base-chat-toolbar-left">
-                            {showHistorySidebar && !isSidebarOpen && (
+                            {showHistorySidebar && (
                                 <button
                                     type="button"
-                                    onClick={() => setIsSidebarOpen(true)}
+                                    onClick={() => setIsSidebarOpen(prev => !prev)}
                                     className="base-chat-toolbar-toggle-btn"
-                                    title={t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster')}
+                                    title={isSidebarOpen ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle') : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster')}
                                 >
-                                    <PanelLeft size={16} />
+                                    {isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
                                 </button>
                             )}
 
-                            {activeAgent && (
-                                <div className="base-chat-agent-pill">
-                                    <Bot size={15} />
-                                    <span>{activeAgent.ad}</span>
-                                    {activeAgent.modelAdi && (
-                                        <span className="base-chat-model-badge">
-                                            {activeAgent.modelAdi}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                            <div className="base-chat-toolbar-session-info">
+                                <span className="base-chat-toolbar-session-title" title={activeSession?.title || t('auto_yeni_sohbet', 'Yeni Sohbet')}>
+                                    {activeSession?.title || t('auto_yeni_sohbet', 'Yeni Sohbet')}
+                                </span>
+                                {effectiveSystemPrompt.trim() && (
+                                    <span className="base-chat-toolbar-chip" title={t('auto_ozel_sistem_promptu_aktif', 'Özel sistem yönergesi aktif')}>
+                                        <Sliders size={11} />
+                                        <span>{t('auto_sistem_promptu_kisa', 'Prompt Aktif')}</span>
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div className="base-chat-toolbar-right">
@@ -1399,14 +1613,28 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 )}
                             </button>
 
+                            {/* Dışa Aktar Butonu */}
+                            {currentMessages.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={handleExportMarkdown}
+                                    className="base-chat-toolbar-btn"
+                                    title={t('auto_disa_aktar_md', 'Markdown Olarak İndir')}
+                                >
+                                    <Download size={13} />
+                                    <span className="hidden sm:inline">{t('auto_disa_aktar', 'Dışa Aktar')}</span>
+                                </button>
+                            )}
+
+                            {/* Geçmişi Temizle Butonu */}
                             {currentMessages.length > 0 && (
                                 <button
                                     type="button"
                                     onClick={handleClearCurrentMessages}
-                                    className="btn btn-secondary text-11 py-4 px-8 flex items-center gap-4"
+                                    className="base-chat-toolbar-btn text-danger"
                                     title={t('auto_sohbeti_temizle', 'Sohbeti Temizle')}
                                 >
-                                    <Trash2 size={13} className="text-secondary" />
+                                    <Trash2 size={13} />
                                     <span className="hidden sm:inline">{t('auto_temizle', 'Temizle')}</span>
                                 </button>
                             )}
@@ -1753,7 +1981,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                                 onKeyDown={handleTextareaKeyDown}
-                                placeholder={placeholder || t('auto_chat_placeholder', 'Bir mesaj yazın veya ERP komutu verin... (Göndermek için Enter, yeni satır için Shift+Enter)')}
+                                placeholder={placeholder || t('auto_chat_placeholder', 'Bir mesaj yazın veya ERP komutu verin... (Enter ile gönder, Shift+Enter ile yeni satır)')}
                                 autoFocus
                             />
 
@@ -1797,7 +2025,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                             </div>
                         </div>
 
-                        <div className="base-chat-footer-hint">
+                        <div className="base-chat-footer-hint base-chat-input-footer-hint">
                             {t('auto_ai_uyari_notu', 'Yapay zeka asistanı hata yapabilir. Kritik muhasebe ve finansal kararlarda kayıtları doğrulayınız.')}
                         </div>
                     </div>
