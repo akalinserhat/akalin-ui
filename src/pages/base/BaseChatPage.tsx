@@ -1342,8 +1342,22 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         extraDropdownActions
     ]);
 
+    const visibleActionMenuItems = useMemo(() => {
+        return standardActionMenuItems.filter(a => a && !a.hidden);
+    }, [standardActionMenuItems]);
+
+    const chatActionMenu = visibleActionMenuItems.length > 0 ? (
+        <ActionMenu
+            actions={standardActionMenuItems}
+            triggerVariant="primary"
+            showDefaultActionAsButton={false}
+        />
+    ) : null;
+
     // ─── Header Aksiyonları ve HeaderProps Birleştirme ──────────────────────
-    const finalHeaderExtra = (
+    const hasHeaderContent = Boolean(headerExtra || headerActions || agentsList.length > 1 || chatActionMenu);
+
+    const finalHeaderExtra = hasHeaderContent ? (
         <div className="flex items-center gap-8">
             {headerExtra}
             {headerActions}
@@ -1369,13 +1383,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 </select>
             )}
 
-            <ActionMenu
-                actions={standardActionMenuItems}
-                triggerVariant="primary"
-                showDefaultActionAsButton={false}
-            />
+            {chatActionMenu}
         </div>
-    );
+    ) : null;
 
     const mergedHeaderProps: Partial<BaseCardPageHeaderProps> = useMemo(() => {
         if (!headerProps) {
@@ -1387,16 +1397,20 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         return {
             ...headerProps,
             headerExtra: headerProps.headerExtra ? (
-                <div className="flex items-center gap-8">
-                    {headerProps.headerExtra}
-                    {finalHeaderExtra}
-                </div>
+                finalHeaderExtra ? (
+                    <div className="flex items-center gap-8">
+                        {headerProps.headerExtra}
+                        {finalHeaderExtra}
+                    </div>
+                ) : headerProps.headerExtra
             ) : finalHeaderExtra,
             actions: headerProps.actions ? (
-                <div className="flex items-center gap-8">
-                    {headerProps.actions}
-                    {finalHeaderExtra}
-                </div>
+                finalHeaderExtra ? (
+                    <div className="flex items-center gap-8">
+                        {headerProps.actions}
+                        {finalHeaderExtra}
+                    </div>
+                ) : headerProps.actions
             ) : finalHeaderExtra
         };
     }, [headerProps, finalHeaderExtra]);

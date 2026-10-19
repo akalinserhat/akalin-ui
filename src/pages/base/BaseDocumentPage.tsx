@@ -1130,14 +1130,19 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         ];
     })();
 
+    const visibleActionsList = actionsList.filter(a => a && !a.hidden);
+    const hasVisibleDocumentActions = customActionMenu !== undefined || visibleActionsList.length > 0 || Boolean(effectiveOnActionMenuTriggerClick) || Boolean(effectiveDropdownHeader);
+
     const documentActionMenu = customActionMenu !== undefined ? customActionMenu : (
-        <ActionMenu
-            showDefaultActionAsButton={true}
-            triggerLabel={effectiveActionMenuTrigger}
-            onTriggerLabelClick={effectiveOnActionMenuTriggerClick}
-            dropdownHeader={effectiveDropdownHeader}
-            actions={actionsList}
-        />
+        hasVisibleDocumentActions ? (
+            <ActionMenu
+                showDefaultActionAsButton={true}
+                triggerLabel={effectiveActionMenuTrigger}
+                onTriggerLabelClick={effectiveOnActionMenuTriggerClick}
+                dropdownHeader={effectiveDropdownHeader}
+                actions={actionsList}
+            />
+        ) : null
     );
 
     if (isCloudRoute) {
@@ -1200,17 +1205,21 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
                                     activeId={activeTabId}
                                     onChange={onTabChange}
                                     rightContent={
-                                        <div className="document-page-tab-actions">
-                                            {headerActions}
-                                            {documentActionMenu}
-                                        </div>
+                                        (headerActions || documentActionMenu) ? (
+                                            <div className="document-page-tab-actions">
+                                                {headerActions}
+                                                {documentActionMenu}
+                                            </div>
+                                        ) : undefined
                                     }
                                 />
                             ) : (
-                                <div className="document-page-top-bar">
-                                    {headerActions}
-                                    {documentActionMenu}
-                                </div>
+                                (headerActions || documentActionMenu) ? (
+                                    <div className="document-page-top-bar">
+                                        {headerActions}
+                                        {documentActionMenu}
+                                    </div>
+                                ) : null
                             )}
 
                             {headerContent && (

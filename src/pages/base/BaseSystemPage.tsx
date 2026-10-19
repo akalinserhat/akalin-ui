@@ -566,9 +566,12 @@ const BaseSystemPage: React.FC<BaseSystemPageProps> = ({
       ...(effectiveExtraDropdownActions || [])
     ];
 
+    const visibleDefaultActions = defaultActionMenuActions.filter(a => a && !a.hidden);
+    const hasVisibleDefaultActions = effectiveCustomActionMenu !== undefined || visibleDefaultActions.length > 0 || Boolean(effectiveOnActionMenuTriggerClick) || Boolean(effectiveActionMenuDropdownHeader);
+
     const resolvedActionMenu = effectiveHideActionMenu ? null : (
       effectiveCustomActionMenu !== undefined ? effectiveCustomActionMenu : (
-        defaultActionMenuActions.length > 0 ? (
+        hasVisibleDefaultActions ? (
           <ActionMenu
             triggerLabel={effectiveActionMenuTrigger}
             onTriggerLabelClick={effectiveOnActionMenuTriggerClick}
@@ -776,9 +779,12 @@ const BaseSystemPage: React.FC<BaseSystemPageProps> = ({
     ...(extraDropdownActions || [])
   ];
 
+  const visibleGridDefaultActions = gridDefaultActions.filter(a => a && !a.hidden);
+  const hasVisibleGridActions = customActionMenu !== undefined || visibleGridDefaultActions.length > 0 || Boolean(onActionMenuTriggerClick) || Boolean(actionMenuDropdownHeader);
+
   const gridResolvedActionMenu = hideActionMenu ? null : (
     customActionMenu !== undefined ? customActionMenu : (
-      gridDefaultActions.length > 0 ? (
+      hasVisibleGridActions ? (
         <ActionMenu
           triggerLabel={actionMenuTrigger}
           onTriggerLabelClick={onActionMenuTriggerClick}

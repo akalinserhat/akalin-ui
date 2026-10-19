@@ -59,6 +59,11 @@ export interface BaseListPageProps<T = any> {
     emptyMessage?: string;
     customAddButton?: ReactNode;
     customHeaderActions?: ReactNode;
+    extraDropdownActions?: ActionMenuItem[];
+    actionMenuTrigger?: ReactNode;
+    actionMenuDropdownHeader?: ReactNode;
+    onActionMenuTriggerClick?: (e: React.MouseEvent) => void;
+    customActionMenu?: ReactNode;
     customRenderContent?: (props: any) => ReactNode;
     fetchParams?: Record<string, any>;
     pageSize?: number;
@@ -154,6 +159,11 @@ const BaseListPage = <T extends any = any>({
     emptyMessage: externalEmptyMessage,
     customAddButton,
     customHeaderActions,
+    extraDropdownActions,
+    actionMenuTrigger,
+    actionMenuDropdownHeader,
+    onActionMenuTriggerClick,
+    customActionMenu,
     customRenderContent,
     fetchParams = {},
     pageSize = 50,
@@ -925,84 +935,84 @@ const BaseListPage = <T extends any = any>({
             sortable: false,
             render: (row: T, index: number, tableActions: any) => {
                 if ((row as any)?._isDraftTemplate) {
-                    return (
-                        <ActionMenu
-                            actions={[
-                                {
-                                    label: t('auto_duzenle', 'Düzenle'),
-                                    icon: <Edit2 size={16} />,
-                                    isDefault: true,
-                                    default: true,
-                                    onClick: (e: any) => {
-                                        if (tableActions?.handleEdit) {
-                                            tableActions.handleEdit(row, e);
-                                        } else {
-                                            handleEdit(row, e);
-                                        }
-                                    }
-                                },
-                                {
-                                    label: t('auto_sil', 'Sil'),
-                                    icon: <Trash2 size={16} />,
-                                    danger: true,
-                                    onClick: () => {
-                                        if (tableActions?.handleDelete) {
-                                            tableActions.handleDelete(row);
-                                        } else {
-                                            handleDelete(row);
-                                        }
-                                    }
+                    const draftActions = [
+                        {
+                            label: t('auto_duzenle', 'Düzenle'),
+                            icon: <Edit2 size={16} />,
+                            isDefault: true,
+                            default: true,
+                            onClick: (e: any) => {
+                                if (tableActions?.handleEdit) {
+                                    tableActions.handleEdit(row, e);
+                                } else {
+                                    handleEdit(row, e);
                                 }
-                            ]}
-                        />
-                    );
+                            }
+                        },
+                        {
+                            label: t('auto_sil', 'Sil'),
+                            icon: <Trash2 size={16} />,
+                            danger: true,
+                            onClick: () => {
+                                if (tableActions?.handleDelete) {
+                                    tableActions.handleDelete(row);
+                                } else {
+                                    handleDelete(row);
+                                }
+                            }
+                        }
+                    ];
+                    const visibleDraftActions = draftActions.filter(a => a && !a.hidden);
+                    if (visibleDraftActions.length === 0) return null;
+
+                    return <ActionMenu actions={draftActions} />;
                 }
 
                 const isDeleted = Boolean((row as any)?.silindiMi) || (enableViewModeToggle && viewMode === 'trash');
                 const isArchived = Boolean((row as any)?.arsivlendiMi) || (enableViewModeToggle && viewMode === 'archive');
 
                 if (isDeleted) {
-                    return (
-                        <ActionMenu
-                            actions={[
-                                {
-                                    label: t('auto_geri_yukle', 'Geri Yükle'),
-                                    icon: <RotateCcw size={16} />,
-                                    isDefault: true,
-                                    default: true,
-                                    onClick: () => handleRestore(row)
-                                }
-                            ]}
-                        />
-                    );
+                    const restoreActions = [
+                        {
+                            label: t('auto_geri_yukle', 'Geri Yükle'),
+                            icon: <RotateCcw size={16} />,
+                            isDefault: true,
+                            default: true,
+                            onClick: () => handleRestore(row)
+                        }
+                    ];
+                    const visibleRestoreActions = restoreActions.filter(a => a && !a.hidden);
+                    if (visibleRestoreActions.length === 0) return null;
+
+                    return <ActionMenu actions={restoreActions} />;
                 }
 
                 if (isArchived) {
-                    return (
-                        <ActionMenu
-                            actions={[
-                                {
-                                    label: t('auto_arsivden_cikar', 'Arşivden Çıkar'),
-                                    icon: <RotateCcw size={16} />,
-                                    isDefault: true,
-                                    default: true,
-                                    onClick: () => handleUnarchive(row)
-                                },
-                                ...(!effectiveDisableDelete ? [{
-                                    label: t('auto_sil', 'Sil'),
-                                    icon: <Trash2 size={16} />,
-                                    danger: true,
-                                    onClick: () => {
-                                        if (tableActions?.handleDelete) {
-                                            tableActions.handleDelete(row);
-                                        } else {
-                                            handleDelete(row);
-                                        }
-                                    }
-                                }] : [])
-                            ]}
-                        />
-                    );
+                    const archiveActions = [
+                        {
+                            label: t('auto_arsivden_cikar', 'Arşivden Çıkar'),
+                            icon: <RotateCcw size={16} />,
+                            isDefault: true,
+                            default: true,
+                            onClick: () => handleUnarchive(row)
+                        },
+                        ...(!effectiveDisableDelete ? [{
+                            label: t('auto_sil', 'Sil'),
+                            icon: <Trash2 size={16} />,
+                            danger: true,
+                            onClick: () => {
+                                if (tableActions?.handleDelete) {
+                                    tableActions.handleDelete(row);
+                                } else {
+                                    handleDelete(row);
+                                }
+                            }
+                        }] : [])
+                    ];
+                    const visibleArchiveActions = archiveActions.filter(a => a && !a.hidden);
+                    if (visibleArchiveActions.length === 0) return null;
+
+                    return <ActionMenu actions={archiveActions} />;
                 }
 
                 const rowActions: ActionMenuItem[] = [];
@@ -1058,7 +1068,8 @@ const BaseListPage = <T extends any = any>({
                     });
                 }
 
-                if (rowActions.length === 0) return null;
+                const visibleRowActions = rowActions.filter(a => a && !a.hidden);
+                if (visibleRowActions.length === 0) return null;
 
                 return <ActionMenu actions={rowActions} />;
             }
@@ -1160,8 +1171,25 @@ const BaseListPage = <T extends any = any>({
         handleDefaultAction: handleRowDoubleClick
     }), [handleEdit, handleDelete, handleRowDoubleClick]);
 
+    const visibleExtraActions = useMemo(() => {
+        return (extraDropdownActions || []).filter(a => a && !a.hidden);
+    }, [extraDropdownActions]);
+
+    const hasVisibleHeaderMenu = customActionMenu !== undefined || visibleExtraActions.length > 0 || Boolean(onActionMenuTriggerClick) || Boolean(actionMenuDropdownHeader);
+
+    const headerActionMenu = customActionMenu !== undefined ? customActionMenu : (
+        hasVisibleHeaderMenu ? (
+            <ActionMenu
+                triggerLabel={actionMenuTrigger}
+                onTriggerLabelClick={onActionMenuTriggerClick}
+                dropdownHeader={actionMenuDropdownHeader}
+                actions={extraDropdownActions}
+            />
+        ) : null
+    );
+
     const headerActionsToRender = useMemo(() => {
-        if (!enableViewModeToggle && !customHeaderActions) return undefined;
+        if (!enableViewModeToggle && !customHeaderActions && !headerActionMenu) return undefined;
 
         return (
             <div className="base-list-header-actions flex items-center gap-8">
@@ -1205,9 +1233,10 @@ const BaseListPage = <T extends any = any>({
                     </div>
                 )}
                 {customHeaderActions}
+                {headerActionMenu}
             </div>
         );
-    }, [enableViewModeToggle, customHeaderActions, viewMode, enableArchive, handleViewModeChange, t]);
+    }, [enableViewModeToggle, customHeaderActions, headerActionMenu, viewMode, enableArchive, handleViewModeChange, t]);
 
     return (
         <div 

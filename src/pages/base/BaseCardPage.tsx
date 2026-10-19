@@ -239,8 +239,14 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
   }, [saveActionItem, extraDropdownActions, aiActionItem, isChildOverridingDefault]);
 
   // ActionMenu bileşeni
+  const visibleActionsList = useMemo(() => {
+    return actionsList.filter(a => a && !a.hidden);
+  }, [actionsList]);
+
+  const hasVisibleCardActions = customActionMenu !== undefined || visibleActionsList.length > 0 || Boolean(onActionMenuTriggerClick) || Boolean(actionMenuDropdownHeader);
+
   const cardActionMenu = customActionMenu !== undefined ? customActionMenu : (
-    actionsList.length > 0 ? (
+    hasVisibleCardActions ? (
       <ActionMenu
         showDefaultActionAsButton={true}
         triggerLabel={actionMenuTrigger}
@@ -262,7 +268,7 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
         </div>
       );
     }
-    return callerExtra || cardActionMenu;
+    return callerExtra || cardActionMenu || undefined;
   }, [headerExtra, headerActions, cardActionMenu]);
 
   // HeaderProps ile headerExtra birleştirme
@@ -277,7 +283,7 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
             {finalHeaderExtra}
           </div>
         ) : headerProps.headerExtra
-      ) : finalHeaderExtra
+      ) : (finalHeaderExtra || undefined)
     };
   }, [headerProps, finalHeaderExtra]);
 

@@ -142,14 +142,19 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
 
   // Defensive programming: fallback to safeActions
   const safeActions = actions || items || [];
+  const visibleActions = safeActions.filter(a => a && !a.hidden);
+
+  if (visibleActions.length === 0 && !onTriggerLabelClick && !dropdownFooter) {
+    return null;
+  }
 
   // Sadece tek bir menü öğesi varsayılan olabilir (Strict Single Default Rule)
   // 1. Explicit olarak isDefault veya default olan İLK görünür öğeyi bul
-  const explicitDefaultIndex = safeActions.findIndex(a => !a.hidden && (a.isDefault || a.default));
+  const explicitDefaultIndex = visibleActions.findIndex(a => a.isDefault || a.default);
 
   // 2. Explicit yoksa fallback (Düzenle/Edit) öğesini bul
   const fallbackDefaultIndex = explicitDefaultIndex === -1
-    ? safeActions.findIndex(a => !a.hidden && !a.danger && (
+    ? visibleActions.findIndex(a => !a.danger && (
         a.label === t('auto_duzenle', 'Düzenle') ||
         a.label === t('Düzenle') ||
         (typeof a.label === 'string' && (
@@ -161,7 +166,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     : -1;
 
   const singleDefaultIndex = explicitDefaultIndex !== -1 ? explicitDefaultIndex : fallbackDefaultIndex;
-  const singleDefaultAction = singleDefaultIndex !== -1 ? safeActions[singleDefaultIndex] : undefined;
+  const singleDefaultAction = singleDefaultIndex !== -1 ? visibleActions[singleDefaultIndex] : undefined;
 
   // Custom trigger tespiti: Caller açıkça triggerLabel veya onTriggerLabelClick vermişse,
   // bu tetikleyici bağımsız bir düğmedir ve dropdown'daki varsayılan aksiyonla BİRLEŞTİRİLMEZ!
@@ -215,7 +220,6 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     splitDefaultAction?.title ||
     (typeof effectiveLabel === 'string' ? effectiveLabel : undefined);
 
-  const visibleActions = safeActions.filter(a => !a.hidden);
   const hasContent = Boolean(dropdownHeader || visibleActions.length > 0 || dropdownFooter);
 
   return (
