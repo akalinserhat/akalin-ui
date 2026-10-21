@@ -107,6 +107,7 @@ export { default as DateInput, type DateInputProps } from './components/input/Da
 export { default as DateRangeInput, TarihAraligiSecici, type DateRangeInputProps, type TarihAraligiSeciciProps } from './components/input/DateRangeInput';
 export { default as PhoneInput, type PhoneInputProps, formatPhoneNumber, validatePhoneNumber } from './components/input/PhoneInput';
 export { default as EmailInput, type EmailInputProps } from './components/input/EmailInput';
+export { default as EpostaSeciciInput, epostaSeciciInput, type EpostaSeciciInputProps, EMAIL_FORMAT_REGEX, isValidEmailAddress } from './components/input/EpostaSeciciInput';
 export { default as CurrencyInput, type CurrencyInputProps } from './components/input/CurrencyInput';
 export { default as BarcodeScannerInput, type BarcodeScannerInputProps, canOpenBarcodeScanner } from './components/input/BarcodeScannerInput';
 export { default as IbanInput, type IbanInputProps, validateIBAN, formatIBAN } from './components/input/IbanInput';
