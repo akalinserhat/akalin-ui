@@ -357,7 +357,7 @@ const BaseListPage = <T extends any = any>({
 
     const getInitialGlobalSearchData = useCallback(() => {
         const globalSearchState = typeof window !== 'undefined' ? (window as any).__GLOBAL_SEARCH_STATE__ : null;
-        if (!globalSearchState || (!globalSearchState.searchTerm && (!globalSearchState.selectedFilterTypes || globalSearchState.selectedFilterTypes.length === 0) && !globalSearchState.startDate && !globalSearchState.endDate && !globalSearchState.value)) {
+        if (!globalSearchState || (typeof window !== 'undefined' && globalSearchState.pathname !== window.location.pathname) || (!globalSearchState.searchTerm && (!globalSearchState.selectedFilterTypes || globalSearchState.selectedFilterTypes.length === 0) && !globalSearchState.startDate && !globalSearchState.endDate && !globalSearchState.value)) {
             return { type: 'Tumu', value: '', startDate: '', endDate: '' };
         }
 
