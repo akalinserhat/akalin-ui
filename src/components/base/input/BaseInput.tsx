@@ -93,6 +93,8 @@ export const InputSettingsProvider: React.FC<{ defaultCasing?: HarfDonusumu; chi
 
 export interface BaseInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'textTransform'> {
     icon?: React.ReactNode;
+    rightAdornment?: React.ReactNode;
+    rightActions?: React.ReactNode;
     error?: boolean | string;
     inputClassName?: string;
     inputStyle?: React.CSSProperties;
@@ -106,6 +108,8 @@ export interface BaseInputProps extends Omit<React.InputHTMLAttributes<HTMLInput
 
 const BaseInput = forwardRef<HTMLInputElement, BaseInputProps>(({
     icon,
+    rightAdornment,
+    rightActions,
     error,
     className,
     inputClassName = "form-input",
@@ -186,10 +190,14 @@ const BaseInput = forwardRef<HTMLInputElement, BaseInputProps>(({
         ...inputStyle
     };
 
+    const rightNode = rightAdornment ?? rightActions;
+    const hasWrapper = Boolean(icon || rightNode);
+
     const finalInputClassName = Array.from(new Set([
         'form-input',
         inputClassName && inputClassName !== 'form-input' ? inputClassName : '',
-        !icon && className ? className : '',
+        !hasWrapper && className ? className : '',
+        rightNode ? 'has-actions' : '',
         isInvalid ? 'is-invalid' : ''
     ].filter(Boolean).join(' ').split(/\s+/))).filter(Boolean).join(' ');
 
@@ -202,7 +210,7 @@ const BaseInput = forwardRef<HTMLInputElement, BaseInputProps>(({
                 paddingTop: '12px',
                 resize: 'vertical',
                 ...mergedInputStyle,
-                ...(!icon ? style : {})
+                ...(!hasWrapper ? style : {})
             }}
             rows={rows || 4}
             value={value}
@@ -217,7 +225,7 @@ const BaseInput = forwardRef<HTMLInputElement, BaseInputProps>(({
             style={{
                 ...(icon ? { paddingLeft: '36px' } : {}),
                 ...mergedInputStyle,
-                ...(!icon ? style : {})
+                ...(!hasWrapper ? style : {})
             }}
             value={value}
             defaultValue={defaultValue}
@@ -226,12 +234,25 @@ const BaseInput = forwardRef<HTMLInputElement, BaseInputProps>(({
         />
     );
 
-    if (icon) {
-        const wrapperClass = `input-with-icon ${className ? className.replace(/\bform-input\b/g, '').trim() : ''} ${isInvalid ? 'is-invalid' : ''}`.trim();
+    if (hasWrapper) {
+        const cleanClassName = className ? className.replace(/\bform-input\b/g, '').trim() : '';
+        const wrapperClass = [
+            icon ? 'input-with-icon' : '',
+            rightNode ? 'dropdown-secici-wrapper' : '',
+            rightNode && icon ? 'has-icon-wrapper' : '',
+            cleanClassName,
+            isInvalid ? 'is-invalid' : ''
+        ].filter(Boolean).join(' ');
+
         return (
             <div className={wrapperClass} style={{ width: '100%', alignItems: multiline ? 'flex-start' : 'center', ...style }}>
-                <span className="icon" style={multiline ? { top: '12px', left: '14px', transform: 'none' } : undefined}>{icon}</span>
+                {icon && <span className="icon" style={multiline ? { top: '12px', left: '14px', transform: 'none' } : undefined}>{icon}</span>}
                 {inputElement}
+                {rightNode && (
+                    <div className="dropdown-actions-container">
+                        {rightNode}
+                    </div>
+                )}
             </div>
         );
     }
