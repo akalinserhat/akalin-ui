@@ -55,6 +55,11 @@ export interface ActionMenuProps {
   showSplitButton?: boolean;
   dropdownHeader?: React.ReactNode;
   dropdownFooter?: React.ReactNode;
+  /**
+   * Menüde görünür öğe yoksa ActionMenu bileşenini tamamen gizler.
+   * @default true
+   */
+  hideIfEmpty?: boolean;
   title?: string;
   className?: string;
 }
@@ -76,6 +81,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   showSplitButton,
   dropdownHeader,
   dropdownFooter,
+  hideIfEmpty = true,
   title,
   className = ''
 }) => {
@@ -144,7 +150,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   const safeActions = actions || items || [];
   const visibleActions = safeActions.filter(a => a && !a.hidden);
 
-  if (visibleActions.length === 0 && !onTriggerLabelClick && !dropdownFooter) {
+  if (hideIfEmpty && visibleActions.length === 0 && !onTriggerLabelClick && !dropdownFooter) {
     return null;
   }
 

@@ -24,7 +24,8 @@ import React, {
     Children, 
     useEffect, 
     useRef, 
-    useCallback 
+    useCallback,
+    useMemo
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import BaseCardPageHeader, { BaseCardPageHeaderProps } from '../../components/card/BaseCardPageHeader';
@@ -38,6 +39,9 @@ import PrevButton from '../../components/button/PrevButton';
 import FinishButton from '../../components/button/FinishButton';
 import CancelButton from '../../components/button/CancelButton';
 import BaseTab from '../../components/base/tab/BaseTab';
+import ActionMenu, { ActionMenuItem, ActionMenuProps } from '../../components/menu/ActionMenu';
+
+export { type ActionMenuItem, type ActionMenuProps };
 
 export interface WizardStepProps {
     id?: string;
@@ -46,6 +50,8 @@ export interface WizardStepProps {
     children: ReactNode;
     isValid?: boolean; // Adımın geçerli olup olmadığını kontrol etmek için
     onValidate?: () => boolean | Promise<boolean>; // İleri gitmeden önce çalıştırılacak doğrulama fonksiyonu
+    actions?: ActionMenuItem[];
+    extraDropdownActions?: ActionMenuItem[];
 }
 
 export const WizardStep: React.FC<WizardStepProps> = ({ children }) => {
@@ -61,7 +67,18 @@ export interface BaseWizardPageProps {
     subtitleLeft?: ReactNode;
     subtitleRight?: ReactNode;
     headerExtra?: ReactNode;
+    headerActions?: ReactNode;
     headerProps?: Partial<BaseCardPageHeaderProps>;
+    // ActionMenu ve Başlık Aksiyonları
+    actions?: ActionMenuItem[];
+    actionMenuItems?: ActionMenuItem[];
+    extraDropdownActions?: ActionMenuItem[];
+    actionMenuProps?: Partial<ActionMenuProps>;
+    actionMenuTrigger?: ReactNode;
+    actionMenuDropdownHeader?: ReactNode;
+    onActionMenuTriggerClick?: (e: React.MouseEvent) => void;
+    customActionMenu?: ReactNode;
+    hideActionMenu?: boolean;
     showBackButton?: boolean;
     className?: string;
     isOpen?: boolean;
@@ -151,7 +168,17 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
     subtitleLeft,
     subtitleRight,
     headerExtra,
+    headerActions,
     headerProps,
+    actions,
+    actionMenuItems,
+    extraDropdownActions,
+    actionMenuProps,
+    actionMenuTrigger,
+    actionMenuDropdownHeader,
+    onActionMenuTriggerClick,
+    customActionMenu,
+    hideActionMenu = false,
     showBackButton = true,
     className = '',
     isOpen = true,
@@ -587,11 +614,88 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
         }
     }, [shouldShowBack, handleBackClick, setHeader, clearHeader, t]);
 
+    const currentStep = steps[currentStepIndex];
+
+    // Başlık sağ tarafındaki ActionMenu öğelerini (sayfa geneli + aktif adım) birleştir
+    const effectiveMenuActions = useMemo<ActionMenuItem[]>(() => {
+        return [
+            ...(actions || []),
+            ...(actionMenuItems || []),
+            ...(extraDropdownActions || []),
+            ...(actionMenuProps?.actions || []),
+            ...(actionMenuProps?.items || []),
+            ...(currentStep?.props?.actions || []),
+            ...(currentStep?.props?.extraDropdownActions || [])
+        ];
+    }, [
+        actions,
+        actionMenuItems,
+        extraDropdownActions,
+        actionMenuProps?.actions,
+        actionMenuProps?.items,
+        currentStep?.props?.actions,
+        currentStep?.props?.extraDropdownActions
+    ]);
+
+    const visibleMenuActions = useMemo(() => {
+        return effectiveMenuActions.filter(a => a && !a.hidden);
+    }, [effectiveMenuActions]);
+
+    const hasVisibleWizardActions = !hideActionMenu && (
+        customActionMenu !== undefined ||
+        visibleMenuActions.length > 0 ||
+        Boolean(onActionMenuTriggerClick) ||
+        Boolean(actionMenuProps?.onTriggerLabelClick) ||
+        Boolean(actionMenuDropdownHeader) ||
+        Boolean(actionMenuProps?.dropdownHeader) ||
+        Boolean(actionMenuProps?.dropdownFooter)
+    );
+
+    const wizardActionMenu = hasVisibleWizardActions ? (
+        customActionMenu !== undefined ? customActionMenu : (
+            <ActionMenu
+                showDefaultActionAsButton={true}
+                hideIfEmpty={true}
+                triggerLabel={actionMenuTrigger}
+                onTriggerLabelClick={onActionMenuTriggerClick}
+                dropdownHeader={actionMenuDropdownHeader}
+                {...actionMenuProps}
+                actions={effectiveMenuActions}
+            />
+        )
+    ) : null;
+
+    const finalHeaderExtra = useMemo(() => {
+        const callerExtra = headerExtra || headerActions;
+        if (callerExtra && wizardActionMenu) {
+            return (
+                <div className="flex items-center gap-8">
+                    {callerExtra}
+                    {wizardActionMenu}
+                </div>
+            );
+        }
+        return callerExtra || wizardActionMenu || undefined;
+    }, [headerExtra, headerActions, wizardActionMenu]);
+
+    const mergedHeaderProps = useMemo(() => {
+        if (!headerProps) return undefined;
+        return {
+            ...headerProps,
+            headerExtra: headerProps.headerExtra ? (
+                finalHeaderExtra ? (
+                    <div className="flex items-center gap-8">
+                        {headerProps.headerExtra}
+                        {finalHeaderExtra}
+                    </div>
+                ) : headerProps.headerExtra
+            ) : (finalHeaderExtra || undefined)
+        };
+    }, [headerProps, finalHeaderExtra]);
+
     if (isOpen === false || totalSteps === 0) {
         return null;
     }
-
-    const currentStep = steps[currentStepIndex];
 
     const resolvedFinishText = finishText || t('auto_bitti_9a34') || 'Bitti';
     const resolvedProcessingText = t('auto_isleniyor_3f1b') || 'İşleniyor...';
@@ -608,9 +712,9 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
                 subtitle={subtitle}
                 subtitleLeft={subtitleLeft}
                 subtitleRight={subtitleRight}
-                headerExtra={headerExtra}
+                headerExtra={finalHeaderExtra}
                 breadcrumb={null}
-                {...headerProps}
+                {...mergedHeaderProps}
             />
 
             <div className="wizard-page-container flex-col flex-1 min-h-0">
