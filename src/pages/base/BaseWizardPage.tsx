@@ -37,10 +37,12 @@ import NextButton from '../../components/button/NextButton';
 import PrevButton from '../../components/button/PrevButton';
 import FinishButton from '../../components/button/FinishButton';
 import CancelButton from '../../components/button/CancelButton';
+import BaseTab from '../../components/base/tab/BaseTab';
 
 export interface WizardStepProps {
     id?: string;
     title: string;
+    icon?: ReactNode;
     children: ReactNode;
     isValid?: boolean; // Adımın geçerli olup olmadığını kontrol etmek için
     onValidate?: () => boolean | Promise<boolean>; // İleri gitmeden önce çalıştırılacak doğrulama fonksiyonu
@@ -74,6 +76,11 @@ export interface BaseWizardPageProps {
     onStepChange?: (stepIndex: number) => void;
     onBeforeStepChange?: (currentStepIndex: number, nextStepIndex: number) => boolean | Promise<boolean>;
     containerRef?: React.RefObject<HTMLDivElement>;
+
+    // Sekme (Tab) Görünüm Modu (Düzenleme modu vb. için aşamaları Tab başlıkları olarak gösterir)
+    asTabs?: boolean;
+    isEditMode?: boolean;
+    navigationMode?: 'wizard' | 'tabs';
 
     // Aktif Aşama / Adım Yönetimi & Hafıza (Step Preservation)
     activeStepIndex?: number;
@@ -158,6 +165,9 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
     onStepChange,
     onBeforeStepChange,
     containerRef,
+    asTabs = false,
+    isEditMode = false,
+    navigationMode,
     activeStepIndex,
     activeStepId,
     initialStepIndex,
@@ -166,6 +176,7 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
     storageKey
 }) => {
     const { t } = useTranslation();
+    const isTabMode = Boolean(asTabs || isEditMode || navigationMode === 'tabs');
 
     let location: any = null;
     try {
@@ -481,7 +492,11 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
     };
 
     const handleStepClick = async (targetIndex: number) => {
-        if (targetIndex < currentStepIndex && !isFinishing) {
+        const canNavigate = isTabMode
+            ? (targetIndex !== currentStepIndex && !isFinishing)
+            : (targetIndex < currentStepIndex && !isFinishing);
+
+        if (canNavigate) {
             if (onBeforeStepChange) {
                 const canProceed = await onBeforeStepChange(currentStepIndex, targetIndex);
                 if (!canProceed) return;
@@ -491,18 +506,35 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
     };
 
     const handleFinish = async () => {
-        const currentStep = steps[currentStepIndex];
+        if (isTabMode) {
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                if (step?.props?.onValidate) {
+                    const isValid = await step.props.onValidate();
+                    if (!isValid) {
+                        changeStep(i);
+                        return;
+                    }
+                }
+                if (step?.props?.isValid === false) {
+                    changeStep(i);
+                    return;
+                }
+            }
+        } else {
+            const currentStep = steps[currentStepIndex];
 
-        // Son adımda da onValidate kontrolü varsa çalıştır
-        if (currentStep?.props?.onValidate) {
-            const isValid = await currentStep.props.onValidate();
-            if (!isValid) {
+            // Son adımda da onValidate kontrolü varsa çalıştır
+            if (currentStep?.props?.onValidate) {
+                const isValid = await currentStep.props.onValidate();
+                if (!isValid) {
+                    return;
+                }
+            }
+
+            if (currentStep?.props?.isValid === false) {
                 return;
             }
-        }
-
-        if (currentStep?.props?.isValid === false) {
-            return;
         }
 
         await onFinish();
@@ -582,33 +614,46 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
             />
 
             <div className="wizard-page-container flex-col flex-1 min-h-0">
-                {/* Stepper Header */}
-                <div className="wizard-header">
-                    {steps.map((step, index) => {
-                        const isActive = index === currentStepIndex;
-                        const isCompleted = index < currentStepIndex;
+                {/* Stepper / Tab Header */}
+                {isTabMode ? (
+                    <BaseTab
+                        className="wizard-tab-header"
+                        tabs={steps.map((step, index) => ({
+                            id: index,
+                            label: step.props.title,
+                            icon: step.props.icon
+                        }))}
+                        activeId={currentStepIndex}
+                        onChange={(tabId) => handleStepClick(Number(tabId))}
+                    />
+                ) : (
+                    <div className="wizard-header">
+                        {steps.map((step, index) => {
+                            const isActive = index === currentStepIndex;
+                            const isCompleted = index < currentStepIndex;
 
-                        return (
-                            <React.Fragment key={index}>
-                                <div 
-                                    className={`wizard-step-item ${isCompleted ? 'completed cursor-pointer' : ''} ${!(isActive || isCompleted) ? 'inactive' : ''}`}
-                                    onClick={() => isCompleted && handleStepClick(index)}
-                                    title={isCompleted ? t('auto_bu_adima_don', 'Bu adıma dön') : undefined}
-                                >
-                                    <div className={`wizard-step-number ${isActive ? 'active' : isCompleted ? 'completed' : 'pending'}`}>
-                                        {isCompleted ? <Check size={16} /> : index + 1}
+                            return (
+                                <React.Fragment key={index}>
+                                    <div 
+                                        className={`wizard-step-item ${isCompleted ? 'completed cursor-pointer' : ''} ${!(isActive || isCompleted) ? 'inactive' : ''}`}
+                                        onClick={() => isCompleted && handleStepClick(index)}
+                                        title={isCompleted ? t('auto_bu_adima_don', 'Bu adıma dön') : undefined}
+                                    >
+                                        <div className={`wizard-step-number ${isActive ? 'active' : isCompleted ? 'completed' : 'pending'}`}>
+                                            {isCompleted ? <Check size={16} /> : index + 1}
+                                        </div>
+                                        <span className={`wizard-step-text ${isActive ? 'active' : isCompleted ? 'completed' : 'pending'}`}>
+                                            {step.props.title}
+                                        </span>
                                     </div>
-                                    <span className={`wizard-step-text ${isActive ? 'active' : isCompleted ? 'completed' : 'pending'}`}>
-                                        {step.props.title}
-                                    </span>
-                                </div>
-                                {index < totalSteps - 1 && (
-                                    <div className={`wizard-step-divider ${isCompleted ? 'completed' : 'pending'}`} />
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                </div>
+                                    {index < totalSteps - 1 && (
+                                        <div className={`wizard-step-divider ${isCompleted ? 'completed' : 'pending'}`} />
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Content & Scroll Container (Footer her zaman content'in altında yer alır) */}
                 <div className="wizard-content">
@@ -618,11 +663,13 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
 
                     {/* Footer */}
                     <div className="wizard-footer">
-                        <PrevButton
-                            onClick={handleBack}
-                            disabled={currentStepIndex === 0 || isFinishing || isCancelling}
-                            text={t('auto_geri_8f21') || 'Geri'}
-                        />
+                        {!isTabMode ? (
+                            <PrevButton
+                                onClick={handleBack}
+                                disabled={currentStepIndex === 0 || isFinishing || isCancelling}
+                                text={t('auto_geri_8f21') || 'Geri'}
+                            />
+                        ) : <div />}
 
                         <div className="wizard-footer-actions">
                             {onClose && (
@@ -634,7 +681,7 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
                                 />
                             )}
 
-                            {currentStepIndex < totalSteps - 1 ? (
+                            {!isTabMode && currentStepIndex < totalSteps - 1 ? (
                                 <NextButton
                                     onClick={handleNext}
                                     disabled={isFinishing || isCancelling}

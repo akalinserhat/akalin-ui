@@ -407,12 +407,13 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
 
         // 4. Belge Kalemleri / SpreadsheetGrid Kontrolü
         if (gridProps || customDetailContent) {
-            const kalemler = formData?.kalemler || gridProps?.data;
+            const kalemler = formData?.kalemler || formData?.kampanyalar || formData?.satirlar || gridProps?.data;
             const hasMeaningfulItem = Array.isArray(kalemler) && kalemler.length > 0 && kalemler.some((k: any) => {
                 if (!k) return false;
                 const hasProduct = Boolean(k.urunVeHizmetKartiId || k.urunId || k.stokId || k.kartId || (k.tedarikciUrunKodu && String(k.tedarikciUrunKodu).trim()));
                 const hasAmount = Boolean((k.fiyat && Number(k.fiyat) > 0) || (k.tutar && Number(k.tutar) > 0) || (k.miktar && Number(k.miktar) > 0));
-                return hasProduct || hasAmount;
+                const hasCampaignOrNamedRow = Boolean((k.kodu && String(k.kodu).trim()) || (k.adi && String(k.adi).trim()) || k.aksiyonTipi || (Array.isArray(k.kurallar) && k.kurallar.length > 0));
+                return hasProduct || hasAmount || hasCampaignOrNamedRow;
             });
 
             if (!hasMeaningfulItem && !detectedErrors['kalemler'] && !detectedErrors['satirlar'] && !detectedErrors['items']) {
@@ -431,103 +432,26 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         };
     }, [formData, gridProps?.data, errors, formId, containerRef, t]);
 
-    const backAttemptCountRef = useRef(0);
-    const backAttemptTimerRef = useRef<any>(null);
-
-    // Form verisi kullanıcı tarafından değiştirildiğinde çıkış deneme sayacını sıfırla
+    // Form verisi kullanıcı tarafından değiştirildiğinde grid hata uyarısını sıfırla
     useEffect(() => {
-        backAttemptCountRef.current = 0;
-        if (backAttemptTimerRef.current) {
-            clearTimeout(backAttemptTimerRef.current);
-            backAttemptTimerRef.current = null;
-        }
         setDismissedGridError(false);
     }, [formData]);
 
-    // Geri çıkış interceptor'ı: 1. basışta validasyon ve eksik alanların gösterimi, 2. basışta çıkış
-    const handleDocumentBackInterception = useCallback(async (): Promise<boolean> => {
-        // 2. basış kontrolü: Kullanıcı daha önce 1. basışta uyarılmışsa ve tekrar basıyorsa
-        if (backAttemptCountRef.current >= 1) {
-            backAttemptCountRef.current = 0;
-            if (backAttemptTimerRef.current) {
-                clearTimeout(backAttemptTimerRef.current);
-                backAttemptTimerRef.current = null;
-            }
-            // 2. kez çıkış düğmesine basılıyor -> belgeden çıkılmasına izin ver
-            return true;
-        }
-
-        // Formda hiçbir veri yoksa ve kullanıcı hiçbir şey değiştirmemişse doğrudan çık
-        const isMeaningful = isDocumentDirty || isDocDataMeaningful(formData) || Boolean(documentId);
-        if (!isMeaningful) {
-            return true;
-        }
-
-        // Validasyonu çalıştır
-        const validation = runDocumentValidation();
-
-        // Eğer tüm alanlar geçerliyse ve eksik alan yoksa çıkışa izin ver
-        if (validation.isValid) {
-            return true;
-        }
-
-        // Eksik alanlar var! 1. basış muamelesi yap:
-        backAttemptCountRef.current = 1;
-
-        // 10 saniye sonra sayacı sıfırla
-        if (backAttemptTimerRef.current) clearTimeout(backAttemptTimerRef.current);
-        backAttemptTimerRef.current = setTimeout(() => {
-            backAttemptCountRef.current = 0;
-        }, 10000);
-
-        // Hataları ve eksik alanları formda göster
-        setInternalErrors(validation.errors);
-        setDismissedGridError(false);
-
-        // İlk hatalı alana odaklan ve kaydır
-        if (validation.firstErrorElement) {
-            try {
-                validation.firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (typeof validation.firstErrorElement.focus === 'function') {
-                    validation.firstErrorElement.focus();
-                }
-            } catch (e) {}
-        }
-
-        // Kullanıcıya açık ve net uyarı toast'u göster
-        toast.error(
-            t('auto_eksik_alanlar_var_cikmak_icin_tekrar_basin', 'Verisi eksik alanlar bulunmaktadır. Yine de çıkmak için Geri düğmesine tekrar basın.'),
-            { id: 'doc-back-validation-toast', duration: 4500 }
-        );
-
-        // 1. basışta çıkışı engelle
-        return false;
-    }, [isDocumentDirty, formData, documentId, runDocumentValidation, t]);
-
-    // HeaderContext üzerindeki interceptor'ı bağla
+    // Geri düğmesine basıldığında validasyon hatasıyla çıkışı engelleme;
+    // kaydedilmemiş değişiklik (isDocumentDirty) onayı BasePage tarafından yönetilir.
     useEffect(() => {
         if (setDocumentBackInterceptor) {
-            setDocumentBackInterceptor(handleDocumentBackInterception);
+            setDocumentBackInterceptor(null);
         }
+    }, [setDocumentBackInterceptor]);
 
-        return () => {
-            if (setDocumentBackInterceptor) {
-                setDocumentBackInterceptor(null);
-            }
-        };
-    }, [setDocumentBackInterceptor, handleDocumentBackInterception]);
-
-    const handleActualBack = useCallback(async () => {
-        const canExit = await handleDocumentBackInterception();
-        if (!canExit) {
-            return;
-        }
+    const handleActualBack = useCallback(() => {
         if (onBack) {
             onBack();
         } else {
             navigate(-1);
         }
-    }, [handleDocumentBackInterception, onBack, navigate]);
+    }, [onBack, navigate]);
 
     // Dışarıdan isDirty prop'u geçilmişse HeaderContext ile senkronize et
     useEffect(() => {
@@ -566,7 +490,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         // Form ilk kez yüklendiğinde snapshot al
         if (!hasInitializedFormDataRef.current) {
             // Edit modunda backend'den asıl veri gelene kadar bekle
-            if (documentId && (!formData.id && (!formData.kalemler || formData.kalemler.length === 0))) {
+            if (documentId && (!formData.id && (!formData.kalemler || formData.kalemler.length === 0) && (!formData.kampanyalar || formData.kampanyalar.length === 0))) {
                 return;
             }
             try {
