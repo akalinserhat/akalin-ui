@@ -7,9 +7,10 @@
  * - IBAN metnini 4'erli bloklar halinde formatlayarak kullanıcıya gösterir.
  * - Uluslararası standart MOD-97 algoritması ile anlık IBAN doğrulaması yapar.
  * - Geçerlilik durumunu görsel hata mesajı ile anlık bildirir.
+ * - Blok boşlukları eklendiğinde veya silindiğinde imleç (cursor) konumunu akıllıca korur.
  */
 
-import React, { useState, useEffect, forwardRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, forwardRef, useCallback } from 'react';
 import { CreditCard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import BaseInput from '../base/input/BaseInput';
@@ -28,6 +29,7 @@ export interface IbanInputProps {
     disabled?: boolean;
     error?: boolean | string;
     onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+    onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 /**
@@ -63,7 +65,7 @@ export const validateIBAN = (iban: string): boolean => {
  * IBAN'ı 4'erli bloklar halinde formatlar (örn: TR00 0000 0000 ...)
  */
 export const formatIBAN = (iban: string): string => {
-    let clean = iban.replace(/[^\w\d]/gi, '').toUpperCase();
+    let clean = iban.replace(/[^a-zA-Z0-9]/gi, '').toUpperCase();
     let formatted = '';
     for (let i = 0; i < clean.length; i++) {
         if (i > 0 && i % 4 === 0) {
@@ -72,6 +74,24 @@ export const formatIBAN = (iban: string): string => {
         formatted += clean[i];
     }
     return formatted;
+};
+
+/**
+ * Formatlanmış IBAN metni içerisinde hedeflenen alfanümerik karakter sayısına karşılık gelen imleç konumunu hesaplar.
+ */
+export const calculateNewCursorPosition = (formatted: string, targetCharsCount: number): number => {
+    if (targetCharsCount <= 0 || !formatted) return 0;
+
+    let counted = 0;
+    for (let i = 0; i < formatted.length; i++) {
+        if (/[a-zA-Z0-9]/.test(formatted[i])) {
+            counted++;
+            if (counted === targetCharsCount) {
+                return i + 1;
+            }
+        }
+    }
+    return formatted.length;
 };
 
 export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
@@ -87,11 +107,24 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
     autoFocus,
     disabled,
     error,
-    onBlur
+    onBlur,
+    onKeyDown
 }, ref) => {
     const { t } = useTranslation();
     const [displayValue, setDisplayValue] = useState('');
     const [isValid, setIsValid] = useState(true);
+
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const nextCursorPosRef = useRef<number | null>(null);
+
+    const setCombinedRef = useCallback((node: HTMLInputElement | null) => {
+        inputRef.current = node;
+        if (typeof ref === 'function') {
+            ref(node);
+        } else if (ref) {
+            (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
+        }
+    }, [ref]);
 
     useEffect(() => {
         const cleanVal = (value || '').replace(/\s+/g, '');
@@ -107,15 +140,44 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
         }
     }, [value, onValidityChange]);
 
+    useLayoutEffect(() => {
+        if (nextCursorPosRef.current !== null && inputRef.current) {
+            const pos = nextCursorPosRef.current;
+            inputRef.current.setSelectionRange(pos, pos);
+        }
+    }, [displayValue]);
+
+    const setSelection = useCallback((pos: number) => {
+        nextCursorPosRef.current = pos;
+        if (inputRef.current) {
+            inputRef.current.setSelectionRange(pos, pos);
+        }
+        requestAnimationFrame(() => {
+            if (inputRef.current && nextCursorPosRef.current !== null) {
+                inputRef.current.setSelectionRange(nextCursorPosRef.current, nextCursorPosRef.current);
+                nextCursorPosRef.current = null;
+            }
+        });
+    }, []);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value.replace(/[^\w\d]/gi, '').toUpperCase();
+        const input = e.target;
+        const cursorPositionBefore = input.selectionStart || 0;
+        const rawInput = input.value;
+        const charsBeforeCursor = rawInput.slice(0, cursorPositionBefore).replace(/[^a-zA-Z0-9]/g, '').length;
+
+        const rawValue = rawInput.replace(/[^a-zA-Z0-9]/gi, '').toUpperCase();
         if (rawValue.length > 34) return;
         
         const formatted = formatIBAN(rawValue);
         setDisplayValue(formatted);
+
+        const newPos = calculateNewCursorPosition(formatted, charsBeforeCursor);
+        setSelection(newPos);
         
         const valid = validateIBAN(rawValue);
         setIsValid(rawValue.length === 0 ? true : valid);
+        if (onValidityChange) onValidityChange(valid);
 
         if (onChange) {
             const fakeEvent = {
@@ -130,15 +192,73 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
         }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (onKeyDown) {
+            onKeyDown(e);
+            if (e.defaultPrevented) return;
+        }
+
+        if (e.key === 'Backspace') {
+            const input = e.currentTarget;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+
+            // Tekil imleç ve imlecin solundaki karakter blok boşluğu ise
+            if (start !== null && start === end && start > 0) {
+                const val = input.value;
+                if (val[start - 1] === ' ') {
+                    e.preventDefault();
+
+                    // Boşluktan önceki karakteri bul ve sil
+                    let targetDeleteIndex = -1;
+                    for (let i = start - 1; i >= 0; i--) {
+                        if (/[a-zA-Z0-9]/.test(val[i])) {
+                            targetDeleteIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (targetDeleteIndex !== -1) {
+                        const newVal = val.slice(0, targetDeleteIndex) + val.slice(targetDeleteIndex + 1);
+                        const rawValue = newVal.replace(/[^a-zA-Z0-9]/gi, '').toUpperCase();
+                        const formatted = formatIBAN(rawValue);
+                        setDisplayValue(formatted);
+
+                        const charsBefore = val.slice(0, targetDeleteIndex).replace(/[^a-zA-Z0-9]/gi, '').length;
+                        const newPos = calculateNewCursorPosition(formatted, charsBefore);
+                        setSelection(newPos);
+
+                        const valid = validateIBAN(rawValue);
+                        setIsValid(rawValue.length === 0 ? true : valid);
+                        if (onValidityChange) onValidityChange(valid);
+
+                        if (onChange) {
+                            const fakeEvent = {
+                                ...e,
+                                target: {
+                                    ...input,
+                                    name: input.name,
+                                    value: rawValue
+                                }
+                            };
+                            onChange(fakeEvent as any);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
     return (
         <div style={style} className={`w-full relative ${className || ''}`}>
             <BaseInput
-                ref={ref}
+                ref={setCombinedRef}
                 icon={<CreditCard size={16} />}
                 type="text"
                 name={name}
                 value={displayValue}
                 onChange={handleChange}
+                onKeyDown={handleKeyDown}
                 onBlur={onBlur}
                 placeholder={placeholder}
                 required={required}
