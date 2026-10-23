@@ -111,11 +111,20 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
     onKeyDown
 }, ref) => {
     const { t } = useTranslation();
-    const [displayValue, setDisplayValue] = useState('');
-    const [isValid, setIsValid] = useState(true);
+    const [displayValue, setDisplayValue] = useState<string>(() => formatIBAN(value || ''));
+    const [isValid, setIsValid] = useState<boolean>(() => {
+        const cleanVal = (value || '').replace(/\s+/g, '');
+        return cleanVal ? validateIBAN(cleanVal) : true;
+    });
 
     const inputRef = useRef<HTMLInputElement | null>(null);
     const nextCursorPosRef = useRef<number | null>(null);
+    const clearTimerRef = useRef<any>(null);
+    const onValidityChangeRef = useRef(onValidityChange);
+
+    useEffect(() => {
+        onValidityChangeRef.current = onValidityChange;
+    }, [onValidityChange]);
 
     const setCombinedRef = useCallback((node: HTMLInputElement | null) => {
         inputRef.current = node;
@@ -126,38 +135,59 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
         }
     }, [ref]);
 
+    // Dışarıdan value prop'u değiştiğinde senkronize et
     useEffect(() => {
         const cleanVal = (value || '').replace(/\s+/g, '');
         if (cleanVal) {
-            setDisplayValue(formatIBAN(cleanVal));
+            const formatted = formatIBAN(cleanVal);
+            setDisplayValue(formatted);
             const valid = validateIBAN(cleanVal);
             setIsValid(valid);
-            if (onValidityChange) onValidityChange(valid);
+            if (onValidityChangeRef.current) onValidityChangeRef.current(valid);
         } else {
             setDisplayValue('');
             setIsValid(true);
-            if (onValidityChange) onValidityChange(false);
+            if (onValidityChangeRef.current) onValidityChangeRef.current(false);
         }
-    }, [value, onValidityChange]);
+    }, [value]);
 
+    // Render commit sonrasında imleci hedef pozisyonda tut
     useLayoutEffect(() => {
         if (nextCursorPosRef.current !== null && inputRef.current) {
             const pos = nextCursorPosRef.current;
             inputRef.current.setSelectionRange(pos, pos);
         }
-    }, [displayValue]);
+    });
 
     const setSelection = useCallback((pos: number) => {
         nextCursorPosRef.current = pos;
-        if (inputRef.current) {
-            inputRef.current.setSelectionRange(pos, pos);
+
+        if (clearTimerRef.current) {
+            clearTimeout(clearTimerRef.current);
         }
-        requestAnimationFrame(() => {
-            if (inputRef.current && nextCursorPosRef.current !== null) {
-                inputRef.current.setSelectionRange(nextCursorPosRef.current, nextCursorPosRef.current);
-                nextCursorPosRef.current = null;
+
+        const apply = () => {
+            if (inputRef.current) {
+                inputRef.current.setSelectionRange(pos, pos);
             }
+        };
+
+        // 1. Anlık çağrı
+        apply();
+
+        // 2. Microtask / Sıfır gecikmeli timeout
+        setTimeout(apply, 0);
+
+        // 3. Çift frame animasyon döngüsü (React render ve paint sonrasını garantiye alma)
+        requestAnimationFrame(() => {
+            apply();
+            requestAnimationFrame(apply);
         });
+
+        // 100ms sonra hedef imleç referansını temizle
+        clearTimerRef.current = setTimeout(() => {
+            nextCursorPosRef.current = null;
+        }, 100);
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,7 +207,7 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
         
         const valid = validateIBAN(rawValue);
         setIsValid(rawValue.length === 0 ? true : valid);
-        if (onValidityChange) onValidityChange(valid);
+        if (onValidityChangeRef.current) onValidityChangeRef.current(valid);
 
         if (onChange) {
             const fakeEvent = {
@@ -186,7 +216,9 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
                     ...e.target,
                     name: e.target.name,
                     value: rawValue
-                }
+                },
+                rawValue,
+                isValid: valid
             };
             onChange(fakeEvent as any);
         }
@@ -230,7 +262,7 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
 
                         const valid = validateIBAN(rawValue);
                         setIsValid(rawValue.length === 0 ? true : valid);
-                        if (onValidityChange) onValidityChange(valid);
+                        if (onValidityChangeRef.current) onValidityChangeRef.current(valid);
 
                         if (onChange) {
                             const fakeEvent = {
@@ -239,7 +271,9 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
                                     ...input,
                                     name: input.name,
                                     value: rawValue
-                                }
+                                },
+                                rawValue,
+                                isValid: valid
                             };
                             onChange(fakeEvent as any);
                         }
@@ -255,6 +289,10 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
                 ref={setCombinedRef}
                 icon={<CreditCard size={16} />}
                 type="text"
+                casing="none"
+                harfDonusumu="none"
+                harfFormati="none"
+                textTransform="none"
                 name={name}
                 value={displayValue}
                 onChange={handleChange}
