@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, forwardRef } from 'react';
 import { CreditCard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import BaseInput from '../base/input/BaseInput';
 
 export interface IbanInputProps {
@@ -21,9 +22,12 @@ export interface IbanInputProps {
     placeholder?: string;
     required?: boolean;
     className?: string;
+    inputClassName?: string;
     style?: React.CSSProperties;
     autoFocus?: boolean;
     disabled?: boolean;
+    error?: boolean | string;
+    onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 /**
@@ -31,12 +35,10 @@ export interface IbanInputProps {
  */
 export const validateIBAN = (iban: string): boolean => {
     const sanitizedIBAN = iban.replace(/\s+/g, '').toUpperCase();
-    if (sanitizedIBAN.length < 15) return false; // Minimum length for any IBAN is 15
+    if (sanitizedIBAN.length < 15) return false;
     
-    // 1. İlk 4 karakteri sona taşı
     const rearranged = sanitizedIBAN.substr(4) + sanitizedIBAN.substr(0, 4);
     
-    // 2. Harfleri sayılara çevir (A=10, B=11 ... Z=35)
     let numericIBAN = '';
     for (let i = 0; i < rearranged.length; i++) {
         const code = rearranged.charCodeAt(i);
@@ -47,7 +49,6 @@ export const validateIBAN = (iban: string): boolean => {
         }
     }
 
-    // 3. Mod 97 işlemi (JavaScript'te büyük sayılar için parça parça mod alma)
     let remainder = numericIBAN;
     let block;
     while (remainder.length > 2) {
@@ -80,11 +81,15 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
     name,
     placeholder = "TR00 0000 0000 0000 0000 0000 00",
     required = false,
-    className = "form-input",
+    className = "",
+    inputClassName,
     style,
     autoFocus,
-    disabled
+    disabled,
+    error,
+    onBlur
 }, ref) => {
+    const { t } = useTranslation();
     const [displayValue, setDisplayValue] = useState('');
     const [isValid, setIsValid] = useState(true);
 
@@ -113,8 +118,6 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
         setIsValid(rawValue.length === 0 ? true : valid);
 
         if (onChange) {
-            // Değeri geri gönderirken formatlanmış halini değil, temiz halini gönderiyoruz
-            // Ancak sahte bir event objesiyle value'yu override ediyoruz
             const fakeEvent = {
                 ...e,
                 target: {
@@ -136,17 +139,18 @@ export const IbanInput = forwardRef<HTMLInputElement, IbanInputProps>(({
                 name={name}
                 value={displayValue}
                 onChange={handleChange}
+                onBlur={onBlur}
                 placeholder={placeholder}
                 required={required}
-                inputClassName="w-full"
+                inputClassName={inputClassName || "w-full"}
                 autoFocus={autoFocus}
                 disabled={disabled}
-                error={displayValue.length > 0 && !isValid}
+                error={Boolean(error) || (displayValue.length > 0 && !isValid)}
                 maxLength={42} 
             />
             {displayValue.length > 0 && !isValid && (
                 <span className="text-xs text-danger mt-1 block">
-                    Geçersiz IBAN formatı
+                    {t('auto_gecersiz_iban_format_060d', 'Geçersiz IBAN formatı')}
                 </span>
             )}
         </div>
