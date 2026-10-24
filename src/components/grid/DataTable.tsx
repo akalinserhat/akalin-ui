@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronUp, ChevronDown, Loader2, Search, Settings, X, GripVertical, MoreVertical } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, Search, Settings, X, GripVertical, MoreVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -54,6 +54,10 @@ export interface DataTableProps<T> {
   hiddenRowIds?: (string | number)[];
   defaultSortField?: string;
   defaultSortOrder?: 'asc' | 'desc';
+  enableRowReorder?: boolean;
+  onRowReorder?: (newData: T[], fromIndex: number, toIndex: number) => void;
+  showRowOrderButtons?: boolean;
+  showRowIndex?: boolean;
 }
 
 const extractItemsAndTotal = <T,>(res: any): { items: T[]; totalCount?: number } => {
@@ -86,7 +90,11 @@ const DataTable = <T extends Record<string, any>>({
   stickyActionColumn = false,
   hiddenRowIds = [],
   defaultSortField,
-  defaultSortOrder
+  defaultSortOrder,
+  enableRowReorder = false,
+  onRowReorder,
+  showRowOrderButtons = false,
+  showRowIndex = false
 }: DataTableProps<T>) => {
   const { t } = useTranslation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -617,6 +625,85 @@ const DataTable = <T extends Record<string, any>>({
     }
   };
 
+  // ─── SATIR SIRALAMA (ROW REORDER) DESTEĞİ ────────────────────────────────
+  const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+  const [dragOverRowIndex, setDragOverRowIndex] = useState<number | null>(null);
+
+  const handleRowDragStart = (e: React.DragEvent, index: number) => {
+    if (!enableRowReorder) return;
+    setDraggedRowIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleRowDragOver = (e: React.DragEvent, index: number) => {
+    if (!enableRowReorder) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverRowIndex !== index) {
+      setDragOverRowIndex(index);
+    }
+  };
+
+  const handleRowDrop = (e: React.DragEvent, targetIndex: number) => {
+    if (!enableRowReorder) return;
+    e.preventDefault();
+    setDragOverRowIndex(null);
+    const fromIndexStr = e.dataTransfer.getData('text/plain');
+    const sourceIndex = fromIndexStr !== '' ? Number(fromIndexStr) : draggedRowIndex;
+    setDraggedRowIndex(null);
+
+    if (sourceIndex === null || sourceIndex === undefined || isNaN(sourceIndex) || sourceIndex === targetIndex) {
+      return;
+    }
+
+    const currentList = propData !== undefined ? [...propData] : [...displayData];
+    if (sourceIndex < 0 || sourceIndex >= currentList.length || targetIndex < 0 || targetIndex >= currentList.length) {
+      return;
+    }
+
+    const [moved] = currentList.splice(sourceIndex, 1);
+    currentList.splice(targetIndex, 0, moved);
+
+    if (onRowReorder) {
+      onRowReorder(currentList, sourceIndex, targetIndex);
+    }
+    if (onDataChange) {
+      onDataChange(currentList);
+    }
+  };
+
+  const handleRowDragEnd = () => {
+    setDraggedRowIndex(null);
+    setDragOverRowIndex(null);
+  };
+
+  const handleMoveRow = useCallback((index: number, direction: 'up' | 'down', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const currentList = propData !== undefined ? [...propData] : [...displayData];
+    if (targetIndex < 0 || targetIndex >= currentList.length) return;
+
+    const [moved] = currentList.splice(index, 1);
+    currentList.splice(targetIndex, 0, moved);
+
+    if (onRowReorder) {
+      onRowReorder(currentList, index, targetIndex);
+    }
+    if (onDataChange) {
+      onDataChange(currentList);
+    }
+  }, [propData, displayData, onRowReorder, onDataChange]);
+
+  const mergedTableActions = useMemo(() => ({
+    ...tableActions,
+    moveRow: handleMoveRow,
+    reorderRow: handleMoveRow
+  }), [tableActions, handleMoveRow]);
+
+  const totalColSpan = activeColumns.length + (enableRowReorder ? 1 : 0);
+  const reorderColWidth = (showRowOrderButtons && showRowIndex) ? '96px' : showRowOrderButtons ? '76px' : showRowIndex ? '60px' : '44px';
+
   return (
     <div ref={containerRef} className="data-table-container flex flex-col flex-1 min-h-0" style={{ padding: 0, overflow: 'hidden', width: '100%', position: 'relative' }}>
       {isMobile && mobileCardRender ? (
@@ -640,24 +727,78 @@ const DataTable = <T extends Record<string, any>>({
             </div>
           ) : (
             <>
-              {displayData.map((item: T, index: number) => (
-                <div
-                  key={keyExtractor(item) || index}
-                  onClick={(e) => {
-                    if (onRowClick) onRowClick(item, e);
-                  }}
-                  onDoubleClick={(e) => onRowDoubleClick && onRowDoubleClick(item, e)}
-                  className={`table-row-hover ${rowClassName(item, index)}`}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--glass-border)',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {mobileCardRender(item, index, tableActions)}
-                </div>
-              ))}
+              {displayData.map((item: T, index: number) => {
+                const isFirst = index === 0;
+                const isLast = index === displayData.length - 1;
+                return (
+                  <div
+                    key={keyExtractor(item) || index}
+                    onClick={(e) => {
+                      if (onRowClick) onRowClick(item, e);
+                    }}
+                    onDoubleClick={(e) => onRowDoubleClick && onRowDoubleClick(item, e)}
+                    className={`table-row-hover ${rowClassName(item, index)}`}
+                    draggable={enableRowReorder}
+                    onDragStart={enableRowReorder ? (e) => handleRowDragStart(e, index) : undefined}
+                    onDragOver={enableRowReorder ? (e) => handleRowDragOver(e, index) : undefined}
+                    onDrop={enableRowReorder ? (e) => handleRowDrop(e, index) : undefined}
+                    onDragEnd={enableRowReorder ? handleRowDragEnd : undefined}
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      borderRadius: '12px',
+                      border: '1px solid var(--glass-border)',
+                      overflow: 'hidden',
+                      opacity: draggedRowIndex === index ? 0.35 : 1,
+                      boxShadow: dragOverRowIndex === index ? '0 0 0 2px var(--accent-primary)' : undefined,
+                      position: 'relative'
+                    }}
+                  >
+                    {enableRowReorder && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          background: 'rgba(0,0,0,0.03)',
+                          borderBottom: '1px solid var(--glass-border)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <GripVertical size={14} style={{ color: 'var(--text-tertiary)', cursor: 'grab' }} />
+                          {showRowIndex && (
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-primary)' }}>
+                              #{index + 1}
+                            </span>
+                          )}
+                        </div>
+                        {showRowOrderButtons && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button
+                              type="button"
+                              disabled={isFirst}
+                              onClick={(e) => handleMoveRow(index, 'up', e)}
+                              style={{ border: 'none', background: 'transparent', padding: '2px', opacity: isFirst ? 0.3 : 0.8, cursor: isFirst ? 'not-allowed' : 'pointer' }}
+                            >
+                              <ArrowUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isLast}
+                              onClick={(e) => handleMoveRow(index, 'down', e)}
+                              style={{ border: 'none', background: 'transparent', padding: '2px', opacity: isLast ? 0.3 : 0.8, cursor: isLast ? 'not-allowed' : 'pointer' }}
+                            >
+                              <ArrowDown size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {mobileCardRender(item, index, mergedTableActions)}
+                  </div>
+                );
+              })}
               {renderSentinel()}
             </>
           )}
@@ -679,6 +820,21 @@ const DataTable = <T extends Record<string, any>>({
           >
             <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-primary)', backdropFilter: 'blur(8px)' }}>
               <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                {enableRowReorder && (
+                  <th
+                    style={{
+                      width: reorderColWidth,
+                      minWidth: reorderColWidth,
+                      padding: '8px 4px',
+                      textAlign: 'center',
+                      borderBottom: '1px solid var(--glass-border)',
+                      background: 'var(--bg-primary)',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-tertiary)' }}>#</span>
+                  </th>
+                )}
                 {activeColumns.map(({ col, id }, idx) => {
                   const isActionCol = col.id === 'actions' || col.id === 'action' || col.accessor === 'actions' || col.id === 'islemler' || col.id === 'islem' || col.accessor === 'islemler' || col.accessor === 'islem';
                   const shouldStick = stickyActionColumn && isActionCol;
@@ -831,7 +987,7 @@ const DataTable = <T extends Record<string, any>>({
             <tbody>
               {loading && page === 1 ? (
                 <tr>
-                  <td colSpan={activeColumns.length} style={{ padding: '64px', textAlign: 'center' }}>
+                  <td colSpan={totalColSpan} style={{ padding: '64px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', color: 'var(--text-secondary)' }}>
                       <div className="premium-spinner">
                         <Loader2 size={40} color="var(--accent-primary)" />
@@ -842,7 +998,7 @@ const DataTable = <T extends Record<string, any>>({
                 </tr>
               ) : displayData.length === 0 ? (
                 <tr>
-                  <td colSpan={activeColumns.length} style={{ padding: '64px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan={totalColSpan} style={{ padding: '64px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '50%', marginBottom: '8px' }}>
                         <Search size={32} color="var(--text-muted)" opacity={0.5} />
@@ -852,19 +1008,115 @@ const DataTable = <T extends Record<string, any>>({
                   </td>
                 </tr>
               ) : (
-                displayData.map((item: T, index: number) => (
-                  <tr
-                    key={keyExtractor(item) || index}
-                    style={{ borderBottom: '1px solid var(--glass-border)' }}
-                    className={`table-row-hover ${rowClassName(item, index)}`}
-                    onClick={(e) => onRowClick && onRowClick(item, e)}
-                    onDoubleClick={(e) => onRowDoubleClick && onRowDoubleClick(item, e)}
-                  >
-                    {activeColumns.map(({ col }, idx) => {
-                      const isActionCol = col.id === 'actions' || col.id === 'action' || col.accessor === 'actions' || col.id === 'islemler' || col.id === 'islem' || col.accessor === 'islemler' || col.accessor === 'islem';
-                      const shouldStick = stickyActionColumn && isActionCol;
-                      const cellValue = col.render ? col.render(item, index, tableActions) : item[col.accessor || ''];
-                      const tooltipText = typeof cellValue === 'string' ? cellValue : undefined;
+                displayData.map((item: T, index: number) => {
+                  const isFirst = index === 0;
+                  const isLast = index === displayData.length - 1;
+                  const isBeingDragged = draggedRowIndex === index;
+                  const isDragOver = dragOverRowIndex === index;
+
+                  return (
+                    <tr
+                      key={keyExtractor(item) || index}
+                      style={{
+                        borderBottom: '1px solid var(--glass-border)',
+                        opacity: isBeingDragged ? 0.35 : 1,
+                        background: isDragOver ? 'rgba(99, 102, 241, 0.08)' : undefined,
+                        boxShadow: isDragOver
+                          ? (draggedRowIndex !== null && draggedRowIndex < index ? 'inset 0 -2px 0 var(--accent-primary)' : 'inset 0 2px 0 var(--accent-primary)')
+                          : undefined,
+                        transition: 'background 0.15s, opacity 0.15s, boxShadow 0.15s'
+                      }}
+                      className={`table-row-hover ${rowClassName(item, index)}`}
+                      onClick={(e) => onRowClick && onRowClick(item, e)}
+                      onDoubleClick={(e) => onRowDoubleClick && onRowDoubleClick(item, e)}
+                      draggable={enableRowReorder}
+                      onDragStart={enableRowReorder ? (e) => handleRowDragStart(e, index) : undefined}
+                      onDragOver={enableRowReorder ? (e) => handleRowDragOver(e, index) : undefined}
+                      onDrop={enableRowReorder ? (e) => handleRowDrop(e, index) : undefined}
+                      onDragEnd={enableRowReorder ? handleRowDragEnd : undefined}
+                    >
+                      {enableRowReorder && (
+                        <td
+                          style={{
+                            width: reorderColWidth,
+                            minWidth: reorderColWidth,
+                            padding: '6px 4px',
+                            textAlign: 'center',
+                            verticalAlign: 'middle'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <div
+                              draggable={true}
+                              onDragStart={(e) => handleRowDragStart(e, index)}
+                              style={{
+                                cursor: 'grab',
+                                color: 'var(--text-tertiary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '2px',
+                                borderRadius: '4px'
+                              }}
+                              title={t('satir_sirala_surukle_ipucu', 'Sürükleyip bırakarak satır sırasını değiştirin')}
+                            >
+                              <GripVertical size={16} />
+                            </div>
+                            {showRowIndex && (
+                              <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-primary)', minWidth: '20px' }}>
+                                #{index + 1}
+                              </span>
+                            )}
+                            {showRowOrderButtons && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <button
+                                  type="button"
+                                  disabled={isFirst}
+                                  onClick={(e) => handleMoveRow(index, 'up', e)}
+                                  title={t('yukari_tasi', 'Yukarı Taşı')}
+                                  style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    padding: '2px',
+                                    cursor: isFirst ? 'not-allowed' : 'pointer',
+                                    opacity: isFirst ? 0.25 : 0.8,
+                                    color: 'var(--text-secondary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    borderRadius: '3px'
+                                  }}
+                                >
+                                  <ArrowUp size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isLast}
+                                  onClick={(e) => handleMoveRow(index, 'down', e)}
+                                  title={t('asagi_tasi', 'Aşağı Taşı')}
+                                  style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    padding: '2px',
+                                    cursor: isLast ? 'not-allowed' : 'pointer',
+                                    opacity: isLast ? 0.25 : 0.8,
+                                    color: 'var(--text-secondary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    borderRadius: '3px'
+                                  }}
+                                >
+                                  <ArrowDown size={13} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      {activeColumns.map(({ col }, idx) => {
+                        const isActionCol = col.id === 'actions' || col.id === 'action' || col.accessor === 'actions' || col.id === 'islemler' || col.id === 'islem' || col.accessor === 'islemler' || col.accessor === 'islem';
+                        const shouldStick = stickyActionColumn && isActionCol;
+                        const cellValue = col.render ? col.render(item, index, mergedTableActions) : item[col.accessor || ''];
+                        const tooltipText = typeof cellValue === 'string' ? cellValue : undefined;
 
                       return (
                         <td
@@ -898,8 +1150,9 @@ const DataTable = <T extends Record<string, any>>({
                       );
                     })}
                   </tr>
-                ))
-              )}
+                );
+              })
+            )}
             </tbody>
           </table>
           {renderSentinel()}
