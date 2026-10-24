@@ -213,6 +213,7 @@ export { default as DepoBelgeSecici, type DepoBelgeSeciciProps } from './compone
 export { default as AdresSeciciForm, type AdresSeciciFormProps, type AdresSeciciFormResult, AdresSeciciModal, type AdresSeciciModalProps, type AdresSeciciModalResult } from './pages/pageForSelect/AdresSeciciForm';
 export { default as CariAdresSecici, CariAdresSeciciModal, type CariAdresSeciciProps, type CariAdresSeciciModalProps, type CariAdresItem } from './pages/pageForSelect/CariAdresSecici';
 export { default as ParaBirimiSeciciModal, type ParaBirimiSeciciModalProps } from './pages/pageForSelect/ParaBirimiSeciciModal';
+export { default as AiModelSelection, type AiModelSelectionProps, type AiModelConfig } from './pages/pageForSelect/AiModelSelection';
 export { default as AdresInput, type AdresInputProps, type AdresValue } from './components/input/AdresInput';
 export { default as VergiKimlikInput, default as VergiNoInput, type VergiKimlikInputProps, type VergiKimlikTuru, validateVKN, validateTCKN, validateVergiKimlik } from './components/input/VergiKimlikInput';
 export { default as BelgeListInput, type BelgeListInputProps, type BelgeItem } from './components/customs/input/BelgeListInput';
