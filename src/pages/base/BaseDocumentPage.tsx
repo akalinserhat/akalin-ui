@@ -531,26 +531,34 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
     }, [pageTitle]);
 
 
-    // Belge başlığındaki Breadcrumb adımını senkronize et (Yeni Belge veya Belge Numarası)
+    // Belge başlığındaki Breadcrumb adımını senkronize et (Sayfa Başlığı veya Belge Numarası)
+    const effectiveRecordTitle = useMemo(() => {
+        if (typeof pageTitle === 'string' && pageTitle.trim()) {
+            return pageTitle.trim();
+        }
+        if (documentNo && String(documentNo).trim()) {
+            return String(documentNo).trim();
+        }
+        const isNew = location.pathname.endsWith('/yeni') || location.pathname.includes('/yeni/');
+        if (isNew) {
+            return t('auto_yeni_belge', 'Yeni Belge');
+        }
+        return undefined;
+    }, [pageTitle, documentNo, location.pathname, t]);
+
     useEffect(() => {
         if (!setHeaderBreadcrumbOptions) return;
 
-        const isNew = location.pathname.endsWith('/yeni') || location.pathname.includes('/yeni/');
-
-        if (isNew) {
-            setHeaderBreadcrumbOptions({ recordTitle: t('auto_yeni_belge', 'Yeni Belge') });
-        } else if (documentNo && String(documentNo).trim()) {
-            setHeaderBreadcrumbOptions({ recordTitle: String(documentNo).trim() });
-        } else if (documentId) {
-            setHeaderBreadcrumbOptions({ recordTitle: `#${documentId}` });
+        if (effectiveRecordTitle) {
+            setHeaderBreadcrumbOptions({ recordTitle: effectiveRecordTitle });
         }
 
         return () => {
-            if (setHeaderBreadcrumbOptions) {
+            if (setHeaderBreadcrumbOptions && effectiveRecordTitle) {
                 setHeaderBreadcrumbOptions(null);
             }
         };
-    }, [documentNo, documentId, location.pathname, setHeaderBreadcrumbOptions, t]);
+    }, [effectiveRecordTitle, setHeaderBreadcrumbOptions]);
 
     const appliedAiStateRef = useRef<any>(null);
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);

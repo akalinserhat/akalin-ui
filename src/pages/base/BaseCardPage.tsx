@@ -92,19 +92,34 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
 
   const { setHeaderBreadcrumbOptions } = useHeaderApi() || {};
 
-  // Breadcrumb'da benzersiz kayıt adını (recordTitle) otomatik senkronize et
+  // Breadcrumb'da başlığı (recordTitle / title / pageTitle) otomatik senkronize et
+  const effectiveRecordTitle = useMemo(() => {
+    if (recordTitle && typeof recordTitle === 'string' && recordTitle.trim()) {
+      return recordTitle.trim();
+    }
+    const titleVal = restBasePageProps.title;
+    if (typeof titleVal === 'string' && titleVal.trim()) {
+      return titleVal.trim();
+    }
+    const pageTitleVal = restBasePageProps.pageTitle;
+    if (typeof pageTitleVal === 'string' && pageTitleVal.trim()) {
+      return pageTitleVal.trim();
+    }
+    return undefined;
+  }, [recordTitle, restBasePageProps.title, restBasePageProps.pageTitle]);
+
   useEffect(() => {
-    if (setHeaderBreadcrumbOptions && recordTitle) {
+    if (setHeaderBreadcrumbOptions && effectiveRecordTitle) {
       setHeaderBreadcrumbOptions({
-        recordTitle
+        recordTitle: effectiveRecordTitle
       });
     }
     return () => {
-      if (setHeaderBreadcrumbOptions && recordTitle) {
+      if (setHeaderBreadcrumbOptions && effectiveRecordTitle) {
         setHeaderBreadcrumbOptions(null);
       }
     };
-  }, [recordTitle, setHeaderBreadcrumbOptions]);
+  }, [effectiveRecordTitle, setHeaderBreadcrumbOptions]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
