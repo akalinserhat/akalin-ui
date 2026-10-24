@@ -293,12 +293,50 @@ const CodeBlockView: React.FC<CodeBlockProps> = ({ language, code }) => {
 const renderInlineMarkdown = (text: string): ReactNode => {
     if (!text) return null;
 
-    // Inline kod, kalın, italik ve kalın-italik regexi
-    const regex = /(\*\*\*[^*]+\*\*\*|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    // Görsel, bağlantı, inline kod, kalın, italik ve kalın-italik regexi
+    const regex = /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*\*[^*]+\*\*\*|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
     const parts = text.split(regex);
 
     return parts.map((part, idx) => {
         if (!part) return null;
+
+        // Görsel: ![alt](url)
+        const imgMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+        if (imgMatch) {
+            const alt = imgMatch[1];
+            const url = imgMatch[2];
+            return (
+                <a
+                    key={idx}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ai-chat-inline-image-wrapper"
+                    title={alt || undefined}
+                >
+                    <img src={url} alt={alt} className="ai-chat-inline-image" loading="lazy" />
+                </a>
+            );
+        }
+
+        // Bağlantı: [text](url)
+        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (linkMatch) {
+            const linkText = linkMatch[1];
+            const url = linkMatch[2];
+            return (
+                <a
+                    key={idx}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ai-chat-link"
+                >
+                    {linkText}
+                </a>
+            );
+        }
+
         if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
             return (
                 <code key={idx} className="ai-chat-inline-code">
@@ -389,7 +427,24 @@ const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode
             }
         }
 
-        // 2. Başlıklar (###, ##, #)
+        // 2. Görsel Blokları (![alt](url))
+        const imgBlockMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
+        if (imgBlockMatch) {
+            const alt = imgBlockMatch[1];
+            const url = imgBlockMatch[2];
+            elements.push(
+                <div key={`img-card-${baseKey}-${i}`} className="ai-chat-image-card">
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                        <img src={url} alt={alt} className="ai-chat-image" loading="lazy" />
+                    </a>
+                    {alt ? <span className="ai-chat-image-caption">{alt}</span> : null}
+                </div>
+            );
+            i++;
+            continue;
+        }
+
+        // 3. Başlıklar (###, ##, #)
         if (trimmed.startsWith('### ')) {
             elements.push(
                 <h5 key={`h3-${baseKey}-${i}`} className="ai-chat-heading-3">
@@ -418,7 +473,7 @@ const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode
             continue;
         }
 
-        // 3. Sırasız Madde Listesi (- veya *)
+        // 4. Sırasız Madde Listesi (- veya *)
         if (/^[-*]\s+/.test(trimmed)) {
             const listItems: string[] = [];
             while (i < rawLines.length && /^[-*]\s+/.test(rawLines[i].trim())) {
@@ -435,7 +490,7 @@ const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode
             continue;
         }
 
-        // 4. Numaralı Liste (1., 2. ...)
+        // 5. Numaralı Liste (1., 2. ...)
         if (/^\d+\.\s+/.test(trimmed)) {
             const listItems: string[] = [];
             while (i < rawLines.length && /^\d+\.\s+/.test(rawLines[i].trim())) {
@@ -452,7 +507,7 @@ const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode
             continue;
         }
 
-        // 5. Alıntı Bloğu (> )
+        // 6. Alıntı Bloğu (> )
         if (trimmed.startsWith('> ')) {
             const quoteLines: string[] = [];
             while (i < rawLines.length && rawLines[i].trim().startsWith('> ')) {
@@ -467,14 +522,14 @@ const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode
             continue;
         }
 
-        // 6. Boş Satır
+        // 7. Boş Satır
         if (!trimmed) {
             elements.push(<div key={`spacer-${baseKey}-${i}`} className="ai-chat-spacer" />);
             i++;
             continue;
         }
 
-        // 7. Normal Paragraf Satırları
+        // 8. Normal Paragraf Satırları
         const paragraphLines: string[] = [line];
         i++;
         while (
@@ -484,7 +539,8 @@ const renderMarkdownBlocks = (text: string, baseKey: string | number): ReactNode
             !rawLines[i].trim().startsWith('|') &&
             !/^[-*]\s+/.test(rawLines[i].trim()) &&
             !/^\d+\.\s+/.test(rawLines[i].trim()) &&
-            !rawLines[i].trim().startsWith('> ')
+            !rawLines[i].trim().startsWith('> ') &&
+            !rawLines[i].trim().startsWith('![')
         ) {
             paragraphLines.push(rawLines[i]);
             i++;
@@ -739,6 +795,22 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const timerIntervalRef = useRef<any>(null);
+    const isUserScrolledUpRef = useRef<boolean>(false);
+    const prevMessagesLengthRef = useRef<number>(currentMessages.length);
+
+    // ─── Textarea Otomatik Boyutlandırma (Auto-Resize) ────────────────────────
+    const adjustTextareaHeight = useCallback(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            const scrollHeight = textareaRef.current.scrollHeight;
+            const newHeight = Math.min(Math.max(scrollHeight, 36), 96);
+            textareaRef.current.style.height = `${newHeight}px`;
+        }
+    }, []);
+
+    useEffect(() => {
+        adjustTextareaHeight();
+    }, [inputText, adjustTextareaHeight]);
 
     // ─── Zaman Sayacı (AiResponseTimer) ──────────────────────────────────────
     useEffect(() => {
@@ -766,14 +838,38 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     }, []);
 
     useEffect(() => {
-        scrollToBottom(true);
-    }, [currentMessages.length, isGenerating, scrollToBottom]);
+        const isNewUserMessage = currentMessages.length > prevMessagesLengthRef.current && 
+            currentMessages[currentMessages.length - 1]?.role === 'user';
+
+        if (isNewUserMessage) {
+            isUserScrolledUpRef.current = false;
+            setShowScrollBottom(false);
+            scrollToBottom(true);
+        } else if (!isUserScrolledUpRef.current) {
+            scrollToBottom(true);
+        }
+
+        prevMessagesLengthRef.current = currentMessages.length;
+    }, [currentMessages, isGenerating, scrollToBottom]);
+
+    useEffect(() => {
+        isUserScrolledUpRef.current = false;
+        setShowScrollBottom(false);
+        prevMessagesLengthRef.current = currentMessages.length;
+        scrollToBottom(false);
+    }, [activeSessionId, scrollToBottom]);
 
     const handleScroll = () => {
         if (messagesContainerRef.current) {
             const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
             const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-            setShowScrollBottom(distanceToBottom > 150);
+            if (distanceToBottom > 50) {
+                isUserScrolledUpRef.current = true;
+                setShowScrollBottom(true);
+            } else {
+                isUserScrolledUpRef.current = false;
+                setShowScrollBottom(false);
+            }
         }
     };
 
@@ -921,6 +1017,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         const textToSend = customPrompt || inputText;
         if (!textToSend.trim() && pendingAttachments.length === 0) return;
         if (isGenerating) return;
+
+        isUserScrolledUpRef.current = false;
+        setShowScrollBottom(false);
 
         const userMsgId = generateId();
         const assistantMsgId = generateId();
@@ -1943,20 +2042,24 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Aşağı Kaydır Butonu */}
-                    {showScrollBottom && (
-                        <button
-                            type="button"
-                            onClick={() => scrollToBottom(true)}
-                            className="base-chat-scroll-bottom-btn"
-                            title={t('auto_asagi_kaydir', 'Aşağı Kaydır')}
-                        >
-                            <ArrowDown size={18} />
-                        </button>
-                    )}
-
                     {/* ─── 3. ALT GİRİŞ PANELİ (INPUT AREA) ─────────────────── */}
                     <div className="base-chat-input-area">
+                        {/* Aşağı Kaydır Butonu */}
+                        {showScrollBottom && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    isUserScrolledUpRef.current = false;
+                                    setShowScrollBottom(false);
+                                    scrollToBottom(true);
+                                }}
+                                className="base-chat-scroll-bottom-btn"
+                                title={t('auto_asagi_kaydir', 'Aşağı Kaydır')}
+                            >
+                                <ArrowDown size={18} />
+                            </button>
+                        )}
+
                         {/* Bekleyen Ekler */}
                         {pendingAttachments.length > 0 && (
                             <div className="base-chat-pending-attachments">
@@ -1988,55 +2091,51 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
                         {/* Giriş Çerçevesi */}
                         <div className="base-chat-input-box">
+                            {enableAttachments && (
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="base-chat-input-tool-btn"
+                                    title={t('auto_dosya_ekle', 'Dosya Ekle (PDF, XLSX, TXT, Resim)')}
+                                >
+                                    <Paperclip size={18} />
+                                </button>
+                            )}
+
                             <textarea
                                 ref={textareaRef}
                                 className="base-chat-textarea"
-                                rows={2}
+                                rows={1}
                                 value={inputText}
-                                onChange={(e) => setInputText(e.target.value)}
+                                onChange={(e) => {
+                                    setInputText(e.target.value);
+                                    adjustTextareaHeight();
+                                }}
                                 onKeyDown={handleTextareaKeyDown}
                                 placeholder={placeholder || t('auto_chat_placeholder', 'Bir mesaj yazın veya ERP komutu verin... (Enter ile gönder, Shift+Enter ile yeni satır)')}
                                 autoFocus
                             />
 
-                            <div className="base-chat-input-footer">
-                                <div className="base-chat-input-footer-left">
-                                    {enableAttachments && (
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="base-chat-input-tool-btn"
-                                            title={t('auto_dosya_ekle', 'Dosya Ekle (PDF, XLSX, TXT, Resim)')}
-                                        >
-                                            <Paperclip size={15} />
-                                            <span className="hidden sm:inline">{t('auto_ekle', 'Dosya Ekle')}</span>
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="base-chat-input-footer-right">
-                                    {isGenerating ? (
-                                        <button
-                                            type="button"
-                                            onClick={handleStopGeneration}
-                                            className="base-chat-stop-btn"
-                                            title={t('auto_yaniti_durdur', 'Yanıtı Durdur')}
-                                        >
-                                            <Square size={14} fill="currentColor" />
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSendMessage()}
-                                            disabled={!inputText.trim() && pendingAttachments.length === 0}
-                                            className="base-chat-send-btn"
-                                            title={t('auto_gonder', 'Gönder (Enter)')}
-                                        >
-                                            <Send size={16} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                            {isGenerating ? (
+                                <button
+                                    type="button"
+                                    onClick={handleStopGeneration}
+                                    className="base-chat-stop-btn"
+                                    title={t('auto_yaniti_durdur', 'Yanıtı Durdur')}
+                                >
+                                    <Square size={14} fill="currentColor" />
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSendMessage()}
+                                    disabled={!inputText.trim() && pendingAttachments.length === 0}
+                                    className="base-chat-send-btn"
+                                    title={t('auto_gonder', 'Gönder (Enter)')}
+                                >
+                                    <Send size={16} />
+                                </button>
+                            )}
                         </div>
 
                         <div className="base-chat-footer-hint base-chat-input-footer-hint">
