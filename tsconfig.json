@@ -27,6 +27,12 @@
       ],
       "@akalin/ui/*": [
         "./src/*"
+      ],
+      "@akalin/ai-assistants": [
+        "../akalin-ai-assistants/src/index.ts"
+      ],
+      "@akalin/ai-assistants/*": [
+        "../akalin-ai-assistants/src/*"
       ]
     }
   },
