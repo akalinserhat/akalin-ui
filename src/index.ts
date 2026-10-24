@@ -168,7 +168,7 @@ export { default as AlertDialogContext, AlertDialogProvider, useAlertDialog, typ
 export { HeaderProvider, useHeader, useHeaderApi, useDocumentDirty, type HeaderContextType } from './context/HeaderContext';
 export { createSingletonContext } from './utils/createSingletonContext';
 export { formatCurrency } from './utils/formatters';
-export { extractTextFromNode, updateDocumentTitle, autoFocusFirstInput } from './utils/domUtils';
+export { extractTextFromNode, updateDocumentTitle, autoFocusFirstInput, focusNextElement, isInteractiveInputElement } from './utils/domUtils';
 export { isNativePlatform, isMobileBrowser, isMobileDevice } from './utils/device';
 
 // 8. Module Core & Settings Architecture (Re-exported from @akalin/module_core)

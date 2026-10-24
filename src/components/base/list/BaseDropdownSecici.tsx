@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, X } from 'lucide-react';
 import { DocumentHeaderFieldContext } from '../../../pages/base/BaseDocumentPage';
+import { focusNextElement } from '../../../utils/domUtils';
 
 export interface DropdownOption {
     id: string | number;
@@ -31,6 +32,7 @@ export interface BaseDropdownSeciciProps {
     displayText?: string;
     openOnClick?: boolean;
     emptyMessage?: string;
+    autoFocusNext?: boolean;
 }
 
 /**
@@ -220,7 +222,8 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
     extraAction,
     displayText,
     openOnClick = true,
-    emptyMessage = "Sonuç bulunamadı"
+    emptyMessage = "Sonuç bulunamadı",
+    autoFocusNext = true
 }) => {
     const headerFieldContext = useContext(DocumentHeaderFieldContext);
     const effectiveError = Boolean(error || headerFieldContext?.hasError);
@@ -323,6 +326,10 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                 onChange(optionId, selectedOpt?.rawValue);
             }
             setIsDropdownOpen(false);
+
+            if (autoFocusNext) {
+                focusNextElement(containerRef.current);
+            }
         }
     };
 
