@@ -13,7 +13,11 @@
   },
   "dependencies": {
     "axios": "^1.20.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@akalin/global_search_module": "github:akalinserhat/akalin-global-search-module#main",
+    "@akalin/module_core": "github:akalinserhat/akalin-module-core#main",
+    "@akalin/notification_module": "github:akalinserhat/akalin-notification-module#main",
+    "@microsoft/signalr": "^10.0.11"
   },
   "peerDependencies": {
     "i18next": "^23.0.0 || ^24.0.0 || ^25.0.0 || ^26.0.0",

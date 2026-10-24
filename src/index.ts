@@ -170,3 +170,119 @@ export { createSingletonContext } from './utils/createSingletonContext';
 export { formatCurrency } from './utils/formatters';
 export { extractTextFromNode, updateDocumentTitle, autoFocusFirstInput } from './utils/domUtils';
 export { isNativePlatform, isMobileBrowser, isMobileDevice } from './utils/device';
+
+// 8. Module Core & Settings Architecture (Re-exported from @akalin/module_core)
+export * from '@akalin/module_core';
+export { type IModuleSettingsProps, type IModuleSettingsDefinition } from './modules/IModuleSettings';
+export { ModuleSettingsRegistry } from './modules/ModuleSettingsRegistry';
+
+// 9. Global Search Module & Architecture (Re-exported from @akalin/global_search_module)
+export * from '@akalin/global_search_module';
+export { default as GlobalSearch, type GlobalSearchProps, type SearchType } from './components/customs/search/GlobalSearch';
+
+// 10. ERP & Domain Selectors & Inputs
+export { default as CariSeciciInput } from './components/customs/select/CariSeciciInput';
+export { default as UrunGrupSeciciModal } from './pages/pageForSelect/UrunGrupSeciciModal';
+export { default as UrunGrupSecici } from './components/customs/select/UrunGrupSecici';
+export { default as HizmetGrupSecici, type HizmetGrupSeciciProps } from './components/customs/select/HizmetGrupSecici';
+export { default as GelirGiderKartiSeciciInput, type GelirGiderKartiSeciciInputProps } from './components/input/GelirGiderKartiSeciciInput';
+export { default as IrsaliyeSeciciInput, type IrsaliyeSeciciInputProps } from './components/input/IrsaliyeSeciciInput';
+export { default as SiparisSeciciInput, type SiparisSeciciInputProps } from './components/input/SiparisSeciciInput';
+export { default as UrunSeciciInput, type UrunSeciciInputProps } from './components/input/UrunSeciciInput';
+export { default as SeriNumaraTutucu, SeriNumaraInput, type SeriNumaraTutucuProps } from './components/input/SeriNumaraTutucu';
+export { default as BankaSecici, type BankaSeciciProps } from './components/customs/select/BankaSecici';
+export { default as BankaSubeSecici, type BankaSubeSeciciProps } from './components/customs/select/BankaSubeSecici';
+export { default as BankaHesapSecici, type BankaHesapSeciciProps } from './components/customs/select/BankaHesapSecici';
+export { default as KasaSecici, type KasaSeciciProps } from './components/customs/select/KasaSecici';
+export { default as KdvSecici, type KdvSeciciProps } from './components/customs/select/KdvSecici';
+export { default as MarkaSecici, type MarkaSeciciProps } from './components/customs/select/MarkaSecici';
+export { default as FiyatFarkiSecici, type FiyatFarkiSeciciProps } from './components/customs/select/FiyatFarkiSecici';
+export { default as TedarikDurumuSecici, type TedarikDurumuSeciciProps } from './components/customs/select/TedarikDurumuSecici';
+export { default as StokTakipYontemiSecici, type StokTakipYontemiSeciciProps } from './components/customs/select/StokTakipYontemiSecici';
+export { default as PosGeriDonusTuruSecici, type PosGeriDonusTuruSeciciProps } from './components/customs/select/PosGeriDonusTuruSecici';
+export { default as PosTipiSecici, type PosTipiSeciciProps } from './components/customs/select/PosTipiSecici';
+export { default as ParaBirimiSelector, type ParaBirimiSelectorProps } from './components/customs/select/ParaBirimiSelector';
+export { default as ParaBirimiSecici, type ParaBirimiSeciciProps } from './components/customs/select/ParaBirimiSecici';
+export { default as BirimSecici, type BirimSeciciProps } from './components/customs/select/BirimSecici';
+export { default as CariTuruSeciciInput, type CariTuruSeciciInputProps, type CariTuruValuePayload, type CariTuruYapilandirma, type CariTuruBranchConfig, buildCariTuruTreeData } from './components/customs/select/CariTuruSeciciInput';
+export { default as UrunVeHizmetTuruSeciciInput, type UrunVeHizmetTuruSeciciInputProps, type UrunVeHizmetTuruOption, URUN_VE_HIZMET_TURLERI } from './components/customs/select/UrunVeHizmetTuruSeciciInput';
+export { default as FiyatTanimSecici, type FiyatTanimSeciciProps } from './components/customs/select/FiyatTanimSecici';
+export { default as SubeSecici, type SubeSeciciProps } from './components/customs/select/SubeSecici';
+export { default as DepoSecici, type DepoSeciciProps, type DepoItem } from './components/customs/select/DepoSecici';
+export { default as DepoBelgeSecici, type DepoBelgeSeciciProps } from './components/customs/select/DepoBelgeSecici';
+export { default as AdresSeciciForm, type AdresSeciciFormProps, type AdresSeciciFormResult, AdresSeciciModal, type AdresSeciciModalProps, type AdresSeciciModalResult } from './pages/pageForSelect/AdresSeciciForm';
+export { default as CariAdresSecici, CariAdresSeciciModal, type CariAdresSeciciProps, type CariAdresSeciciModalProps, type CariAdresItem } from './pages/pageForSelect/CariAdresSecici';
+export { default as ParaBirimiSeciciModal, type ParaBirimiSeciciModalProps } from './pages/pageForSelect/ParaBirimiSeciciModal';
+export { default as AdresInput, type AdresInputProps, type AdresValue } from './components/input/AdresInput';
+export { default as VergiKimlikInput, default as VergiNoInput, type VergiKimlikInputProps, type VergiKimlikTuru, validateVKN, validateTCKN, validateVergiKimlik } from './components/input/VergiKimlikInput';
+export { default as BelgeListInput, type BelgeListInputProps, type BelgeItem } from './components/customs/input/BelgeListInput';
+export { default as AdresLayer, type AdresLayerProps, type AdresLayerValue, type AdresLayerErrors, type AdresItemOption, type AdresLayerRef } from './components/layer/AdresLayer';
+
+// 11. ERP & Domain Cards
+export { default as AdresCard, type AdresCardProps, type AdresItem } from './components/card/AdresCard';
+export { default as DepoVeSubeCard, type DepoVeSubeCardProps, type DepoVeSubeItem } from './components/card/DepoVeSubeCard';
+export { default as FirmaCard, type FirmaCardProps, type FirmaCardItem } from './components/card/FirmaCard';
+export { default as ModulCardBasit, type ModulCardBasitProps, type ModulItem } from './components/card/ModulCardBasit';
+export { default as ModulCard, type ModulCardProps, type ModulData, type ModulScope, type ModulStatus, type ModulType } from './components/card/ModulCard';
+export { default as DepoFormCard, type DepoFormCardProps, type DepoFormCardItem } from './components/card/DepoFormCard';
+export { default as RolCard, default as RolSecimKarti, type RolCardProps, type RolCardProps as RolSecimKartiProps, type RolCardItem } from './components/card/RolCard';
+export { default as KDVCard, type KDVCardProps } from './components/customs/card/KDVCard';
+export { default as ParaBirimCard, type ParaBirimCardProps } from './components/card/ParaBirimCard';
+export { default as KasaCard, type KasaCardProps } from './components/card/KasaCard';
+
+// 12. ERP & Domain Buttons
+export { default as AdresSeciciButton, type AdresSeciciButtonProps } from './components/button/AdresSeciciButton';
+export { default as CariAdresSeciciButton, type CariAdresSeciciButtonProps } from './components/button/CariAdresSeciciButton';
+export { default as TopluSeriNoOkutButton, type TopluSeriNoOkutButtonProps } from './components/button/TopluSeriNoOkutButton';
+
+// 13. ERP & Domain Panels & Grids
+export { default as DocumentResultPanel, type DocumentResultPanelProps, type ResultItem } from './components/customs/panel/documentResultPanel/DocumentResultPanel';
+export { default as DocumentResultPanelsGroup, type DocumentResultPanelsGroupProps } from './components/customs/panel/documentResultPanel/DocumentResultPanelsGroup';
+export { default as DocumentResultPanelEditDialog, type DocumentResultPanelEditDialogProps } from './components/customs/panel/documentResultPanel/DocumentResultPanelEditDialog';
+export * from './components/customs/panel/KampanyaRuleViewPanel';
+export { default as BirimlerGrid, type BirimlerGridProps, type BirimItem, type BirimTipiOption } from './components/grid/BirimlerGrid';
+
+// 14. ERP & Domain Modals & Popups
+export { default as ModulTanitimModal, type ModulTanitimModalProps } from './components/modal/ModulTanitimModal';
+export { default as useModulGate, type UseModulGateOptions } from './hooks/UI/useModulGate';
+export { default as SeriNoGirisModal, type SeriNoGirisModalProps } from './components/modal/SeriNoGirisModal';
+export { default as UrunSeriNoListModal, type UrunSeriNoListModalProps } from './components/modal/UrunSeriNoListModal';
+export { default as UrunSeciciModal, type UrunSeciciModalProps, UrunSeciciList, type UrunSeciciListProps } from './pages/popupForSelect/UrunSeciciModal';
+export { default as SiparisSeciciModal, type SiparisSeciciModalProps, SiparisSeciciList, type SiparisSeciciListProps } from './pages/popupForSelect/SiparisSeciciModal';
+export { default as IrsaliyeSeciciModal, type IrsaliyeSeciciModalProps } from './pages/popupForSelect/IrsaliyeSeciciModal';
+export { default as GelirGiderKartiSeciciModal, type GelirGiderKartiSeciciModalProps } from './pages/popupForSelect/GelirGiderKartiSeciciModal';
+export { default as BelgeBaslikSeciciModal, type BelgeBaslikSeciciModalProps, type BelgeBaslik } from './pages/popupForSelect/BelgeBaslikSeciciModal';
+export { default as OzellikTanimSeciciModal, type OzellikTanimSeciciModalProps } from './pages/popupForSelect/OzellikTanimSeciciModal';
+export { default as CekSenetPortfoySeciciModal, type CekSenetPortfoySeciciModalProps } from './pages/popupForSelect/CekSenetPortfoySeciciModal';
+export { default as DepoBelgeSeciciModal, type DepoBelgeSeciciModalProps, type DepoBelgeItem } from './pages/popupForSelect/DepoBelgeSeciciModal';
+
+// 15. AI Chat & Interaction
+export { AiChatProvider, useAiChat, resolveRouteToAgentCode, matchAgentForRoute, type AiSession, type AiMessage, type AiPanelMode, type AiPageContext } from './context/AiChatContext';
+export { default as AiChatPanel, type AiChatPanelProps, type CloudFileItem } from './pages/ai/AiChatPanel';
+export { default as AiActionCard, type AiActionCardProps } from './pages/ai/AiActionCard';
+
+// 16. ERP Utilities
+export { formatAdres, type FormatAdresParams } from './utils/adresFormatter';
+export { renderStokDurumu, type RenderStokDurumuOptions, formatCompactNumber } from './utils/stokUtils';
+export { resolveLegacyAddress, type LegacyAddressInput, type ResolvedAddressResult } from './utils/adresResolver';
+
+// 17. Notification Module & Architecture (Re-exported from @akalin/notification_module)
+export * from '@akalin/notification_module';
+
+// 18. Webakus Hooks & Architecture
+export { usePageTitle, formatBrowserTabTitle } from './hooks/usePageTitle';
+export { useTableNavigation, type TableNavigationProps } from './hooks/useTableNavigation';
+export { useTableAction } from './hooks/useTableAction';
+export { useFormAutoFocus } from './hooks/useFormAutoFocus';
+export { useDocumentLayout } from './hooks/useDocumentLayout';
+export { useCardValidation } from './hooks/UI/useCardValidation';
+export { useCardRules } from './hooks/UI/useCardRules';
+export { useDocumentRules } from './hooks/UI/useDocumentRules';
+export { useDocumentItems, type UseDocumentItemsOptions } from './hooks/UI/useDocumentItems';
+export { useDocumentDraft } from './hooks/UI/useDocumentDraft';
+export { useAdminValidation } from './hooks/admin/useAdminValidation';
+export { useAdminAutoFocus } from './hooks/admin/useAdminAutoFocus';
+
+// 19. Document Draft Management
+export { DocumentDraftManager, getDraftKey, getAllPossibleKeys, isDraftMeaningful, getDocumentDraft, saveDocumentDraft, clearDocumentDraft, type DocumentDraftPayload } from './utils/DocumentDraftManager';
+
