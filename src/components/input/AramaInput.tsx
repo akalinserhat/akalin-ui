@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import BaseSeciciInput from '../base/input/BaseSeciciInput';
 
 export interface AramaInputProps {
+    id?: string;
     value?: string;
     onChange?: (e: any) => void;
     onKeyDown?: (e: React.KeyboardEvent) => void;
@@ -15,20 +16,21 @@ export interface AramaInputProps {
 }
 
 const AramaInput: React.FC<AramaInputProps> = ({ 
+    id,
     value, 
     onChange, 
     onKeyDown, 
     onFocus, 
     onBlur, 
     placeholder = 'Ara...', 
-    autoFocus = false,
+    autoFocus = false, 
     inputClassName = "form-input",
     style
 }) => {
     return (
         <div style={style}>
             <BaseSeciciInput
-                id="arama-input"
+                id={id || "arama-input"}
                 onMenuClick={() => {}}
                 value={value}
                 onChange={onChange}
@@ -43,7 +45,7 @@ const AramaInput: React.FC<AramaInputProps> = ({
                 clearable={true}
                 inputClassName={inputClassName}
                 // Menü/Dropdown özelliği kapalı
-                menuIcon={<></>}
+                menuIcon={null}
             />
         </div>
     );

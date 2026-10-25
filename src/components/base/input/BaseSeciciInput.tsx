@@ -209,16 +209,18 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
                         <ExternalLink size={16} />
                     </a>
                 )}
-                <button 
-                    type="button"
-                    onClick={handleActionClick}
-                    disabled={disabled}
-                    tabIndex={-1}
-                    title={finalActionTitle}
-                    className="dropdown-action-btn"
-                >
-                    {(effectiveHasSelection && clearable) ? <X size={16} /> : (menuIcon || <MoreVertical size={16} />)}
-                </button>
+                {((effectiveHasSelection && clearable) || (menuIcon !== null && menuIcon !== false)) && (
+                    <button 
+                        type="button"
+                        onClick={handleActionClick}
+                        disabled={disabled}
+                        tabIndex={-1}
+                        title={finalActionTitle}
+                        className="dropdown-action-btn"
+                    >
+                        {(effectiveHasSelection && clearable) ? <X size={16} /> : (menuIcon !== undefined ? menuIcon : <MoreVertical size={16} />)}
+                    </button>
+                )}
             </div>
 
             <AlertDialog
