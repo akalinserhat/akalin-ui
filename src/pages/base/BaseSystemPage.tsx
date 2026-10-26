@@ -625,12 +625,10 @@ const BaseSystemPage: React.FC<BaseSystemPageProps> = ({
       actualContentNode = (rawContentNode as any).children || null;
     }
 
-    // effectiveTabs hesaplaması (Tek sekme olduğunda otomatik olarak Genel tabı oluşturur)
-    let contentAssignedToTab = false;
+    // effectiveTabs hesaplaması (Sekmeler içeriği olmayan sekmelere actualContentNode atar)
     const effectiveTabs: BaseTabItem[] = (resolvedTabs && resolvedTabs.length > 0)
       ? resolvedTabs.map(tab => {
-          if (!tab.content && actualContentNode && !contentAssignedToTab) {
-            contentAssignedToTab = true;
+          if (!tab.content && actualContentNode) {
             return { ...tab, content: actualContentNode };
           }
           return tab;
@@ -643,10 +641,7 @@ const BaseSystemPage: React.FC<BaseSystemPageProps> = ({
           }]
         : [];
 
-    // Eğer resolvedTabs varsa ve actualContentNode hiçbir sekmeye bağlanmadıysa, TabLayout yanında render edilir
-    const extraContentNode = (resolvedTabs && resolvedTabs.length > 0 && !contentAssignedToTab) 
-      ? actualContentNode 
-      : null;
+    const extraContentNode = null;
 
     const hasVisibleTabs = Boolean(
       (effectiveTabs.length > 1) || 
