@@ -720,7 +720,7 @@ const DataTable = <T extends Record<string, any>>({
     onDataChangeRef.current = onDataChange;
   }, [onDataChange]);
 
-  const prevSortedDataRef = useRef<T[]>();
+  const prevSortedDataRef = useRef<T[] | undefined>(undefined);
   useEffect(() => {
     if (onDataChangeRef.current && sortedData !== prevSortedDataRef.current) {
       prevSortedDataRef.current = sortedData;
