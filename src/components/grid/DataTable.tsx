@@ -629,9 +629,102 @@ const DataTable = <T extends Record<string, any>>({
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
   const [dragOverRowIndex, setDragOverRowIndex] = useState<number | null>(null);
 
+  // Satır sürükleme sırasında otomatik kaydırma (auto-scroll) ref'leri
+  const dragScrollRafRef = useRef<number | null>(null);
+  const dragPointerYRef = useRef<number | null>(null);
+  const isRowDraggingRef = useRef<boolean>(false);
+
+  // Kaydırılabilir hedef kapsayıcıyı dinamik olarak tespit eder (kendi içi, ata eleman veya window)
+  const getScrollTarget = useCallback((): HTMLElement | Window => {
+    if (scrollContainerRef.current) {
+      const el = scrollContainerRef.current;
+      if (el.scrollHeight > el.clientHeight + 4) {
+        const style = window.getComputedStyle(el);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') return el;
+      }
+    }
+    let parent = scrollContainerRef.current?.parentElement || containerRef.current?.parentElement;
+    while (parent && parent !== document.body && parent !== document.documentElement) {
+      if (parent.scrollHeight > parent.clientHeight + 4) {
+        const style = window.getComputedStyle(parent);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') return parent;
+      }
+      parent = parent.parentElement;
+    }
+    return window;
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (dragScrollRafRef.current !== null) {
+      cancelAnimationFrame(dragScrollRafRef.current);
+      dragScrollRafRef.current = null;
+    }
+    dragPointerYRef.current = null;
+    isRowDraggingRef.current = false;
+  }, []);
+
+  const startAutoScroll = useCallback(() => {
+    if (dragScrollRafRef.current !== null) return;
+    isRowDraggingRef.current = true;
+
+    const threshold = 80; // px kenar hassasiyeti
+    const maxSpeed = 22;  // kare başına maksimum piksel hız
+
+    const loop = () => {
+      if (!isRowDraggingRef.current) {
+        dragScrollRafRef.current = null;
+        return;
+      }
+
+      const clientY = dragPointerYRef.current;
+      if (clientY !== null) {
+        const target = getScrollTarget();
+        let top = 0;
+        let bottom = window.innerHeight;
+
+        if (target !== window) {
+          const rect = (target as HTMLElement).getBoundingClientRect();
+          top = rect.top;
+          bottom = rect.bottom;
+        }
+
+        let speed = 0;
+        if (clientY < top + threshold) {
+          // Üst sınıra yakın: yukarı kaydır
+          const intensity = Math.min(1, Math.max(0, (top + threshold - clientY) / threshold));
+          speed = -Math.round(intensity * maxSpeed);
+        } else if (clientY > bottom - threshold) {
+          // Alt sınıra yakın: aşağı kaydır
+          const intensity = Math.min(1, Math.max(0, (clientY - (bottom - threshold)) / threshold));
+          speed = Math.round(intensity * maxSpeed);
+        }
+
+        if (speed !== 0) {
+          if (target === window) {
+            window.scrollBy(0, speed);
+          } else {
+            (target as HTMLElement).scrollTop += speed;
+          }
+        }
+      }
+
+      dragScrollRafRef.current = requestAnimationFrame(loop);
+    };
+
+    dragScrollRafRef.current = requestAnimationFrame(loop);
+  }, [getScrollTarget]);
+
+  useEffect(() => {
+    return () => {
+      stopAutoScroll();
+    };
+  }, [stopAutoScroll]);
+
   const handleRowDragStart = (e: React.DragEvent, index: number) => {
     if (!enableRowReorder) return;
     setDraggedRowIndex(index);
+    dragPointerYRef.current = e.clientY;
+    startAutoScroll();
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(index));
   };
@@ -640,6 +733,10 @@ const DataTable = <T extends Record<string, any>>({
     if (!enableRowReorder) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    dragPointerYRef.current = e.clientY;
+    if (dragScrollRafRef.current === null) {
+      startAutoScroll();
+    }
     if (dragOverRowIndex !== index) {
       setDragOverRowIndex(index);
     }
@@ -648,6 +745,7 @@ const DataTable = <T extends Record<string, any>>({
   const handleRowDrop = (e: React.DragEvent, targetIndex: number) => {
     if (!enableRowReorder) return;
     e.preventDefault();
+    stopAutoScroll();
     setDragOverRowIndex(null);
     const fromIndexStr = e.dataTransfer.getData('text/plain');
     const sourceIndex = fromIndexStr !== '' ? Number(fromIndexStr) : draggedRowIndex;
@@ -674,6 +772,7 @@ const DataTable = <T extends Record<string, any>>({
   };
 
   const handleRowDragEnd = () => {
+    stopAutoScroll();
     setDraggedRowIndex(null);
     setDragOverRowIndex(null);
   };
@@ -709,6 +808,14 @@ const DataTable = <T extends Record<string, any>>({
       {isMobile && mobileCardRender ? (
         <div 
           ref={scrollContainerRef}
+          onDragOver={(e) => {
+            if (enableRowReorder && isRowDraggingRef.current) {
+              dragPointerYRef.current = e.clientY;
+              if (dragScrollRafRef.current === null) {
+                startAutoScroll();
+              }
+            }
+          }}
           style={{ display: 'flex', flexDirection: 'column', padding: '8px', gap: '8px', overflowY: 'auto', flex: 1, minHeight: 0 }}
         >
           {loading && page === 1 ? (
@@ -806,6 +913,14 @@ const DataTable = <T extends Record<string, any>>({
       ) : (
         <div 
           ref={scrollContainerRef}
+          onDragOver={(e) => {
+            if (enableRowReorder && isRowDraggingRef.current) {
+              dragPointerYRef.current = e.clientY;
+              if (dragScrollRafRef.current === null) {
+                startAutoScroll();
+              }
+            }
+          }}
           style={{ overflow: 'auto', width: '100%', flex: 1, minHeight: 0, borderRadius: 'inherit' }}
         >
           <table 
