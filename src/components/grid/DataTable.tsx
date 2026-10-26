@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronUp, ChevronDown, Loader2, Search, Settings, X, GripVertical, MoreVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Loader2, Search, Settings, X, GripVertical, MoreVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -58,6 +58,12 @@ export interface DataTableProps<T> {
   onRowReorder?: (newData: T[], fromIndex: number, toIndex: number) => void;
   showRowOrderButtons?: boolean;
   showRowIndex?: boolean;
+  enableTreeView?: boolean;
+  childrenField?: string;
+  defaultExpandAll?: boolean;
+  expandedRowIds?: (string | number)[];
+  onExpandedRowsChange?: (expandedIds: (string | number)[]) => void;
+  treeColumnId?: string;
 }
 
 const extractItemsAndTotal = <T,>(res: any): { items: T[]; totalCount?: number } => {
@@ -94,7 +100,13 @@ const DataTable = <T extends Record<string, any>>({
   enableRowReorder = false,
   onRowReorder,
   showRowOrderButtons = false,
-  showRowIndex = false
+  showRowIndex = false,
+  enableTreeView = false,
+  childrenField = 'children',
+  defaultExpandAll = true,
+  expandedRowIds: propExpandedRowIds,
+  onExpandedRowsChange,
+  treeColumnId
 }: DataTableProps<T>) => {
   const { t } = useTranslation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -593,6 +605,116 @@ const DataTable = <T extends Record<string, any>>({
 
   const displayData = propData !== undefined ? sortedData.slice(0, clientRenderCount) : sortedData;
 
+  // ─── TREE VIEW (AĞAÇ GÖRÜNÜMÜ) MİMARİSİ ─────────────────────────────────
+  const [internalExpandedRowIds, setInternalExpandedRowIds] = useState<Set<string | number>>(() => new Set());
+  const [isTreeInitialized, setIsTreeInitialized] = useState(false);
+
+  // Controlled vs uncontrolled expanded ids
+  const expandedSet = useMemo(() => {
+    if (propExpandedRowIds !== undefined) {
+      return new Set(propExpandedRowIds);
+    }
+    return internalExpandedRowIds;
+  }, [propExpandedRowIds, internalExpandedRowIds]);
+
+  const toggleRowExpand = useCallback((rowId: string | number) => {
+    const nextSet = new Set(expandedSet);
+    if (nextSet.has(rowId)) {
+      nextSet.delete(rowId);
+    } else {
+      nextSet.add(rowId);
+    }
+    if (propExpandedRowIds === undefined) {
+      setInternalExpandedRowIds(nextSet);
+    }
+    if (onExpandedRowsChange) {
+      onExpandedRowsChange(Array.from(nextSet));
+    }
+  }, [expandedSet, propExpandedRowIds, onExpandedRowsChange]);
+
+  // defaultExpandAll: İlk veri geldiğinde tüm ebeveynleri açık yap
+  useEffect(() => {
+    if (!enableTreeView || !defaultExpandAll || isTreeInitialized) return;
+    if (displayData.length === 0) return;
+
+    const allParentIds: (string | number)[] = [];
+    const collectParentIds = (items: T[]) => {
+      for (const item of items) {
+        const id = keyExtractor(item);
+        const children = (item as any)[childrenField];
+        if (Array.isArray(children) && children.length > 0) {
+          if (id) allParentIds.push(id);
+          collectParentIds(children);
+        }
+      }
+    };
+    collectParentIds(displayData);
+    if (allParentIds.length > 0) {
+      setInternalExpandedRowIds(new Set(allParentIds));
+    }
+    setIsTreeInitialized(true);
+  }, [enableTreeView, defaultExpandAll, isTreeInitialized, displayData, childrenField, keyExtractor]);
+
+  const effectiveTreeColId = useMemo(() => {
+    if (!enableTreeView) return null;
+    if (treeColumnId) return treeColumnId;
+    const firstDataCol = activeColumns.find(({ col }) => {
+      const isAction = col.id === 'actions' || col.id === 'action' || col.accessor === 'actions' || col.id === 'islemler' || col.id === 'islem' || col.accessor === 'islemler' || col.accessor === 'islem';
+      return !isAction;
+    });
+    return firstDataCol ? firstDataCol.id : (activeColumns[0]?.id || null);
+  }, [enableTreeView, treeColumnId, activeColumns]);
+
+  interface FlatTreeItem<ItemType> {
+    item: ItemType;
+    flatIndex: number;
+    depth: number;
+    hasChildren: boolean;
+    isExpanded: boolean;
+    rowKey: string | number;
+  }
+
+  const flattenedRows: FlatTreeItem<T>[] = useMemo(() => {
+    if (!enableTreeView) {
+      return displayData.map((item, index) => ({
+        item,
+        flatIndex: index,
+        depth: 0,
+        hasChildren: false,
+        isExpanded: false,
+        rowKey: keyExtractor(item) || index
+      }));
+    }
+
+    const result: FlatTreeItem<T>[] = [];
+    let counter = 0;
+
+    const traverse = (items: T[], depth: number) => {
+      for (const item of items) {
+        const rowKey = keyExtractor(item) || `tree-row-${counter}`;
+        const children = (item as any)[childrenField];
+        const hasChildren = Array.isArray(children) && children.length > 0;
+        const isExpanded = expandedSet.has(rowKey);
+
+        result.push({
+          item,
+          flatIndex: counter++,
+          depth,
+          hasChildren,
+          isExpanded,
+          rowKey
+        });
+
+        if (hasChildren && isExpanded) {
+          traverse(children, depth + 1);
+        }
+      }
+    };
+
+    traverse(displayData, 0);
+    return result;
+  }, [enableTreeView, displayData, childrenField, expandedSet, keyExtractor]);
+
   const onDataChangeRef = useRef(onDataChange);
   useEffect(() => {
     onDataChangeRef.current = onDataChange;
@@ -834,12 +956,13 @@ const DataTable = <T extends Record<string, any>>({
             </div>
           ) : (
             <>
-              {displayData.map((item: T, index: number) => {
+              {flattenedRows.map((rowInfo, index) => {
+                const { item, depth, hasChildren, isExpanded, rowKey } = rowInfo;
                 const isFirst = index === 0;
-                const isLast = index === displayData.length - 1;
+                const isLast = index === flattenedRows.length - 1;
                 return (
                   <div
-                    key={keyExtractor(item) || index}
+                    key={rowKey}
                     onClick={(e) => {
                       if (onRowClick) onRowClick(item, e);
                     }}
@@ -854,12 +977,50 @@ const DataTable = <T extends Record<string, any>>({
                       background: 'var(--bg-secondary)',
                       borderRadius: '12px',
                       border: '1px solid var(--glass-border)',
+                      borderLeft: depth > 0 ? '4px solid var(--accent-primary)' : '1px solid var(--glass-border)',
+                      marginLeft: depth > 0 ? `${Math.min(depth * 16, 48)}px` : undefined,
                       overflow: 'hidden',
                       opacity: draggedRowIndex === index ? 0.35 : 1,
                       boxShadow: dragOverRowIndex === index ? '0 0 0 2px var(--accent-primary)' : undefined,
                       position: 'relative'
                     }}
                   >
+                    {enableTreeView && hasChildren && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          padding: '6px 12px',
+                          background: 'rgba(0,0,0,0.02)',
+                          borderBottom: '1px solid var(--glass-border)'
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRowExpand(rowKey);
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--glass-border)',
+                            background: 'var(--bg-primary)',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            color: 'var(--text-secondary)'
+                          }}
+                        >
+                          {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                          <span>{isExpanded ? t('auto_daralt', 'Daralt') : t('auto_genislet', 'Genişlet')}</span>
+                        </button>
+                      </div>
+                    )}
                     {enableRowReorder && (
                       <div
                         style={{
@@ -1123,19 +1284,22 @@ const DataTable = <T extends Record<string, any>>({
                   </td>
                 </tr>
               ) : (
-                displayData.map((item: T, index: number) => {
+                flattenedRows.map((rowInfo, index) => {
+                  const { item, depth, hasChildren, isExpanded, rowKey } = rowInfo;
                   const isFirst = index === 0;
-                  const isLast = index === displayData.length - 1;
+                  const isLast = index === flattenedRows.length - 1;
                   const isBeingDragged = draggedRowIndex === index;
                   const isDragOver = dragOverRowIndex === index;
 
                   return (
                     <tr
-                      key={keyExtractor(item) || index}
+                      key={rowKey}
                       style={{
                         borderBottom: '1px solid var(--glass-border)',
                         opacity: isBeingDragged ? 0.35 : 1,
-                        background: isDragOver ? 'rgba(99, 102, 241, 0.08)' : undefined,
+                        background: isDragOver
+                          ? 'rgba(99, 102, 241, 0.08)'
+                          : (depth > 0 ? 'rgba(0, 0, 0, 0.018)' : undefined),
                         boxShadow: isDragOver
                           ? (draggedRowIndex !== null && draggedRowIndex < index ? 'inset 0 -2px 0 var(--accent-primary)' : 'inset 0 2px 0 var(--accent-primary)')
                           : undefined,
@@ -1227,15 +1391,17 @@ const DataTable = <T extends Record<string, any>>({
                           </div>
                         </td>
                       )}
-                      {activeColumns.map(({ col }, idx) => {
+                      {activeColumns.map(({ col, id }, idx) => {
+                        const colId = id || col.id || col.accessor || idx.toString();
                         const isActionCol = col.id === 'actions' || col.id === 'action' || col.accessor === 'actions' || col.id === 'islemler' || col.id === 'islem' || col.accessor === 'islemler' || col.accessor === 'islem';
+                        const isTreeCol = enableTreeView && (colId === effectiveTreeColId);
                         const shouldStick = stickyActionColumn && isActionCol;
                         const cellValue = col.render ? col.render(item, index, mergedTableActions) : item[col.accessor || ''];
                         const tooltipText = typeof cellValue === 'string' ? cellValue : undefined;
 
                       return (
                         <td
-                          key={idx}
+                          key={colId}
                           title={tooltipText}
                           style={{
                             padding: isActionCol ? '8px 12px' : '12px 16px',
@@ -1254,7 +1420,63 @@ const DataTable = <T extends Record<string, any>>({
                             ...col.cellStyle
                           }}
                         >
-                          {isActionCol ? (
+                          {isTreeCol ? (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', minWidth: 0, paddingLeft: `${depth * 24}px` }}>
+                              {depth > 0 && (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '16px',
+                                    marginRight: '6px',
+                                    color: 'var(--text-tertiary)',
+                                    fontFamily: 'monospace',
+                                    fontSize: '13px',
+                                    userSelect: 'none'
+                                  }}
+                                >
+                                  ↳
+                                </span>
+                              )}
+                              {hasChildren ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleRowExpand(rowKey);
+                                  }}
+                                  aria-label={isExpanded ? 'Daralt' : 'Genişlet'}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '22px',
+                                    height: '22px',
+                                    marginRight: '8px',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '5px',
+                                    background: 'var(--bg-secondary)',
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  className="tree-expand-btn"
+                                >
+                                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                </button>
+                              ) : (
+                                enableTreeView && (
+                                  <span style={{ display: 'inline-block', width: '22px', marginRight: '8px' }} />
+                                )
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                {cellValue}
+                              </div>
+                            </div>
+                          ) : isActionCol ? (
                             <div className="table-action-cell-container">
                               {cellValue}
                             </div>
