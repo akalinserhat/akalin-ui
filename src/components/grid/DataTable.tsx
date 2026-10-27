@@ -676,25 +676,43 @@ const DataTable = <T extends Record<string, any>>({
 
   const flattenedRows: FlatTreeItem<T>[] = useMemo(() => {
     if (!enableTreeView) {
-      return displayData.map((item, index) => ({
-        item,
-        flatIndex: index,
-        depth: 0,
-        hasChildren: false,
-        isExpanded: false,
-        rowKey: keyExtractor(item) || index
-      }));
+      const seen = new Set<string | number>();
+      return displayData.map((item, index) => {
+        const rawKey = keyExtractor(item);
+        let rKey: string | number = rawKey !== undefined && rawKey !== null && rawKey !== '' ? rawKey : index;
+        if (seen.has(rKey)) {
+          rKey = `${rKey}_${index}`;
+        }
+        seen.add(rKey);
+        return {
+          item,
+          flatIndex: index,
+          depth: 0,
+          hasChildren: false,
+          isExpanded: false,
+          rowKey: rKey
+        };
+      });
     }
 
     const result: FlatTreeItem<T>[] = [];
     let counter = 0;
+    const seenKeys = new Set<string | number>();
 
     const traverse = (items: T[], depth: number) => {
       for (const item of items) {
-        const rowKey = keyExtractor(item) || `tree-row-${counter}`;
+        const rawKey = keyExtractor(item);
+        const hasValidKey = rawKey !== undefined && rawKey !== null && rawKey !== '';
+        const baseKey: string | number = hasValidKey ? rawKey : `tree-row-${counter}`;
+        let rowKey = baseKey;
+        if (seenKeys.has(rowKey)) {
+          rowKey = `${baseKey}__dup_${depth}_${counter}`;
+        }
+        seenKeys.add(rowKey);
+
         const children = (item as any)[childrenField];
         const hasChildren = Array.isArray(children) && children.length > 0;
-        const isExpanded = expandedSet.has(rowKey);
+        const isExpanded = expandedSet.has(baseKey) || expandedSet.has(rowKey);
 
         result.push({
           item,
