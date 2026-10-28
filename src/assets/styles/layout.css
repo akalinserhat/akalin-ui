@@ -461,7 +461,10 @@
 }
 
 .base-card-page .base-tab-container,
-.base-document-page .base-tab-container {
+.base-card-page .md3-tab-container,
+.base-document-page .base-tab-container,
+.base-document-page .md3-tab-container {
+  width: 100%;
   height: 100%;
   flex: 1 1 0%;
   min-height: 0;
@@ -479,13 +482,17 @@
   background: var(--bg-primary);
 }
 
-.base-card-page .md3-tab-panel {
+.base-card-page .md3-tab-panel,
+.base-document-page .md3-tab-panel {
   flex: 1 1 0%;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px 24px;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-border, rgba(0, 0, 0, 0.2)) transparent;
 }
 
 .base-card-page .form-header-tabs,

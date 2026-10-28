@@ -249,7 +249,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 };
 
 // ─── 1. Türetilmiş Bileşen: Başlangıç / Tetikleyici Düğümü ───────────────────
-export interface FlowchartStartNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export interface FlowchartStartNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartStartNode: React.FC<FlowchartStartNodeProps> = (props) => {
   return (
@@ -264,7 +264,7 @@ export const FlowchartStartNode: React.FC<FlowchartStartNodeProps> = (props) => 
 };
 
 // ─── 2. Türetilmiş Bileşen: Girdi / ERP Ekran Açma Düğümü ────────────────────
-export interface FlowchartInputNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export interface FlowchartInputNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartInputNode: React.FC<FlowchartInputNodeProps> = (props) => {
   const { t } = useTranslation();
@@ -280,7 +280,7 @@ export const FlowchartInputNode: React.FC<FlowchartInputNodeProps> = (props) => 
 };
 
 // ─── 3. Türetilmiş Bileşen: Süreç / MCP Sorgu & İşlem Düğümü ─────────────────
-export interface FlowchartProcessNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export interface FlowchartProcessNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartProcessNode: React.FC<FlowchartProcessNodeProps> = (props) => {
   const { t } = useTranslation();
@@ -296,7 +296,7 @@ export const FlowchartProcessNode: React.FC<FlowchartProcessNodeProps> = (props)
 };
 
 // ─── 4. Türetilmiş Bileşen: Belge / Taslak Oluşturma Düğümü ──────────────────
-export interface FlowchartDocumentNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export interface FlowchartDocumentNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartDocumentNode: React.FC<FlowchartDocumentNodeProps> = (props) => {
   const { t } = useTranslation();
@@ -426,7 +426,7 @@ export const FlowchartDecisionNode: React.FC<FlowchartDecisionNodeProps> = ({
 };
 
 // ─── 6. Türetilmiş Bileşen: Bitiş / Tamamlama Düğümü ─────────────────────────
-export interface FlowchartEndNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export interface FlowchartEndNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartEndNode: React.FC<FlowchartEndNodeProps> = (props) => {
   const { t } = useTranslation();

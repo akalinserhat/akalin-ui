@@ -209,7 +209,7 @@ const BaseTab: React.FC<BaseTabProps> = ({
   const showHeader = isEditable ? true : !(hideIfSingleTab && tabs.length === 1);
 
   return (
-    <div className={`md3-tab-container ${className}`} style={style}>
+    <div className={`base-tab-container md3-tab-container ${className}`} style={style}>
       {showHeader && (
         <div className="md3-tab-header-container">
           {canScrollLeft && (
