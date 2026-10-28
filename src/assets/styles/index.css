@@ -8,3 +8,4 @@
 @import './components.css';
 @import './mobile.css';
 @import './utilities.css';
+@import '../../components/base/flowchart/BaseFlowchart.css';

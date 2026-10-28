@@ -1,0 +1,252 @@
+/**
+ * @akalin/ui - Temel Görsel Akış Diyagramı Tuvali (BaseFlowchart.tsx)
+ *
+ * Başlıca Sorumlulukları:
+ * - Noktalı (blueprint dot-grid) interaktif akış diyagramı tuvalini ve üst bileşen paletini sunmak
+ * - Başlangıç (FlowchartStartNode), süreç adımları (FlowchartInputNode, FlowchartProcessNode,
+ *   FlowchartDecisionNode, FlowchartDocumentNode) ve Bitiş (FlowchartEndNode) düğümlerini gerçek
+ *   SVG akış oklarıyla (BaseFlowchartConnector) birbirine bağlayarak görselleştirmek
+ * - Herhangi bir flowchart bileşenine tıklandığında seçili adımı sağ panel (Inspector) ile senkronize etmek
+ * - Sıfır inline CSS ve %100 i18n uyumlu çalışmak
+ */
+
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  GitBranch,
+  Plus,
+  Cpu,
+  Monitor,
+  FileText,
+  CheckCircle2
+} from 'lucide-react';
+import {
+  FlowchartStartNode,
+  FlowchartInputNode,
+  FlowchartProcessNode,
+  FlowchartDecisionNode,
+  FlowchartDocumentNode,
+  FlowchartEndNode,
+  BaseFlowchartConnector
+} from './BaseFlowchartNode';
+import './BaseFlowchart.css';
+
+export interface FlowchartStepItem {
+  id: string;
+  type: string;
+  title: string;
+  shapeBadgeText?: string;
+  prompt?: string;
+  toolCode?: string;
+  uiAction?: string;
+  uiActionLabel?: string;
+  routePath?: string;
+  nextStepId?: string;
+  yesStepId?: string;
+  noStepId?: string;
+}
+
+export interface BaseFlowchartProps {
+  title?: React.ReactNode;
+  startTitle?: React.ReactNode;
+  startSubtitle?: React.ReactNode;
+  startNodeId?: string;
+  endTitle?: React.ReactNode;
+  steps: FlowchartStepItem[];
+  selectedStepId?: string | null;
+  onSelectStep: (stepId: string) => void;
+  onAddStep?: (stepType: string, insertAtIndex?: number) => void;
+  onMoveStep?: (index: number, direction: 'up' | 'down', e?: React.MouseEvent) => void;
+  onDeleteStep?: (stepId: string, e?: React.MouseEvent) => void;
+  emptyMessage?: string;
+  className?: string;
+}
+
+export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
+  title,
+  startTitle,
+  startSubtitle,
+  startNodeId = '__START__',
+  endTitle,
+  steps,
+  selectedStepId,
+  onSelectStep,
+  onAddStep,
+  onMoveStep,
+  onDeleteStep,
+  emptyMessage,
+  className = ''
+}) => {
+  const { t } = useTranslation();
+
+  const resolveStepById = (id?: string) => {
+    if (!id) return undefined;
+    return steps.find(s => s.id === id);
+  };
+
+  return (
+    <div className={`base-flowchart-container ${className}`}>
+      {/* Üst Araç Çubuğu ve Hızlı Flowchart Bileşen Paleti */}
+      <div className="base-flowchart-toolbar">
+        <div className="base-flowchart-toolbar-title">
+          <GitBranch size={16} />
+          <span>{title || t('gorev_akis_diyagrami', 'Görev Akış Diyagramı (Flowchart)')}</span>
+          <span className="base-flowchart-count-pill">{steps.length}</span>
+        </div>
+
+        {onAddStep && (
+          <div className="base-flowchart-palette">
+            <button
+              type="button"
+              onClick={() => onAddStep('MCP_SORGULA')}
+              className="base-flowchart-palette-btn palette-process"
+              title={t('mcp_islem_adimi_ekle', 'MCP Veri Sorgulama / İşlem Düğümü Ekle')}
+            >
+              <Cpu size={12} />
+              <span>+ {t('islem_dugumu', 'İşlem')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onAddStep('KARAR_ONAY')}
+              className="base-flowchart-palette-btn palette-decision"
+              title={t('karar_onay_adimi_ekle', 'Evet / Hayır Dallanmalı Karar Düğümü Ekle')}
+            >
+              <GitBranch size={12} />
+              <span>+ {t('karar_dugumu', 'Karar (E/H)')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onAddStep('EKRAN_AC')}
+              className="base-flowchart-palette-btn palette-input"
+              title={t('girdi_ekran_adimi_ekle', 'Girdi / ERP Ekran Açma Düğümü Ekle')}
+            >
+              <Monitor size={12} />
+              <span>+ {t('ekran_girdi_dugumu', 'Ekran / Girdi')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onAddStep('BELGE_OLUSTUR')}
+              className="base-flowchart-palette-btn palette-document"
+              title={t('belge_taslak_adimi_ekle', 'Belge / Taslak Oluşturma Düğümü Ekle')}
+            >
+              <FileText size={12} />
+              <span>+ {t('belge_dugumu', 'Belge')}</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Noktalı Görsel Flowchart Sahnesi */}
+      <div className="base-flowchart-stage">
+        <div className="base-flowchart-spine">
+          {/* 1. BAŞLANGIÇ / TETİKLEYİCİ KAPSÜL DÜĞÜMÜ */}
+          <FlowchartStartNode
+            id={startNodeId}
+            title={startTitle || t('gorev_tetikleyici', 'Görev Başlangıcı & Tetikleyici')}
+            subtitle={startSubtitle}
+            selected={selectedStepId === startNodeId}
+            onSelect={onSelectStep}
+          />
+
+          <BaseFlowchartConnector
+            active={selectedStepId === startNodeId || (steps.length > 0 && selectedStepId === steps[0]?.id)}
+            onInsertStep={onAddStep ? () => onAddStep('MCP_SORGULA', 0) : undefined}
+          />
+
+          {/* 2. AKIŞ ADIMI DÜĞÜMLERİ (Türetilmiş Flowchart Bileşenleri) */}
+          {steps.length === 0 ? (
+            <div className="ai-flowchart-empty-state">
+              <GitBranch size={28} />
+              <span>{emptyMessage || t('henuz_adim_eklenmemis', 'Henüz akış adımı eklenmemiş.')}</span>
+            </div>
+          ) : (
+            steps.map((step, index) => {
+              const isSelected = selectedStepId === step.id;
+              const isFirst = index === 0;
+              const isLast = index === steps.length - 1;
+              const normalizedType = (step.type || 'MCP_SORGULA').toUpperCase();
+
+              const commonProps = {
+                id: step.id,
+                stepNumber: index + 1,
+                shapeBadgeText: step.shapeBadgeText,
+                title: step.title || `${index + 1}. ${t('islem_adimi', 'İşlem Adımı')}`,
+                promptPreview: step.prompt,
+                toolCode: step.toolCode,
+                uiActionLabel: step.uiActionLabel,
+                routePath: step.routePath,
+                selected: isSelected,
+                isFirst,
+                isLast,
+                onSelect: onSelectStep,
+                onMoveUp: onMoveStep ? (e: React.MouseEvent) => onMoveStep(index, 'up', e) : undefined,
+                onMoveDown: onMoveStep ? (e: React.MouseEvent) => onMoveStep(index, 'down', e) : undefined,
+                onDelete: onDeleteStep ? (e: React.MouseEvent) => onDeleteStep(step.id, e) : undefined
+              };
+
+              let renderedNode: React.ReactNode;
+
+              if (normalizedType === 'KARAR_ONAY') {
+                const yesStep = resolveStepById(step.yesStepId);
+                const noStep = resolveStepById(step.noStepId);
+                renderedNode = (
+                  <FlowchartDecisionNode
+                    {...commonProps}
+                    yesTargetId={step.yesStepId}
+                    yesTargetTitle={yesStep ? `${yesStep.id}: ${yesStep.title}` : undefined}
+                    noTargetId={step.noStepId}
+                    noTargetTitle={noStep ? `${noStep.id}: ${noStep.title}` : undefined}
+                    noFallbackRoute={step.routePath}
+                    onSelectBranchTarget={onSelectStep}
+                  />
+                );
+              } else if (normalizedType === 'BASLANGIC_GIRDI' || normalizedType === 'EKRAN_AC') {
+                renderedNode = <FlowchartInputNode {...commonProps} />;
+              } else if (normalizedType === 'BELGE_OLUSTUR') {
+                renderedNode = <FlowchartDocumentNode {...commonProps} />;
+              } else if (normalizedType === 'SONUC') {
+                renderedNode = (
+                  <FlowchartProcessNode
+                    {...commonProps}
+                    icon={<CheckCircle2 size={11} />}
+                  />
+                );
+              } else {
+                renderedNode = <FlowchartProcessNode {...commonProps} />;
+              }
+
+              return (
+                <React.Fragment key={step.id || index}>
+                  {renderedNode}
+                  <BaseFlowchartConnector
+                    active={isSelected}
+                    onInsertStep={onAddStep ? () => onAddStep('MCP_SORGULA', index + 1) : undefined}
+                  />
+                </React.Fragment>
+              );
+            })
+          )}
+
+          {/* 3. BİTİŞ / TAMAMLAMA KAPSÜL DÜĞÜMÜ */}
+          <FlowchartEndNode
+            id="__END__"
+            title={endTitle || t('gorev_tamamlandi_sonuc', 'Görev Tamamlandı & Yanıt Özeti')}
+            selected={false}
+            onSelect={() => {
+              if (steps.length > 0) {
+                onSelectStep(steps[steps.length - 1].id);
+              } else {
+                onSelectStep(startNodeId);
+              }
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BaseFlowchart;
