@@ -112,7 +112,7 @@ const BaseTab: React.FC<BaseTabProps> = ({
   const effectiveControlledId = controlledActiveId !== undefined ? controlledActiveId : activeTabId;
   const isControlled = effectiveControlledId !== undefined;
   const [uncontrolledActiveId, setUncontrolledActiveId] = useState(defaultActiveId ?? tabs[0]?.id);
-  
+
   const currentActiveId = isControlled ? effectiveControlledId : uncontrolledActiveId;
 
   const checkScroll = useCallback(() => {
@@ -191,11 +191,11 @@ const BaseTab: React.FC<BaseTabProps> = ({
 
   const handleTabClick = (tab: BaseTabItem) => {
     if (tab.disabled) return;
-    
+
     if (!isControlled) {
       setUncontrolledActiveId(tab.id);
     }
-    
+
     if (onChange) {
       onChange(tab.id);
     }
@@ -224,7 +224,7 @@ const BaseTab: React.FC<BaseTabProps> = ({
             </button>
           )}
 
-          <div 
+          <div
             className="md3-tab-list-wrapper"
             ref={tabListWrapperRef}
             onWheel={handleWheel}
@@ -332,7 +332,7 @@ const BaseTab: React.FC<BaseTabProps> = ({
           )}
         </div>
       )}
-      
+
       {activeTabContent && (
         <div className="md3-tab-panel" role="tabpanel">
           {activeTabContent}

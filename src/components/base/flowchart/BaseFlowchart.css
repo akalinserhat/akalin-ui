@@ -11,20 +11,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
   border-radius: var(--md3-shape-large, 12px);
-  overflow: hidden;
-  height: 100%;
-  min-height: 500px;
-  max-height: calc(100vh - 180px);
-  position: sticky;
-  top: 0;
   box-shadow: var(--md3-elevation-1);
-}
-
-@media (max-width: 1040px) {
-  .base-flowchart-container {
-    position: static;
-    max-height: 520px;
-  }
 }
 
 .base-flowchart-toolbar {
@@ -35,6 +22,7 @@
   padding: 12px 16px;
   background: var(--surface-ground, var(--bg-primary));
   border-bottom: 1px solid var(--glass-border);
+  border-radius: calc(var(--md3-shape-large, 12px) - 1px) calc(var(--md3-shape-large, 12px) - 1px) 0 0;
   flex-wrap: wrap;
 }
 
@@ -127,8 +115,6 @@
 /* ─── Noktalı Diyagram Sahnesi (Dot-Grid Flowchart Stage) ──────────────────── */
 .base-flowchart-stage {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: auto;
   padding: 28px 20px 36px 20px;
   display: flex;
   flex-direction: column;
@@ -136,9 +122,7 @@
   background-color: var(--bg-secondary);
   background-image: radial-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px);
   background-size: 18px 18px;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--glass-border, rgba(0, 0, 0, 0.2)) transparent;
+  border-radius: 0 0 calc(var(--md3-shape-large, 12px) - 1px) calc(var(--md3-shape-large, 12px) - 1px);
 }
 
 [data-theme='dark'] .base-flowchart-stage {
