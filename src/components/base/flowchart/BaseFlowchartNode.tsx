@@ -104,6 +104,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (onDoubleClick) {
       onDoubleClick(id, e);
     }
@@ -111,7 +112,10 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 
   if (shape === 'terminal') {
     return (
-      <div className="base-flowchart-node-wrapper">
+      <div 
+        className="base-flowchart-node-wrapper"
+        onDoubleClick={handleDoubleClick}
+      >
         {showTopPort && <div className="base-flowchart-port port-end" />}
         <div
           onClick={handleClick}
@@ -144,7 +148,10 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   }
 
   return (
-    <div className="base-flowchart-node-wrapper">
+    <div 
+      className="base-flowchart-node-wrapper"
+      onDoubleClick={handleDoubleClick}
+    >
       {showTopPort && (
         <div className={`base-flowchart-port ${shape === 'decision' ? 'port-decision' : ''}`} />
       )}
