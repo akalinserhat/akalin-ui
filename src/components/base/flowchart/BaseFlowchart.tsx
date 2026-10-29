@@ -13,13 +13,16 @@ import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
   Play,
+  Layers,
+  Plus,
   ZoomIn,
   ZoomOut,
   RotateCcw
 } from 'lucide-react';
 import {
   BaseFlowchartNode,
-  BaseFlowchartConnector
+  BaseFlowchartConnector,
+  FlowchartNodeShape
 } from './BaseFlowchartNode';
 import './BaseFlowchart.css';
 
@@ -38,6 +41,16 @@ export interface FlowchartStepItem {
   noStepId?: string;
 }
 
+export interface FlowchartPaletteItem {
+  id: string;
+  type: string;
+  title: string;
+  subTitle?: string;
+  shape?: FlowchartNodeShape;
+  icon?: React.ReactNode;
+  onClick?: () => void;
+}
+
 export interface BaseFlowchartProps {
   title?: React.ReactNode;
   showHeader?: boolean;
@@ -48,6 +61,9 @@ export interface BaseFlowchartProps {
   endTitle?: React.ReactNode;
   showStartNode?: boolean;
   showEndNode?: boolean;
+  showSidebar?: boolean;
+  sidebar?: React.ReactNode;
+  paletteItems?: FlowchartPaletteItem[];
   steps?: FlowchartStepItem[];
   selectedStepId?: string | null;
   onSelectStep?: (stepId: string) => void;
@@ -73,6 +89,9 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   endTitle,
   showStartNode = false,
   showEndNode = false,
+  showSidebar = true,
+  sidebar,
+  paletteItems,
   steps = [],
   selectedStepId,
   onSelectStep,
@@ -171,8 +190,64 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
         </div>
       )}
 
-      {/* Ana Gövde Alanı (Çizim Sahnesi / Stage) */}
+      {/* Ana Gövde Alanı (Sol: Dikey Diagram Paleti, Sağ: Çizim Sahnesi / Stage) */}
       <div className="base-flowchart-main-body">
+        {showSidebar && (sidebar || (paletteItems && paletteItems.length > 0) || onAddStep) && (
+          <aside className="base-flowchart-sidebar-palette" aria-label={t('diyagram_ogeleri', 'Diyagram Öğeleri')}>
+            <div className="base-flowchart-sidebar-header">
+              <Layers size={13} />
+              <span>{t('diyagram_ogeleri', 'Diyagram Öğeleri')}</span>
+            </div>
+
+            <div className="base-flowchart-sidebar-items">
+              {sidebar ? (
+                sidebar
+              ) : paletteItems && paletteItems.length > 0 ? (
+                paletteItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      if (item.onClick) item.onClick();
+                      else if (onAddStep) onAddStep(item.type);
+                    }}
+                    className={`base-flowchart-sidebar-item palette-shape-${item.shape || 'process'}`}
+                    title={item.title}
+                  >
+                    <div className="base-flowchart-sidebar-item-icon">
+                      {item.icon}
+                    </div>
+                    <div className="base-flowchart-sidebar-item-text">
+                      <span className="base-flowchart-sidebar-item-title">{item.title}</span>
+                      {item.subTitle && (
+                        <span className="base-flowchart-sidebar-item-sub">{item.subTitle}</span>
+                      )}
+                    </div>
+                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                  </button>
+                ))
+              ) : (
+                /* Geleneksel Standart Flowchart Öğesi: Başla (Terminator / Oval Kapsül) */
+                <button
+                  type="button"
+                  onClick={() => onAddStep && onAddStep('BASLA')}
+                  className="base-flowchart-sidebar-item palette-shape-terminal"
+                  title={t('basla_adimi_ekle', 'Başla Düğümü Ekle')}
+                >
+                  <div className="base-flowchart-sidebar-item-icon">
+                    <Play size={13} />
+                  </div>
+                  <div className="base-flowchart-sidebar-item-text">
+                    <span className="base-flowchart-sidebar-item-title">{t('basla', 'Başla')}</span>
+                    <span className="base-flowchart-sidebar-item-sub">{t('akisi_baslat', 'Akışı Başlat')}</span>
+                  </div>
+                  <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                </button>
+              )}
+            </div>
+          </aside>
+        )}
+
         {/* Noktalı Görsel Flowchart Sahnesi (Yatay & Dikey Kaydırılabilir ve Zoomlanabilir) */}
         <div
           ref={stageRef}

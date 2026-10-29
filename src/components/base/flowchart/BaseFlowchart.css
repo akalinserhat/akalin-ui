@@ -211,6 +211,137 @@
   border-radius: 0 0 calc(var(--md3-shape-large, 12px) - 1px) calc(var(--md3-shape-large, 12px) - 1px);
 }
 
+/* ─── Sol Panel: Dikey Diyagram Öğeleri Paleti (Sidebar) ───────────────────── */
+.base-flowchart-sidebar-palette {
+  width: 175px;
+  min-width: 175px;
+  max-width: 200px;
+  background: var(--surface-ground, var(--bg-primary));
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  gap: 12px;
+  user-select: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.base-flowchart-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  padding: 0 4px 6px 4px;
+  border-bottom: 1px dashed var(--glass-border);
+}
+
+.base-flowchart-sidebar-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.base-flowchart-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--md3-shape-medium, 8px);
+  border: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  position: relative;
+  width: 100%;
+}
+
+.base-flowchart-sidebar-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.base-flowchart-sidebar-item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.base-flowchart-sidebar-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.base-flowchart-sidebar-item-title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.base-flowchart-sidebar-item-sub {
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.base-flowchart-sidebar-item-add {
+  opacity: 0.45;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.base-flowchart-sidebar-item:hover .base-flowchart-sidebar-item-add {
+  opacity: 1;
+  color: var(--text-primary);
+  transform: scale(1.15);
+}
+
+/* ─── Geleneksel Flowchart Şekilleri (Palet Önizleme Stilleri) ───────────── */
+/* 1. Başla (Terminator / Oval Kapsül Geometrisi) */
+.base-flowchart-sidebar-item.palette-shape-terminal {
+  border-radius: 9999px;
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.04) 100%);
+  padding: 8px 12px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-terminal:hover {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-terminal .base-flowchart-sidebar-item-icon {
+  background: #10b981;
+  color: #ffffff;
+  border-radius: 50%;
+}
+
+.base-flowchart-sidebar-item.palette-shape-terminal .base-flowchart-sidebar-item-title {
+  color: #059669;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-terminal .base-flowchart-sidebar-item-title {
+  color: #34d399;
+}
+
 /* Eski Yatay Palet Desteği (Fallback / Geriye Uyumluluk) */
 .base-flowchart-palette {
   display: flex;
