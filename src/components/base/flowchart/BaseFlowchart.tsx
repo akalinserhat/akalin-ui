@@ -10,7 +10,7 @@
  * - Sıfır inline CSS ve %100 i18n uyumlu çalışmak
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
@@ -90,21 +90,79 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
 }) => {
   const { t } = useTranslation();
   const [zoom, setZoom] = useState<number>(initialZoom);
+  const [isWheelZooming, setIsWheelZooming] = useState<boolean>(false);
+  const zoomRef = useRef<number>(zoom);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleZoomIn = () => setZoom(prev => Math.min(maxZoom, Math.round((prev + 0.1) * 10) / 10));
-  const handleZoomOut = () => setZoom(prev => Math.max(minZoom, Math.round((prev - 0.1) * 10) / 10));
-  const handleZoomReset = () => setZoom(1);
+  // zoom state değişiminde ref senkronizasyonu
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      if (e.deltaY < 0) {
-        handleZoomIn();
-      } else {
-        handleZoomOut();
+  // Buton ile Zoom: +%10
+  const handleZoomIn = useCallback(() => {
+    setIsWheelZooming(false);
+    setZoom(prev => Math.min(maxZoom, Math.round((prev + 0.1) * 10) / 10));
+  }, [maxZoom]);
+
+  // Buton ile Zoom: -%10
+  const handleZoomOut = useCallback(() => {
+    setIsWheelZooming(false);
+    setZoom(prev => Math.max(minZoom, Math.round((prev - 0.1) * 10) / 10));
+  }, [minZoom]);
+
+  // Buton ile Zoom: %100 Varsayılana Sıfırla
+  const handleZoomReset = useCallback(() => {
+    setIsWheelZooming(false);
+    setZoom(1);
+  }, []);
+
+  // Yüksek Performanslı, Doğal Sönümlemeli (Damping) ve rAF Throttled Wheel Zoom
+  useEffect(() => {
+    const stageEl = stageRef.current;
+    if (!stageEl) return;
+
+    const onWheelNative = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        // Tarayıcının varsayılan sayfa büyütmesini engelle
+        e.preventDefault();
+
+        // Aktif wheel sırasında CSS transition'ı kapat (sıfır gecikme)
+        setIsWheelZooming(true);
+        if (wheelTimeoutRef.current) {
+          clearTimeout(wheelTimeoutRef.current);
+        }
+        wheelTimeoutRef.current = setTimeout(() => {
+          setIsWheelZooming(false);
+        }, 160);
+
+        // Trackpad (küçük deltaY) ve Mouse Wheel (büyük deltaY) için optimize edilmiş sönümleme katsayısı
+        // 0.0015 katsayısı ile ani sıçramalar engellenir ve son derece akıcı, kontrollü bir zoom hissi sağlanır
+        const damping = 0.0015;
+        const factor = Math.exp(-e.deltaY * damping);
+        const nextZoom = Math.min(maxZoom, Math.max(minZoom, zoomRef.current * factor));
+
+        zoomRef.current = nextZoom;
+
+        // requestAnimationFrame ile ekran yenileme hızında (60/120 FPS) tek re-render
+        if (!rafIdRef.current) {
+          rafIdRef.current = requestAnimationFrame(() => {
+            setZoom(Math.round(zoomRef.current * 100) / 100);
+            rafIdRef.current = null;
+          });
+        }
       }
-    }
-  };
+    };
+
+    stageEl.addEventListener('wheel', onWheelNative, { passive: false });
+    return () => {
+      stageEl.removeEventListener('wheel', onWheelNative);
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
+    };
+  }, [minZoom, maxZoom]);
 
   const resolveStepById = (id?: string) => {
     if (!id) return undefined;
@@ -208,116 +266,119 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
       </div>
 
       {/* Noktalı Görsel Flowchart Sahnesi (Yatay & Dikey Kaydırılabilir ve Zoomlanabilir) */}
-      <div className="base-flowchart-stage" onWheel={handleWheel}>
+      <div
+        ref={stageRef}
+        className="base-flowchart-stage"
+      >
         <div
-          className="base-flowchart-canvas-transform"
+          className={`base-flowchart-canvas-transform ${isWheelZooming ? 'is-wheel-zooming' : ''}`}
           style={{
             zoom: zoom
           }}
         >
-        <div className="base-flowchart-spine">
-          {/* 1. BAŞLANGIÇ / TETİKLEYİCİ KAPSÜL DÜĞÜMÜ */}
-          <FlowchartStartNode
-            id={startNodeId}
-            title={startTitle || t('gorev_tetikleyici', 'Görev Başlangıcı & Tetikleyici')}
-            subtitle={startSubtitle}
-            selected={selectedStepId === startNodeId}
-            onSelect={onSelectStep}
-          />
+          <div className="base-flowchart-spine">
+            {/* 1. BAŞLANGIÇ / TETİKLEYİCİ KAPSÜL DÜĞÜMÜ */}
+            <FlowchartStartNode
+              id={startNodeId}
+              title={startTitle || t('gorev_tetikleyici', 'Görev Başlangıcı & Tetikleyici')}
+              subtitle={startSubtitle}
+              selected={selectedStepId === startNodeId}
+              onSelect={onSelectStep}
+            />
 
-          <BaseFlowchartConnector
-            active={selectedStepId === startNodeId || (steps.length > 0 && selectedStepId === steps[0]?.id)}
-            onInsertStep={onAddStep ? () => onAddStep('MCP_SORGULA', 0) : undefined}
-          />
+            <BaseFlowchartConnector
+              active={selectedStepId === startNodeId || (steps.length > 0 && selectedStepId === steps[0]?.id)}
+              onInsertStep={onAddStep ? () => onAddStep('MCP_SORGULA', 0) : undefined}
+            />
 
-          {/* 2. AKIŞ ADIMI DÜĞÜMLERİ (Türetilmiş Flowchart Bileşenleri) */}
-          {steps.length === 0 ? (
-            <div className="ai-flowchart-empty-state">
-              <GitBranch size={28} />
-              <span>{emptyMessage || t('henuz_adim_eklenmemis', 'Henüz akış adımı eklenmemiş.')}</span>
-            </div>
-          ) : (
-            steps.map((step, index) => {
-              const isSelected = selectedStepId === step.id;
-              const isFirst = index === 0;
-              const isLast = index === steps.length - 1;
-              const normalizedType = (step.type || 'MCP_SORGULA').toUpperCase();
+            {/* 2. AKIŞ ADIMI DÜĞÜMLERİ (Türetilmiş Flowchart Bileşenleri) */}
+            {steps.length === 0 ? (
+              <div className="ai-flowchart-empty-state">
+                <GitBranch size={28} />
+                <span>{emptyMessage || t('henuz_adim_eklenmemis', 'Henüz akış adımı eklenmemiş.')}</span>
+              </div>
+            ) : (
+              steps.map((step, index) => {
+                const isSelected = selectedStepId === step.id;
+                const isFirst = index === 0;
+                const isLast = index === steps.length - 1;
+                const normalizedType = (step.type || 'MCP_SORGULA').toUpperCase();
 
-              const commonProps = {
-                id: step.id,
-                stepNumber: index + 1,
-                shapeBadgeText: step.shapeBadgeText,
-                title: step.title || `${index + 1}. ${t('islem_adimi', 'İşlem Adımı')}`,
-                promptPreview: step.prompt,
-                toolCode: step.toolCode,
-                uiActionLabel: step.uiActionLabel,
-                routePath: step.routePath,
-                selected: isSelected,
-                isFirst,
-                isLast,
-                onSelect: onSelectStep,
-                onMoveUp: onMoveStep ? (e: React.MouseEvent) => onMoveStep(index, 'up', e) : undefined,
-                onMoveDown: onMoveStep ? (e: React.MouseEvent) => onMoveStep(index, 'down', e) : undefined,
-                onDelete: onDeleteStep ? (e: React.MouseEvent) => onDeleteStep(step.id, e) : undefined
-              };
+                const commonProps = {
+                  id: step.id,
+                  stepNumber: index + 1,
+                  shapeBadgeText: step.shapeBadgeText,
+                  title: step.title || `${index + 1}. ${t('islem_adimi', 'İşlem Adımı')}`,
+                  promptPreview: step.prompt,
+                  toolCode: step.toolCode,
+                  uiActionLabel: step.uiActionLabel,
+                  routePath: step.routePath,
+                  selected: isSelected,
+                  isFirst,
+                  isLast,
+                  onSelect: onSelectStep,
+                  onMoveUp: onMoveStep ? (e: React.MouseEvent) => onMoveStep(index, 'up', e) : undefined,
+                  onMoveDown: onMoveStep ? (e: React.MouseEvent) => onMoveStep(index, 'down', e) : undefined,
+                  onDelete: onDeleteStep ? (e: React.MouseEvent) => onDeleteStep(step.id, e) : undefined
+                };
 
-              let renderedNode: React.ReactNode;
+                let renderedNode: React.ReactNode;
 
-              if (normalizedType === 'KARAR_ONAY') {
-                const yesStep = resolveStepById(step.yesStepId);
-                const noStep = resolveStepById(step.noStepId);
-                renderedNode = (
-                  <FlowchartDecisionNode
-                    {...commonProps}
-                    yesTargetId={step.yesStepId}
-                    yesTargetTitle={yesStep ? `${yesStep.id}: ${yesStep.title}` : undefined}
-                    noTargetId={step.noStepId}
-                    noTargetTitle={noStep ? `${noStep.id}: ${noStep.title}` : undefined}
-                    noFallbackRoute={step.routePath}
-                    onSelectBranchTarget={onSelectStep}
-                  />
+                if (normalizedType === 'KARAR_ONAY') {
+                  const yesStep = resolveStepById(step.yesStepId);
+                  const noStep = resolveStepById(step.noStepId);
+                  renderedNode = (
+                    <FlowchartDecisionNode
+                      {...commonProps}
+                      yesTargetId={step.yesStepId}
+                      yesTargetTitle={yesStep ? `${yesStep.id}: ${yesStep.title}` : undefined}
+                      noTargetId={step.noStepId}
+                      noTargetTitle={noStep ? `${noStep.id}: ${noStep.title}` : undefined}
+                      noFallbackRoute={step.routePath}
+                      onSelectBranchTarget={onSelectStep}
+                    />
+                  );
+                } else if (normalizedType === 'BASLANGIC_GIRDI' || normalizedType === 'EKRAN_AC') {
+                  renderedNode = <FlowchartInputNode {...commonProps} />;
+                } else if (normalizedType === 'BELGE_OLUSTUR') {
+                  renderedNode = <FlowchartDocumentNode {...commonProps} />;
+                } else if (normalizedType === 'SONUC') {
+                  renderedNode = (
+                    <FlowchartProcessNode
+                      {...commonProps}
+                      icon={<CheckCircle2 size={11} />}
+                    />
+                  );
+                } else {
+                  renderedNode = <FlowchartProcessNode {...commonProps} />;
+                }
+
+                return (
+                  <React.Fragment key={step.id || index}>
+                    {renderedNode}
+                    <BaseFlowchartConnector
+                      active={isSelected}
+                      onInsertStep={onAddStep ? () => onAddStep('MCP_SORGULA', index + 1) : undefined}
+                    />
+                  </React.Fragment>
                 );
-              } else if (normalizedType === 'BASLANGIC_GIRDI' || normalizedType === 'EKRAN_AC') {
-                renderedNode = <FlowchartInputNode {...commonProps} />;
-              } else if (normalizedType === 'BELGE_OLUSTUR') {
-                renderedNode = <FlowchartDocumentNode {...commonProps} />;
-              } else if (normalizedType === 'SONUC') {
-                renderedNode = (
-                  <FlowchartProcessNode
-                    {...commonProps}
-                    icon={<CheckCircle2 size={11} />}
-                  />
-                );
-              } else {
-                renderedNode = <FlowchartProcessNode {...commonProps} />;
-              }
+              })
+            )}
 
-              return (
-                <React.Fragment key={step.id || index}>
-                  {renderedNode}
-                  <BaseFlowchartConnector
-                    active={isSelected}
-                    onInsertStep={onAddStep ? () => onAddStep('MCP_SORGULA', index + 1) : undefined}
-                  />
-                </React.Fragment>
-              );
-            })
-          )}
-
-          {/* 3. BİTİŞ / TAMAMLAMA KAPSÜL DÜĞÜMÜ */}
-          <FlowchartEndNode
-            id="__END__"
-            title={endTitle || t('gorev_tamamlandi_sonuc', 'Görev Tamamlandı & Yanıt Özeti')}
-            selected={false}
-            onSelect={() => {
-              if (steps.length > 0) {
-                onSelectStep(steps[steps.length - 1].id);
-              } else {
-                onSelectStep(startNodeId);
-              }
-            }}
-          />
-        </div>
+            {/* 3. BİTİŞ / TAMAMLAMA KAPSÜL DÜĞÜMÜ */}
+            <FlowchartEndNode
+              id="__END__"
+              title={endTitle || t('gorev_tamamlandi_sonuc', 'Görev Tamamlandı & Yanıt Özeti')}
+              selected={false}
+              onSelect={() => {
+                if (steps.length > 0) {
+                  onSelectStep(steps[steps.length - 1].id);
+                } else {
+                  onSelectStep(startNodeId);
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

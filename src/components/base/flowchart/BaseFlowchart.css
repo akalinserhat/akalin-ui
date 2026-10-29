@@ -196,7 +196,12 @@
   align-items: center;
   width: 100%;
   min-width: fit-content;
-  transition: zoom 0.15s ease;
+  transition: zoom 0.18s cubic-bezier(0.2, 0, 0, 1);
+  will-change: zoom;
+}
+
+.base-flowchart-canvas-transform.is-wheel-zooming {
+  transition: none !important;
 }
 
 .base-flowchart-spine {
