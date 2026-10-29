@@ -492,13 +492,23 @@
 }
 
 .base-flowchart-node--terminal.variant-start {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(16, 185, 129, 0.06) 100%);
-  border: 1.5px solid rgba(79, 70, 229, 0.38);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.45);
+}
+
+.base-flowchart-node--terminal.variant-start:hover {
+  border-color: #10b981;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.16);
 }
 
 .base-flowchart-node--terminal.variant-start.is-selected {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 4px var(--accent-light);
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22);
+}
+
+.base-flowchart-node--terminal.variant-start .base-flowchart-terminal-icon {
+  background: #10b981;
+  color: #ffffff;
 }
 
 .base-flowchart-node--terminal.variant-end {

@@ -248,15 +248,19 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   );
 };
 
-// ─── 1. Türetilmiş Bileşen: Başlangıç / Tetikleyici Düğümü ───────────────────
+// ─── 1. Türetilmiş Bileşen: "Başla" Düğümü (Geleneksel Terminator / Oval) ────
 export interface FlowchartStartNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartStartNode: React.FC<FlowchartStartNodeProps> = (props) => {
+  const { t } = useTranslation();
   return (
     <BaseFlowchartNode
       {...props}
       shape="terminal"
       variant="start"
+      title={props.title || t('basla', 'Başla')}
+      shapeBadgeText={props.shapeBadgeText || t('basla', 'Başla')}
+      icon={props.icon || <Play size={12} />}
       showTopPort={false}
       showBottomPort={true}
     />

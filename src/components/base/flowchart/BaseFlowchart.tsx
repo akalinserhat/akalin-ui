@@ -12,6 +12,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
+  Play,
   ZoomIn,
   ZoomOut,
   RotateCcw
@@ -208,13 +209,19 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
 
                   {steps.map((step, index) => {
                     const isSelected = selectedStepId === step.id;
+                    const isBasla = step.type === 'BASLA' || step.type === 'START';
+
                     return (
                       <React.Fragment key={step.id || index}>
                         <BaseFlowchartNode
                           id={step.id}
-                          stepNumber={index + 1}
-                          shapeBadgeText={step.shapeBadgeText}
-                          title={step.title}
+                          stepNumber={isBasla ? undefined : index + 1}
+                          shape={isBasla ? 'terminal' : 'process'}
+                          variant={isBasla ? 'start' : 'process'}
+                          icon={isBasla ? <Play size={13} /> : undefined}
+                          showTopPort={!isBasla}
+                          shapeBadgeText={step.shapeBadgeText || (isBasla ? t('basla', 'Başla') : undefined)}
+                          title={step.title || (isBasla ? t('basla', 'Başla') : '')}
                           promptPreview={step.prompt}
                           toolCode={step.toolCode}
                           uiActionLabel={step.uiActionLabel}
