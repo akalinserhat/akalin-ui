@@ -155,7 +155,7 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
       if (!detail || !onAiApply) return;
 
       if (detail.documentType && effectiveType &&
-          detail.documentType.toLowerCase() !== effectiveType.toLowerCase()) {
+        detail.documentType.toLowerCase() !== effectiveType.toLowerCase()) {
         return;
       }
 

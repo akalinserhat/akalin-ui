@@ -125,7 +125,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 
   if (shape === 'terminal') {
     return (
-      <div 
+      <div
         className="base-flowchart-node-wrapper"
         onDoubleClick={handleDoubleClick}
       >
@@ -176,7 +176,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   }
 
   return (
-    <div 
+    <div
       className="base-flowchart-node-wrapper"
       onDoubleClick={handleDoubleClick}
     >
