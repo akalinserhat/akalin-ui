@@ -987,6 +987,35 @@
   color: var(--text-primary);
 }
 
+.base-flowchart-action-btn.is-settings:hover:not(:disabled) {
+  background: var(--accent-light, rgba(99, 102, 241, 0.12));
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.base-flowchart-node-settings-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--md3-shape-small, 6px);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-card, var(--bg-primary));
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.base-flowchart-node-settings-btn:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
 .base-flowchart-action-btn.is-danger:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.25);

@@ -29,7 +29,8 @@ import {
   Trash2,
   ChevronRight,
   Sparkles,
-  CornerDownRight
+  CornerDownRight,
+  Sliders
 } from 'lucide-react';
 import './BaseFlowchart.css';
 
@@ -95,8 +96,19 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const lastClickTimeRef = React.useRef<number>(0);
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 350) {
+      lastClickTimeRef.current = 0;
+      if (onDoubleClick) {
+        onDoubleClick(id, e);
+      }
+      return;
+    }
+    lastClickTimeRef.current = now;
     if (onSelect) {
       onSelect(id);
     }
@@ -105,6 +117,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    lastClickTimeRef.current = 0;
     if (onDoubleClick) {
       onDoubleClick(id, e);
     }
@@ -136,11 +149,26 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             </div>
           </div>
 
-          {selected && (
-            <div className="base-flowchart-selected-indicator" title={t('secili_adim', 'Seçili Adım')}>
-              <ChevronRight size={13} />
-            </div>
-          )}
+          <div className="base-flowchart-terminal-right flex items-center gap-6">
+            {onDoubleClick && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDoubleClick(id, e);
+                }}
+                className="base-flowchart-node-settings-btn"
+                title={t('dugum_ayarlari', 'Düğüm Ayarları')}
+              >
+                <Sliders size={13} />
+              </button>
+            )}
+            {selected && (
+              <div className="base-flowchart-selected-indicator" title={t('secili_adim', 'Seçili Adım')}>
+                <ChevronRight size={13} />
+              </div>
+            )}
+          </div>
         </div>
         {showBottomPort && <div className="base-flowchart-port" />}
       </div>
@@ -183,8 +211,21 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             )}
           </div>
 
-          {(onMoveUp || onMoveDown || onDelete) && (
+          {(onDoubleClick || onMoveUp || onMoveDown || onDelete) && (
             <div className="base-flowchart-node-actions" onClick={e => e.stopPropagation()}>
+              {onDoubleClick && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDoubleClick(id, e);
+                  }}
+                  className="base-flowchart-action-btn is-settings"
+                  title={t('dugum_ayarlari', 'Düğüm Ayarları')}
+                >
+                  <Sliders size={12} />
+                </button>
+              )}
               {onMoveUp && (
                 <button
                   type="button"
