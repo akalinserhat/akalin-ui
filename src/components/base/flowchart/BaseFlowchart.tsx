@@ -67,6 +67,7 @@ export interface BaseFlowchartProps {
   steps?: FlowchartStepItem[];
   selectedStepId?: string | null;
   onSelectStep?: (stepId: string) => void;
+  onDoubleClickStep?: (stepId: string) => void;
   onAddStep?: (stepType: string, insertAtIndex?: number) => void;
   onMoveStep?: (index: number, direction: 'up' | 'down', e?: React.MouseEvent) => void;
   onDeleteStep?: (stepId: string, e?: React.MouseEvent) => void;
@@ -95,6 +96,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   steps = [],
   selectedStepId,
   onSelectStep,
+  onDoubleClickStep,
   onAddStep,
   onMoveStep,
   onDeleteStep,
@@ -274,6 +276,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                         subtitle={startSubtitle}
                         selected={selectedStepId === startNodeId}
                         onSelect={onSelectStep}
+                        onDoubleClick={onDoubleClickStep ? () => onDoubleClickStep(startNodeId) : undefined}
                         showTopPort={false}
                       />
                       <BaseFlowchartConnector
@@ -305,6 +308,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                           isFirst={index === 0}
                           isLast={index === steps.length - 1}
                           onSelect={onSelectStep}
+                          onDoubleClick={onDoubleClickStep ? () => onDoubleClickStep(step.id) : undefined}
                           onMoveUp={onMoveStep ? (e) => onMoveStep(index, 'up', e) : undefined}
                           onMoveDown={onMoveStep ? (e) => onMoveStep(index, 'down', e) : undefined}
                           onDelete={onDeleteStep ? (e) => onDeleteStep(step.id, e) : undefined}

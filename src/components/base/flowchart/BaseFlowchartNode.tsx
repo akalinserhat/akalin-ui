@@ -55,6 +55,7 @@ export interface BaseFlowchartNodeProps {
   showTopPort?: boolean;
   showBottomPort?: boolean;
   onSelect?: (id: string) => void;
+  onDoubleClick?: (id: string, e: React.MouseEvent) => void;
   onMoveUp?: (e: React.MouseEvent) => void;
   onMoveDown?: (e: React.MouseEvent) => void;
   onDelete?: (e: React.MouseEvent) => void;
@@ -85,6 +86,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   showTopPort = true,
   showBottomPort = true,
   onSelect,
+  onDoubleClick,
   onMoveUp,
   onMoveDown,
   onDelete,
@@ -100,13 +102,22 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
     }
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick(id, e);
+    }
+  };
+
   if (shape === 'terminal') {
     return (
       <div className="base-flowchart-node-wrapper">
         {showTopPort && <div className="base-flowchart-port port-end" />}
         <div
           onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           className={`base-flowchart-node base-flowchart-node--terminal variant-${variant} ${selected ? 'is-selected' : ''} ${className}`}
+          title={t('cift_tikla_duzenle', 'Düzenlemek için çift tıklayın')}
         >
           <div className="base-flowchart-terminal-left">
             <div className="base-flowchart-terminal-icon">
@@ -148,7 +159,9 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 
       <div
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         className={`base-flowchart-node base-flowchart-node--${shape} variant-${variant} ${selected ? 'is-selected' : ''} ${className}`}
+        title={t('cift_tikla_duzenle', 'Düzenlemek için çift tıklayın')}
       >
         <div className="base-flowchart-node-header">
           <div className="base-flowchart-node-header-left">
