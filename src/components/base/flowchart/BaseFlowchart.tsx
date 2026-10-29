@@ -52,6 +52,8 @@ export interface FlowchartStepItem {
 
 export interface BaseFlowchartProps {
   title?: React.ReactNode;
+  showHeader?: boolean;
+  fit?: boolean;
   startTitle?: React.ReactNode;
   startSubtitle?: React.ReactNode;
   startNodeId?: string;
@@ -72,6 +74,8 @@ export interface BaseFlowchartProps {
 
 export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   title,
+  showHeader = false,
+  fit = false,
   startTitle,
   startSubtitle,
   startNodeId = '__START__',
@@ -171,15 +175,17 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   };
 
   return (
-    <div className={`base-flowchart-container ${className}`}>
-      {/* Üst Araç Çubuğu */}
-      <div className="base-flowchart-toolbar">
-        <div className="base-flowchart-toolbar-title">
-          <GitBranch size={16} />
-          <span>{title || t('gorev_akis_diyagrami', 'Görev Akış Diyagramı (Flowchart)')}</span>
-          <span className="base-flowchart-count-pill">{steps.length}</span>
+    <div className={`base-flowchart-container ${fit ? 'base-flowchart--fit' : ''} ${className}`}>
+      {/* Üst Araç Çubuğu (Varsayılan olarak kapalıdır, showHeader=true ile etkinleştirilebilir) */}
+      {showHeader && (
+        <div className="base-flowchart-toolbar">
+          <div className="base-flowchart-toolbar-title">
+            <GitBranch size={16} />
+            <span>{title || t('gorev_akis_diyagrami', 'Görev Akış Diyagramı (Flowchart)')}</span>
+            <span className="base-flowchart-count-pill">{steps.length}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Ana Gövde Alanı (Sol: Dikey Diagram Öğeleri Paleti, Sağ: Çizim Sahnesi / Stage) */}
       <div className="base-flowchart-main-body">
