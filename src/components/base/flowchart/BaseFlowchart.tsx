@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  Layers
 } from 'lucide-react';
 import {
   FlowchartStartNode,
@@ -218,58 +219,91 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
               </button>
             </div>
           )}
+        </div>
+      </div>
 
-          {onAddStep && (
-            <div className="base-flowchart-palette">
+      {/* Ana Gövde Alanı (Sol: Dikey Diagram Öğeleri Paleti, Sağ: Çizim Sahnesi / Stage) */}
+      <div className="base-flowchart-main-body">
+        {onAddStep && (
+          <aside className="base-flowchart-sidebar-palette" aria-label={t('diyagram_ogeleri', 'Diyagram Öğeleri')}>
+            <div className="base-flowchart-sidebar-header">
+              <Layers size={13} />
+              <span>{t('diyagram_ogeleri', 'Diyagram Öğeleri')}</span>
+            </div>
+
+            <div className="base-flowchart-sidebar-items">
               <button
                 type="button"
                 onClick={() => onAddStep('MCP_SORGULA')}
-                className="base-flowchart-palette-btn palette-process"
+                className="base-flowchart-sidebar-item palette-process"
                 title={t('mcp_islem_adimi_ekle', 'MCP Veri Sorgulama / İşlem Düğümü Ekle')}
               >
-                <Cpu size={12} />
-                <span>+ {t('islem_dugumu', 'İşlem')}</span>
+                <div className="base-flowchart-sidebar-item-icon">
+                  <Cpu size={14} />
+                </div>
+                <div className="base-flowchart-sidebar-item-text">
+                  <span className="base-flowchart-sidebar-item-title">{t('islem_dugumu', 'İşlem')}</span>
+                  <span className="base-flowchart-sidebar-item-sub">{t('islem_dugumu_sub', 'MCP / Veri Sorgu')}</span>
+                </div>
+                <Plus size={13} className="base-flowchart-sidebar-item-add" />
               </button>
 
               <button
                 type="button"
                 onClick={() => onAddStep('KARAR_ONAY')}
-                className="base-flowchart-palette-btn palette-decision"
+                className="base-flowchart-sidebar-item palette-decision"
                 title={t('karar_onay_adimi_ekle', 'Evet / Hayır Dallanmalı Karar Düğümü Ekle')}
               >
-                <GitBranch size={12} />
-                <span>+ {t('karar_dugumu', 'Karar (E/H)')}</span>
+                <div className="base-flowchart-sidebar-item-icon">
+                  <GitBranch size={14} />
+                </div>
+                <div className="base-flowchart-sidebar-item-text">
+                  <span className="base-flowchart-sidebar-item-title">{t('karar_dugumu', 'Karar (E/H)')}</span>
+                  <span className="base-flowchart-sidebar-item-sub">{t('karar_dugumu_sub', 'Kullanıcı Onayı')}</span>
+                </div>
+                <Plus size={13} className="base-flowchart-sidebar-item-add" />
               </button>
 
               <button
                 type="button"
                 onClick={() => onAddStep('EKRAN_AC')}
-                className="base-flowchart-palette-btn palette-input"
+                className="base-flowchart-sidebar-item palette-input"
                 title={t('girdi_ekran_adimi_ekle', 'Girdi / ERP Ekran Açma Düğümü Ekle')}
               >
-                <Monitor size={12} />
-                <span>+ {t('ekran_girdi_dugumu', 'Ekran / Girdi')}</span>
+                <div className="base-flowchart-sidebar-item-icon">
+                  <Monitor size={14} />
+                </div>
+                <div className="base-flowchart-sidebar-item-text">
+                  <span className="base-flowchart-sidebar-item-title">{t('ekran_girdi_dugumu', 'Ekran / Girdi')}</span>
+                  <span className="base-flowchart-sidebar-item-sub">{t('ekran_girdi_dugumu_sub', 'Form & Navigasyon')}</span>
+                </div>
+                <Plus size={13} className="base-flowchart-sidebar-item-add" />
               </button>
 
               <button
                 type="button"
                 onClick={() => onAddStep('BELGE_OLUSTUR')}
-                className="base-flowchart-palette-btn palette-document"
+                className="base-flowchart-sidebar-item palette-document"
                 title={t('belge_taslak_adimi_ekle', 'Belge / Taslak Oluşturma Düğümü Ekle')}
               >
-                <FileText size={12} />
-                <span>+ {t('belge_dugumu', 'Belge')}</span>
+                <div className="base-flowchart-sidebar-item-icon">
+                  <FileText size={14} />
+                </div>
+                <div className="base-flowchart-sidebar-item-text">
+                  <span className="base-flowchart-sidebar-item-title">{t('belge_dugumu', 'Belge')}</span>
+                  <span className="base-flowchart-sidebar-item-sub">{t('belge_dugumu_sub', 'ERP Belge Taslağı')}</span>
+                </div>
+                <Plus size={13} className="base-flowchart-sidebar-item-add" />
               </button>
             </div>
-          )}
-        </div>
-      </div>
+          </aside>
+        )}
 
-      {/* Noktalı Görsel Flowchart Sahnesi (Yatay & Dikey Kaydırılabilir ve Zoomlanabilir) */}
-      <div
-        ref={stageRef}
-        className="base-flowchart-stage"
-      >
+        {/* Noktalı Görsel Flowchart Sahnesi (Yatay & Dikey Kaydırılabilir ve Zoomlanabilir) */}
+        <div
+          ref={stageRef}
+          className="base-flowchart-stage"
+        >
         <div
           className={`base-flowchart-canvas-transform ${isWheelZooming ? 'is-wheel-zooming' : ''}`}
           style={{
@@ -380,6 +414,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             />
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
