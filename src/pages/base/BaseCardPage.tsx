@@ -27,8 +27,15 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { useHeaderApi } from '../../context/HeaderContext';
 
+export interface BreadcrumbSubItem {
+  label: string;
+  onClick?: () => void;
+  active?: boolean;
+}
+
 export interface BaseCardPageProps extends Omit<BasePageProps, 'tabs' | 'activeTabId' | 'onTabChange'> {
   recordTitle?: string;
+  subTrail?: BreadcrumbSubItem[];
   tabs?: BaseTabItem[];
   activeTabId?: string | number;
   onTabChange?: (tabId: string | number) => void;
@@ -64,6 +71,7 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
   cardId,
   enableAiAssistant = true,
   showBackButton = true,
+  subTrail,
   children,
   // BasePageProps'tan gelen aksiyon ve kaydetme alanları
   id,
@@ -109,17 +117,23 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
   }, [recordTitle, restBasePageProps.title, restBasePageProps.pageTitle]);
 
   useEffect(() => {
-    if (setHeaderBreadcrumbOptions && effectiveRecordTitle) {
-      setHeaderBreadcrumbOptions({
-        recordTitle: effectiveRecordTitle
-      });
+    if (setHeaderBreadcrumbOptions) {
+      if (subTrail && subTrail.length > 0) {
+        setHeaderBreadcrumbOptions({
+          subTrail
+        });
+      } else if (effectiveRecordTitle) {
+        setHeaderBreadcrumbOptions({
+          recordTitle: effectiveRecordTitle
+        });
+      }
     }
     return () => {
-      if (setHeaderBreadcrumbOptions && effectiveRecordTitle) {
+      if (setHeaderBreadcrumbOptions && (subTrail || effectiveRecordTitle)) {
         setHeaderBreadcrumbOptions(null);
       }
     };
-  }, [effectiveRecordTitle, setHeaderBreadcrumbOptions]);
+  }, [subTrail, effectiveRecordTitle, setHeaderBreadcrumbOptions]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

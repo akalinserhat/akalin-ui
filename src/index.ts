@@ -7,7 +7,7 @@
 export { default as BasePage, type BasePageProps } from './pages/base/BasePage';
 export { default as BaseSystemPage, BaseSystemPageContext, useBaseSystemPage, type BaseSystemPageProps, type BaseSystemPageContextValue, type BaseSystemPageSearchField, type SystemSettingModule } from './pages/base/BaseSystemPage';
 export { default as BaseListPage, type BaseListPageProps } from './pages/base/BaseListPage';
-export { default as BaseCardPage, type BaseCardPageProps } from './pages/base/BaseCardPage';
+export { default as BaseCardPage, type BaseCardPageProps, type BreadcrumbSubItem } from './pages/base/BaseCardPage';
 export { default as BaseFormPage, type BaseFormPageProps, type FormComponentProps } from './pages/base/BaseFormPage';
 export { default as BaseDocumentPage, DocumentHeaderPanel, DocumentHeaderField, DocumentFormContext, DocumentHeaderFieldContext, type BaseDocumentPageProps, type DocumentHeaderPanelProps, type DocumentHeaderFieldProps, type DocumentCurrencyProps } from './pages/base/BaseDocumentPage';
 export { default as BaseWizardPage, WizardStep, type BaseWizardPageProps, type WizardStepProps } from './pages/base/BaseWizardPage';
