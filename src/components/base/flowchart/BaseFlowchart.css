@@ -47,6 +47,63 @@
   color: var(--accent-primary);
 }
 
+.base-flowchart-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── Zoom (Yakınlaştırma & Uzaklaştırma) Kontrolleri ──────────────────────── */
+.base-flowchart-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--md3-shape-medium, 8px);
+  padding: 2px 4px;
+  gap: 2px;
+}
+
+.base-flowchart-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.base-flowchart-zoom-btn:hover:not(:disabled) {
+  background: var(--surface-ground, var(--bg-primary));
+  color: var(--text-primary);
+}
+
+.base-flowchart-zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.base-flowchart-zoom-btn.base-flowchart-zoom-level {
+  min-width: 44px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.base-flowchart-zoom-btn.base-flowchart-zoom-level:hover {
+  color: var(--accent-primary);
+}
+
 .base-flowchart-palette {
   display: flex;
   align-items: center;
@@ -115,18 +172,31 @@
 /* ─── Noktalı Diyagram Sahnesi (Dot-Grid Flowchart Stage) ──────────────────── */
 .base-flowchart-stage {
   flex: 1;
-  padding: 28px 20px 36px 20px;
+  padding: 32px 24px 64px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
   background-color: var(--bg-secondary);
   background-image: radial-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px);
   background-size: 18px 18px;
   border-radius: 0 0 calc(var(--md3-shape-large, 12px) - 1px) calc(var(--md3-shape-large, 12px) - 1px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-border, rgba(0, 0, 0, 0.2)) transparent;
 }
 
 [data-theme='dark'] .base-flowchart-stage {
   background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
+.base-flowchart-canvas-transform {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: fit-content;
+  transition: zoom 0.15s ease;
 }
 
 .base-flowchart-spine {
@@ -134,7 +204,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 520px;
+  max-width: 420px;
 }
 
 /* ─── Bağlantı Noktaları (Ports) & Gerçek SVG Akış Çizgileri ───────────────── */
@@ -250,7 +320,7 @@
 .base-flowchart-node {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 380px;
   background: var(--bg-secondary);
   border: 1.5px solid var(--glass-border);
   border-radius: 12px;
@@ -299,9 +369,9 @@
 
 /* ─── Şekil 1: Terminal / Başlangıç & Bitiş Düğümü (Capsule / Stadium Shape) ─ */
 .base-flowchart-node--terminal {
-  max-width: 360px;
+  max-width: 330px;
   border-radius: 9999px;
-  padding: 10px 22px;
+  padding: 10px 20px;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -373,9 +443,8 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 /* ─── Şekil 2: Process / İşlem Düğümü (MCP Sorgu & Otomasyon) ──────────────── */
@@ -473,7 +542,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 480px;
+  max-width: 400px;
 }
 
 .base-flowchart-fork-svg {
@@ -686,12 +755,15 @@
   background: var(--surface-ground, var(--bg-primary));
   border: 1px solid var(--glass-border);
   border-radius: 7px;
-  padding: 6px 9px;
-  line-height: 1.4;
+  padding: 8px 10px;
+  line-height: 1.45;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 8;
   -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 180px;
+  word-break: break-word;
+  scrollbar-width: thin;
 }
 
 .base-flowchart-node-tags {

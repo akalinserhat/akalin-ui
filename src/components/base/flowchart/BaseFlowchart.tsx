@@ -10,7 +10,7 @@
  * - Sıfır inline CSS ve %100 i18n uyumlu çalışmak
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
@@ -18,7 +18,10 @@ import {
   Cpu,
   Monitor,
   FileText,
-  CheckCircle2
+  CheckCircle2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw
 } from 'lucide-react';
 import {
   FlowchartStartNode,
@@ -60,6 +63,10 @@ export interface BaseFlowchartProps {
   onDeleteStep?: (stepId: string, e?: React.MouseEvent) => void;
   emptyMessage?: string;
   className?: string;
+  initialZoom?: number;
+  minZoom?: number;
+  maxZoom?: number;
+  showZoomControls?: boolean;
 }
 
 export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
@@ -75,9 +82,29 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   onMoveStep,
   onDeleteStep,
   emptyMessage,
-  className = ''
+  className = '',
+  initialZoom = 1,
+  minZoom = 0.4,
+  maxZoom = 2,
+  showZoomControls = true
 }) => {
   const { t } = useTranslation();
+  const [zoom, setZoom] = useState<number>(initialZoom);
+
+  const handleZoomIn = () => setZoom(prev => Math.min(maxZoom, Math.round((prev + 0.1) * 10) / 10));
+  const handleZoomOut = () => setZoom(prev => Math.max(minZoom, Math.round((prev - 0.1) * 10) / 10));
+  const handleZoomReset = () => setZoom(1);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        handleZoomIn();
+      } else {
+        handleZoomOut();
+      }
+    }
+  };
 
   const resolveStepById = (id?: string) => {
     if (!id) return undefined;
@@ -94,53 +121,100 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           <span className="base-flowchart-count-pill">{steps.length}</span>
         </div>
 
-        {onAddStep && (
-          <div className="base-flowchart-palette">
-            <button
-              type="button"
-              onClick={() => onAddStep('MCP_SORGULA')}
-              className="base-flowchart-palette-btn palette-process"
-              title={t('mcp_islem_adimi_ekle', 'MCP Veri Sorgulama / İşlem Düğümü Ekle')}
-            >
-              <Cpu size={12} />
-              <span>+ {t('islem_dugumu', 'İşlem')}</span>
-            </button>
+        <div className="base-flowchart-toolbar-actions">
+          {showZoomControls && (
+            <div className="base-flowchart-zoom-controls">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoom <= minZoom}
+                className="base-flowchart-zoom-btn"
+                title={t('uzaklastir', 'Uzaklaştır (Ctrl/Cmd + Tekerlek)')}
+              >
+                <ZoomOut size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomReset}
+                className="base-flowchart-zoom-btn base-flowchart-zoom-level"
+                title={t('varsayilan_yakinlik', 'Varsayılan Boyut (%100)')}
+              >
+                <span>{Math.round(zoom * 100)}%</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoom >= maxZoom}
+                className="base-flowchart-zoom-btn"
+                title={t('yakinlastir', 'Yakınlaştır (Ctrl/Cmd + Tekerlek)')}
+              >
+                <ZoomIn size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomReset}
+                className="base-flowchart-zoom-btn base-flowchart-zoom-reset"
+                title={t('sigdir_ve_sifirla', 'Boyutu Sıfırla')}
+              >
+                <RotateCcw size={12} />
+              </button>
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => onAddStep('KARAR_ONAY')}
-              className="base-flowchart-palette-btn palette-decision"
-              title={t('karar_onay_adimi_ekle', 'Evet / Hayır Dallanmalı Karar Düğümü Ekle')}
-            >
-              <GitBranch size={12} />
-              <span>+ {t('karar_dugumu', 'Karar (E/H)')}</span>
-            </button>
+          {onAddStep && (
+            <div className="base-flowchart-palette">
+              <button
+                type="button"
+                onClick={() => onAddStep('MCP_SORGULA')}
+                className="base-flowchart-palette-btn palette-process"
+                title={t('mcp_islem_adimi_ekle', 'MCP Veri Sorgulama / İşlem Düğümü Ekle')}
+              >
+                <Cpu size={12} />
+                <span>+ {t('islem_dugumu', 'İşlem')}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => onAddStep('EKRAN_AC')}
-              className="base-flowchart-palette-btn palette-input"
-              title={t('girdi_ekran_adimi_ekle', 'Girdi / ERP Ekran Açma Düğümü Ekle')}
-            >
-              <Monitor size={12} />
-              <span>+ {t('ekran_girdi_dugumu', 'Ekran / Girdi')}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => onAddStep('KARAR_ONAY')}
+                className="base-flowchart-palette-btn palette-decision"
+                title={t('karar_onay_adimi_ekle', 'Evet / Hayır Dallanmalı Karar Düğümü Ekle')}
+              >
+                <GitBranch size={12} />
+                <span>+ {t('karar_dugumu', 'Karar (E/H)')}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => onAddStep('BELGE_OLUSTUR')}
-              className="base-flowchart-palette-btn palette-document"
-              title={t('belge_taslak_adimi_ekle', 'Belge / Taslak Oluşturma Düğümü Ekle')}
-            >
-              <FileText size={12} />
-              <span>+ {t('belge_dugumu', 'Belge')}</span>
-            </button>
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() => onAddStep('EKRAN_AC')}
+                className="base-flowchart-palette-btn palette-input"
+                title={t('girdi_ekran_adimi_ekle', 'Girdi / ERP Ekran Açma Düğümü Ekle')}
+              >
+                <Monitor size={12} />
+                <span>+ {t('ekran_girdi_dugumu', 'Ekran / Girdi')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onAddStep('BELGE_OLUSTUR')}
+                className="base-flowchart-palette-btn palette-document"
+                title={t('belge_taslak_adimi_ekle', 'Belge / Taslak Oluşturma Düğümü Ekle')}
+              >
+                <FileText size={12} />
+                <span>+ {t('belge_dugumu', 'Belge')}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Noktalı Görsel Flowchart Sahnesi */}
-      <div className="base-flowchart-stage">
+      {/* Noktalı Görsel Flowchart Sahnesi (Yatay & Dikey Kaydırılabilir ve Zoomlanabilir) */}
+      <div className="base-flowchart-stage" onWheel={handleWheel}>
+        <div
+          className="base-flowchart-canvas-transform"
+          style={{
+            zoom: zoom
+          }}
+        >
         <div className="base-flowchart-spine">
           {/* 1. BAŞLANGIÇ / TETİKLEYİCİ KAPSÜL DÜĞÜMÜ */}
           <FlowchartStartNode
@@ -243,6 +317,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
               }
             }}
           />
+        </div>
         </div>
       </div>
     </div>
