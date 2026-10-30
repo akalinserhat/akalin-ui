@@ -14,6 +14,7 @@ import {
   GitBranch,
   Play,
   Monitor,
+  Cpu,
   Layers,
   Plus,
   ZoomIn,
@@ -264,6 +265,23 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     </div>
                     <Plus size={13} className="base-flowchart-sidebar-item-add" />
                   </button>
+
+                  {/* Geleneksel Standart Flowchart Öğesi 3: AI İşlemi (Process / Dikdörtgen) */}
+                  <button
+                    type="button"
+                    onClick={() => onAddStep && onAddStep('AI_ISLEM')}
+                    className="base-flowchart-sidebar-item palette-shape-process"
+                    title={t('ai_islem_adimi_ekle', 'AI İşlemi Düğümü Ekle')}
+                  >
+                    <div className="base-flowchart-sidebar-item-icon">
+                      <Cpu size={13} />
+                    </div>
+                    <div className="base-flowchart-sidebar-item-text">
+                      <span className="base-flowchart-sidebar-item-title">{t('ai_islem', 'AI İşlemi')}</span>
+                      <span className="base-flowchart-sidebar-item-sub">{t('ai_analiz_sorgu_belge_islem', 'AI Analiz, Sorgu veya Belge İşlemi')}</span>
+                    </div>
+                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                  </button>
                 </>
               )}
             </div>
@@ -317,10 +335,10 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                           stepNumber={isBasla ? undefined : index + 1}
                           shape={isBasla ? 'terminal' : isFormAc ? 'input' : 'process'}
                           variant={isBasla ? 'start' : isFormAc ? 'input' : 'process'}
-                          icon={isBasla ? <Play size={13} /> : isFormAc ? <Monitor size={13} /> : undefined}
+                          icon={isBasla ? <Play size={13} /> : isFormAc ? <Monitor size={13} /> : <Cpu size={13} />}
                           showTopPort={!isBasla}
-                          shapeBadgeText={step.shapeBadgeText || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : undefined)}
-                          title={step.title || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : '')}
+                          shapeBadgeText={step.shapeBadgeText || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : t('ai_islem', 'AI İşlemi'))}
+                          title={step.title || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : t('ai_islem', 'AI İşlemi'))}
                           promptPreview={step.prompt}
                           toolCode={step.toolCode}
                           uiActionLabel={step.uiActionLabel}
