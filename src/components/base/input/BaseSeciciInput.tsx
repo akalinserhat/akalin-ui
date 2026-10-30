@@ -38,20 +38,20 @@ export interface BaseSeciciInputProps {
     textTransform?: HarfDonusumu;
 }
 
-const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({ 
+const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
     id,
-    value, 
-    onChange, 
-    onKeyDown, 
-    onMenuClick, 
+    value,
+    onChange,
+    onKeyDown,
+    onMenuClick,
     onFocus,
     onBlur,
-    error = false, 
-    placeholder = '', 
-    disabled = false, 
-    autoFocus = false, 
-    hasSelection = false, 
-    onClear = undefined, 
+    error = false,
+    placeholder = '',
+    disabled = false,
+    autoFocus = false,
+    hasSelection = false,
+    onClear = undefined,
     detailsUrl = null,
     detailsUrlTitle,
     alertTitle,
@@ -113,8 +113,8 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
             setTimeout(() => {
                 if (!containerRef.current) return;
                 const rect = containerRef.current.getBoundingClientRect();
-                const dropdownEstimatedHeight = 280; 
-                
+                const dropdownEstimatedHeight = 280;
+
                 if (rect.bottom + dropdownEstimatedHeight > window.innerHeight) {
                     containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
@@ -170,15 +170,15 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
             if (!disabled && onMenuClick) onMenuClick();
             return;
         }
-        
+
         if (onKeyDown) onKeyDown(e);
     };
 
     const finalDetailsTitle = detailsUrlTitle || t('auto_yeni_sekmede_ac', 'Yeni Sekmede Aç');
     const finalAlertTitle = alertTitle || t('auto_emin_misiniz', 'Emin misiniz?');
     const finalAlertMessage = alertMessage || t('auto_secili_kayit_temizlenecektir', 'Seçili kayıt temizlenecektir.');
-    const finalActionTitle = (effectiveHasSelection && clearable) 
-        ? t('auto_secimi_temizle', 'Seçimi Temizle') 
+    const finalActionTitle = (effectiveHasSelection && clearable)
+        ? t('auto_secimi_temizle', 'Seçimi Temizle')
         : t('auto_secim_menusu', 'Seçim Menüsü');
 
     const headerFieldContext = useContext(DocumentHeaderFieldContext);
@@ -187,7 +187,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
     return (
         <div ref={containerRef} className={`dropdown-secici-wrapper h-full ${icon ? 'has-icon-wrapper' : ''} ${effectiveError ? 'is-invalid' : ''}`}>
             {icon && <span className="icon">{icon}</span>}
-            <input 
+            <input
                 id={id}
                 ref={inputRef}
                 type="text"
@@ -207,7 +207,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
             />
             <div className="dropdown-actions-container">
                 {effectiveHasSelection && detailsUrl && (
-                    <a 
+                    <a
                         href={detailsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -219,7 +219,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
                     </a>
                 )}
                 {effectiveHasSelection && clearable && (
-                    <button 
+                    <button
                         type="button"
                         onClick={handleActionClick}
                         disabled={disabled}
@@ -231,7 +231,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
                     </button>
                 )}
                 {menuIcon !== false && (
-                    <button 
+                    <button
                         type="button"
                         onClick={() => !disabled && onMenuClick && onMenuClick()}
                         disabled={disabled}
