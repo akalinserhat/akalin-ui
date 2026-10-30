@@ -330,7 +330,7 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
           seciliAracKodlari={seciliAracKodlari}
           onlyActive={onlyActive}
           categoryFilter={categoryFilter}
-          title={modalTitle || t('mcp_varlik_secimi', 'MCP Belge, Kart & Liste Seçimi')}
+          title={modalTitle || t('form_secimi', 'Form Seçimi')}
           subtitle={
             modalSubtitle ||
             t(
@@ -338,7 +338,8 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
               'Açılacak veya işlem yapılacak Belge, Kart veya Listeyi seçin.'
             )
           }
-          initialSearchText={displayValue}
+          initialSearchText={hasSelection ? '' : displayValue}
+          initialSelectedId={activeEntity?.id}
           onClose={handleClose}
           onSelect={handleEntitySelect}
           {...selectionListProps}
