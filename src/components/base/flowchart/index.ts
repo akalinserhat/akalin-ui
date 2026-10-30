@@ -26,5 +26,6 @@ export {
 export {
   BaseFlowchart,
   type FlowchartStepItem,
+  type FlowchartPaletteItem,
   type BaseFlowchartProps
 } from './BaseFlowchart';

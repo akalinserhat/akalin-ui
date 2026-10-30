@@ -37,12 +37,12 @@ export interface BasePageProps {
   footerExtra?: React.ReactNode;
   saveButtonText?: string;
   hideSaveButton?: boolean;
-  
+
   // Tab Props
   tabs?: Array<{ id: number; name?: string; label?: string; title?: string; icon?: React.ReactNode }>;
   activeTabId?: number;
   onTabChange?: (tabId: number) => void;
-  
+
   disableContentWrapper?: boolean;
   containerRef?: React.RefObject<HTMLDivElement>;
   className?: string;
@@ -209,9 +209,9 @@ const BasePage: React.FC<BasePageProps> = ({
     if (shouldShowBack && setHeader) {
       setHeader(
         headerIdRef.current,
-        <BackButton 
-          onClick={handleBackClick} 
-          title={t('auto_geri_don', 'Geri Dön')} 
+        <BackButton
+          onClick={handleBackClick}
+          title={t('auto_geri_don', 'Geri Dön')}
         />
       );
 

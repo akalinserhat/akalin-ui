@@ -60,6 +60,7 @@ export {
   FlowchartEndNode,
   BaseFlowchartConnector,
   type FlowchartStepItem,
+  type FlowchartPaletteItem,
   type BaseFlowchartProps,
   type FlowchartNodeShape,
   type FlowchartNodeVariant,
