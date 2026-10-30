@@ -22,7 +22,7 @@ export interface McpVarlikEntity {
   id: string;
   kod: string;
   ad: string;
-  kategori?: 'liste' | 'belge' | 'kart' | string;
+  kategori?: 'liste' | 'belge' | 'kart';
   varlikTuruLabel?: string;
   modulKodu?: string;
   modulAdi?: string;
