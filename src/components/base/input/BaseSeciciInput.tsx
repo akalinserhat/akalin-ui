@@ -59,7 +59,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
     inputClassName = "form-input",
     inputStyle = {},
     icon = null,
-    menuIcon = null,
+    menuIcon,
     readOnly = false,
     isMenuOpen = false,
     onClick = undefined,
@@ -141,6 +141,15 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
      * 3. readOnly modunda Aşağı Ok / Enter / Boşluk
      */
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        // Windows/Linux Ctrl+Enter veya Mac Cmd+Enter / Ctrl+Enter: Seçim ekranını aç
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            if (!disabled && onMenuClick) {
+                onMenuClick();
+            }
+            return;
+        }
+
         // Text alanı boş değilken Tab veya Enter tuşuna basıldığında seçim listesini tetikle
         if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
             const rawVal = (inputRef.current?.value ?? value ?? '').toString();
@@ -182,7 +191,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
                 id={id}
                 ref={inputRef}
                 type="text"
-                className={`${inputClassName} ${effectiveError ? 'is-invalid' : ''} has-actions ${(effectiveHasSelection && detailsUrl) ? 'has-details' : ''}`}
+                className={`${inputClassName} ${effectiveError ? 'is-invalid' : ''} has-actions ${(effectiveHasSelection && (clearable || detailsUrl)) ? 'has-details' : ''}`}
                 value={value || ''}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
@@ -209,16 +218,28 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
                         <ExternalLink size={16} />
                     </a>
                 )}
-                {((effectiveHasSelection && clearable) || (menuIcon !== null && menuIcon !== false)) && (
+                {effectiveHasSelection && clearable && (
                     <button 
                         type="button"
                         onClick={handleActionClick}
                         disabled={disabled}
                         tabIndex={-1}
-                        title={finalActionTitle}
+                        title={t('auto_secimi_temizle', 'Seçimi Temizle')}
                         className="dropdown-action-btn"
                     >
-                        {(effectiveHasSelection && clearable) ? <X size={16} /> : (menuIcon !== undefined ? menuIcon : <MoreVertical size={16} />)}
+                        <X size={16} />
+                    </button>
+                )}
+                {menuIcon !== false && (
+                    <button 
+                        type="button"
+                        onClick={() => !disabled && onMenuClick && onMenuClick()}
+                        disabled={disabled}
+                        tabIndex={-1}
+                        title={t('auto_secim_menusu', 'Seçim Menüsü (Ctrl+Enter)')}
+                        className="dropdown-action-btn"
+                    >
+                        {menuIcon || <MoreVertical size={16} />}
                     </button>
                 )}
             </div>

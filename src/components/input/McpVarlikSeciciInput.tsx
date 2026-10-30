@@ -14,7 +14,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, FileText, Table, Boxes } from 'lucide-react';
+import { CreditCard, FileText, Table, Boxes, MoreVertical } from 'lucide-react';
 import BaseSeciciInput from '../base/input/BaseSeciciInput';
 import type { HarfDonusumu } from '../base/input/BaseInput';
 
@@ -263,6 +263,31 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
     [onChange, isControlledValue]
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Windows/Linux Ctrl+Enter veya Mac Cmd+Enter / Ctrl+Enter: MCPSelectionList modalını aç
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleOpen();
+        return;
+      }
+
+      // Alt + ↓ ile evrensel seçim menüsü açma standardı
+      if (e.altKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleOpen();
+        return;
+      }
+
+      if (onKeyDown) {
+        onKeyDown(e);
+      }
+    },
+    [handleOpen, onKeyDown]
+  );
+
   return (
     <>
       <BaseSeciciInput
@@ -273,7 +298,7 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
         alertTitle={alertTitle}
         alertMessage={alertMessage || t('secili_mcp_varligi_temizlenecektir', 'Seçili form ve MCP varlığı kaldırılacaktır.')}
         icon={resolvedIcon}
-        menuIcon={menuIcon}
+        menuIcon={menuIcon || <MoreVertical size={16} />}
         clearable={clearable}
         disabled={disabled}
         autoFocus={autoFocus}
@@ -283,7 +308,7 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
         inputStyle={inputStyle}
         value={displayValue}
         onChange={handleInputChange}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
         onFocus={onFocus}
         onBlur={onBlur}
         hasSelection={hasSelection}
