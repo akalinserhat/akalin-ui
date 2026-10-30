@@ -46,6 +46,8 @@ export interface BaseListPageProps<T = any> {
     subtitle?: string;
     icon?: ReactNode;
     defaultIcon?: ReactNode;
+    hasExternalSettings?: boolean;
+    externalSettingsComponent?: React.ComponentType<any>;
     headerSync?: boolean;
     showBackButton?: boolean;
     backRoute?: string;

@@ -51,6 +51,10 @@ export interface BasePageProps {
   // Modal / Overlay Props (Alt sayfa ve seçim ekranları için)
   inModal?: boolean;
   overlayClassName?: string;
+
+  // Harici Düğüm Ayar Sayfası ([sayfaİsmi]settingsForExternal.tsx) Desteği
+  hasExternalSettings?: boolean;
+  externalSettingsComponent?: React.ComponentType<any>;
 }
 
 const BasePage: React.FC<BasePageProps> = ({

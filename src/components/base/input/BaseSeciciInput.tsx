@@ -26,7 +26,8 @@ export interface BaseSeciciInputProps {
     inputClassName?: string;
     inputStyle?: React.CSSProperties;
     icon?: React.ReactNode;
-    menuIcon?: React.ReactNode;
+    menuIcon?: React.ReactNode | false;
+    menuButtonTitle?: string;
     readOnly?: boolean;
     isMenuOpen?: boolean;
     onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
@@ -60,6 +61,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
     inputStyle = {},
     icon = null,
     menuIcon,
+    menuButtonTitle,
     readOnly = false,
     isMenuOpen = false,
     onClick = undefined,
@@ -236,7 +238,7 @@ const BaseSeciciInput: React.FC<BaseSeciciInputProps> = ({
                         onClick={() => !disabled && onMenuClick && onMenuClick()}
                         disabled={disabled}
                         tabIndex={-1}
-                        title={t('auto_secim_menusu', 'Seçim Menüsü (Ctrl+Enter)')}
+                        title={menuButtonTitle || t('auto_secim_menusu', 'Seçim Menüsü (Ctrl+Enter)')}
                         className="dropdown-action-btn"
                     >
                         {menuIcon || <MoreVertical size={16} />}

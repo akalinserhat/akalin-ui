@@ -153,6 +153,8 @@ export interface BaseDocumentPageProps {
     documentType?: string;
     documentNo?: string;
     formData?: any;
+    hasExternalSettings?: boolean;
+    externalSettingsComponent?: React.ComponentType<any>;
     extraDropdownActions?: any[];
     actionMenuTrigger?: ReactNode;
     actionMenuDropdownHeader?: ReactNode;

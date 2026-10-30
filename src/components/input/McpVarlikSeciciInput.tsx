@@ -14,7 +14,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, FileText, Table, Boxes, MoreVertical } from 'lucide-react';
+import { CreditCard, FileText, Table, Boxes, MoreVertical, Settings } from 'lucide-react';
 import BaseSeciciInput from '../base/input/BaseSeciciInput';
 import type { HarfDonusumu } from '../base/input/BaseInput';
 
@@ -29,6 +29,9 @@ export interface McpVarlikEntity {
   ustListeAdi?: string;
   rota?: string;
   aciklama?: string;
+  hasExternalSettings?: boolean;
+  externalSettingsRoute?: string;
+  externalSettingsComponent?: React.ComponentType<any>;
   [key: string]: any;
 }
 
@@ -40,6 +43,14 @@ export interface McpVarlikSeciciInputProps {
   onlyActive?: boolean;
   categoryFilter?: 'all' | 'kart' | 'belge' | 'liste';
   selectionList?: React.ComponentType<any>;
+  hasExternalSettings?: boolean;
+  externalSettingsComponent?: React.ComponentType<any>;
+  externalSettingsValue?: any;
+  onExternalSettingsChange?: (settings: any) => void;
+  onSettingsClick?: (entity: McpVarlikEntity) => void;
+  isSettingsOpen?: boolean;
+  onSettingsClose?: () => void;
+  settingsButtonTitle?: string;
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
@@ -53,7 +64,7 @@ export interface McpVarlikSeciciInputProps {
   inputClassName?: string;
   inputStyle?: React.CSSProperties;
   icon?: React.ReactNode;
-  menuIcon?: React.ReactNode;
+  menuIcon?: React.ReactNode | false;
   isOpen?: boolean;
   onClose?: () => void;
   onOpen?: () => void;
@@ -84,6 +95,14 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
   onlyActive,
   categoryFilter = 'all',
   selectionList: SelectionListComponent,
+  hasExternalSettings: propHasExternalSettings,
+  externalSettingsComponent: propExternalSettingsComponent,
+  externalSettingsValue,
+  onExternalSettingsChange,
+  onSettingsClick,
+  isSettingsOpen: propIsSettingsOpen,
+  onSettingsClose: propOnSettingsClose,
+  settingsButtonTitle,
   placeholder,
   disabled = false,
   autoFocus = false,
@@ -124,6 +143,12 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
   const isControlled = propIsOpen !== undefined;
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
   const isSelectionOpen = isControlled ? Boolean(propIsOpen) : internalIsOpen;
+
+  const isSettingsControlled = propIsSettingsOpen !== undefined;
+  const [internalIsSettingsOpen, setInternalIsSettingsOpen] = useState<boolean>(false);
+  const isExternalSettingsOpen = isSettingsControlled
+    ? Boolean(propIsSettingsOpen)
+    : internalIsSettingsOpen;
 
   const [selectedItem, setSelectedItem] = useState<McpVarlikEntity | null>(
     propSelectedEntity || null
@@ -180,6 +205,20 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
     propHasSelection !== undefined ? propHasSelection : (activeEntity !== null && Boolean(activeEntity))
   );
 
+  const ExternalSettingsComponent = useMemo<React.ComponentType<any> | undefined>(() => {
+    return propExternalSettingsComponent || activeEntity?.externalSettingsComponent;
+  }, [propExternalSettingsComponent, activeEntity?.externalSettingsComponent]);
+
+  const effectiveHasExternalSettings = useMemo<boolean>(() => {
+    if (propHasExternalSettings !== undefined) {
+      return Boolean(propHasExternalSettings);
+    }
+    return Boolean(
+      activeEntity?.hasExternalSettings ??
+      Boolean(activeEntity?.externalSettingsComponent || propExternalSettingsComponent)
+    );
+  }, [propHasExternalSettings, activeEntity?.hasExternalSettings, activeEntity?.externalSettingsComponent, propExternalSettingsComponent]);
+
   const resolvedIcon = useMemo(() => {
     if (propIcon) return propIcon;
     if (activeEntity) {
@@ -189,6 +228,30 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
     }
     return <Boxes size={16} />;
   }, [propIcon, activeEntity]);
+
+  // Seçim yapıldıktan sonra:
+  // - hasExternalSettings === true ise 3 nokta ikonu "Ayar" (Settings) ikonuna dönüşür.
+  // - hasExternalSettings === false ise 3 nokta ikonu kendini gizler (false).
+  // Seçim yapılmamışken 3 nokta (MoreVertical) ikonu gösterilir.
+  const resolvedMenuIcon = useMemo<React.ReactNode | false>(() => {
+    if (hasSelection) {
+      if (effectiveHasExternalSettings) {
+        return <Settings size={16} />;
+      }
+      return false;
+    }
+    if (menuIcon !== undefined) {
+      return menuIcon;
+    }
+    return <MoreVertical size={16} />;
+  }, [hasSelection, effectiveHasExternalSettings, menuIcon]);
+
+  const resolvedMenuButtonTitle = useMemo<string | undefined>(() => {
+    if (hasSelection && effectiveHasExternalSettings) {
+      return settingsButtonTitle || t('sayfa_dis_ayarlari', 'Sayfa Dış Ayarları');
+    }
+    return t('auto_secim_menusu', 'Seçim Menüsü (Ctrl+Enter)');
+  }, [hasSelection, effectiveHasExternalSettings, settingsButtonTitle, t]);
 
   const handleOpen = useCallback(() => {
     if (disabled || readOnly) return;
@@ -201,14 +264,34 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
     if (propOnClose) propOnClose();
   }, [propOnClose]);
 
+  const handleSettingsClose = useCallback(() => {
+    setInternalIsSettingsOpen(false);
+    if (propOnSettingsClose) propOnSettingsClose();
+  }, [propOnSettingsClose]);
+
   const handleMenuClick = useCallback(() => {
     if (disabled) return;
+    if (hasSelection) {
+      if (!effectiveHasExternalSettings) return;
+      if (onSettingsClick && activeEntity) {
+        onSettingsClick(activeEntity);
+        return;
+      }
+      if (ExternalSettingsComponent) {
+        setInternalIsSettingsOpen(true);
+        return;
+      }
+      if (onMenuClick) {
+        onMenuClick();
+      }
+      return;
+    }
     if (onMenuClick) {
       onMenuClick();
     } else {
       handleOpen();
     }
-  }, [disabled, handleOpen, onMenuClick]);
+  }, [disabled, hasSelection, effectiveHasExternalSettings, onSettingsClick, activeEntity, ExternalSettingsComponent, onMenuClick, handleOpen]);
 
   const handleEntitySelect = useCallback(
     (entity: McpVarlikEntity) => {
@@ -298,7 +381,8 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
         alertTitle={alertTitle}
         alertMessage={alertMessage || t('secili_mcp_varligi_temizlenecektir', 'Seçili form ve MCP varlığı kaldırılacaktır.')}
         icon={resolvedIcon}
-        menuIcon={menuIcon || <MoreVertical size={16} />}
+        menuIcon={resolvedMenuIcon}
+        menuButtonTitle={resolvedMenuButtonTitle}
         clearable={clearable}
         disabled={disabled}
         autoFocus={autoFocus}
@@ -343,6 +427,23 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
           onClose={handleClose}
           onSelect={handleEntitySelect}
           {...selectionListProps}
+        />
+      )}
+
+      {isExternalSettingsOpen && ExternalSettingsComponent && activeEntity && (
+        <ExternalSettingsComponent
+          isOpen={true}
+          inModal={true}
+          entity={activeEntity}
+          value={externalSettingsValue}
+          onChange={onExternalSettingsChange}
+          onSave={(updatedSettings: any) => {
+            if (onExternalSettingsChange) {
+              onExternalSettingsChange(updatedSettings);
+            }
+            handleSettingsClose();
+          }}
+          onClose={handleSettingsClose}
         />
       )}
     </>
