@@ -342,6 +342,36 @@
   color: #34d399;
 }
 
+/* 2. Form Aç / Girdi-Çıktı (Data / Input-Output Paralelkenar Geometrisi) */
+.base-flowchart-sidebar-item.palette-shape-input {
+  border-color: rgba(6, 182, 212, 0.4);
+  border-left: 3.5px solid #06b6d4;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(8, 145, 178, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-input:hover {
+  border-color: #06b6d4;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.22) 0%, rgba(8, 145, 178, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-input .base-flowchart-sidebar-item-icon {
+  background: #06b6d4;
+  color: #ffffff;
+  transform: skewX(-8deg);
+  border-radius: 5px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-input .base-flowchart-sidebar-item-title {
+  color: #0891b2;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-input .base-flowchart-sidebar-item-title {
+  color: #22d3ee;
+}
+
 /* Eski Yatay Palet Desteği (Fallback / Geriye Uyumluluk) */
 .base-flowchart-palette {
   display: flex;

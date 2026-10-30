@@ -155,6 +155,25 @@ const BasePage: React.FC<BasePageProps> = ({
     }
 
     const doActualBack = () => {
+      try {
+        if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+          const waitingRaw = sessionStorage.getItem('webakus_ai_waiting_entity');
+          if (waitingRaw) {
+            sessionStorage.removeItem('webakus_ai_waiting_entity');
+            window.dispatchEvent(new CustomEvent('ai-entity-updated', {
+              detail: {
+                saved: false,
+                cancelled: true,
+                route: window.location.pathname,
+                pageTitle: typeof pageTitle === 'string' ? pageTitle : (typeof title === 'string' ? title : '')
+              }
+            }));
+          }
+        }
+      } catch {
+        // ignore sessionStorage error
+      }
+
       if (onClose) {
         onClose();
       } else if (onBack) {

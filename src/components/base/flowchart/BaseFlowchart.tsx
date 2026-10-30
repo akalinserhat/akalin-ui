@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
   Play,
+  Monitor,
   Layers,
   Plus,
   ZoomIn,
@@ -229,22 +230,41 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                   </button>
                 ))
               ) : (
-                /* Geleneksel Standart Flowchart Öğesi: Başla (Terminator / Oval Kapsül) */
-                <button
-                  type="button"
-                  onClick={() => onAddStep && onAddStep('BASLA')}
-                  className="base-flowchart-sidebar-item palette-shape-terminal"
-                  title={t('basla_adimi_ekle', 'Başla Düğümü Ekle')}
-                >
-                  <div className="base-flowchart-sidebar-item-icon">
-                    <Play size={13} />
-                  </div>
-                  <div className="base-flowchart-sidebar-item-text">
-                    <span className="base-flowchart-sidebar-item-title">{t('basla', 'Başla')}</span>
-                    <span className="base-flowchart-sidebar-item-sub">{t('akisi_baslat', 'Akışı Başlat')}</span>
-                  </div>
-                  <Plus size={13} className="base-flowchart-sidebar-item-add" />
-                </button>
+                <>
+                  {/* Geleneksel Standart Flowchart Öğesi 1: Başla (Terminator / Oval Kapsül) */}
+                  <button
+                    type="button"
+                    onClick={() => onAddStep && onAddStep('BASLA')}
+                    className="base-flowchart-sidebar-item palette-shape-terminal"
+                    title={t('basla_adimi_ekle', 'Başla Düğümü Ekle')}
+                  >
+                    <div className="base-flowchart-sidebar-item-icon">
+                      <Play size={13} />
+                    </div>
+                    <div className="base-flowchart-sidebar-item-text">
+                      <span className="base-flowchart-sidebar-item-title">{t('basla', 'Başla')}</span>
+                      <span className="base-flowchart-sidebar-item-sub">{t('akisi_baslat', 'Akışı Başlat')}</span>
+                    </div>
+                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                  </button>
+
+                  {/* Geleneksel Standart Flowchart Öğesi 2: Form Aç (Input-Output / Paralelkenar) */}
+                  <button
+                    type="button"
+                    onClick={() => onAddStep && onAddStep('FORM_AC')}
+                    className="base-flowchart-sidebar-item palette-shape-input"
+                    title={t('form_ac_adimi_ekle', 'Form Aç Düğümü Ekle')}
+                  >
+                    <div className="base-flowchart-sidebar-item-icon">
+                      <Monitor size={13} />
+                    </div>
+                    <div className="base-flowchart-sidebar-item-text">
+                      <span className="base-flowchart-sidebar-item-title">{t('form_ac', 'Form Aç')}</span>
+                      <span className="base-flowchart-sidebar-item-sub">{t('belge_kart_liste_ac', 'Belge, Kart veya Liste Aç')}</span>
+                    </div>
+                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                  </button>
+                </>
               )}
             </div>
           </aside>
@@ -288,18 +308,19 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                   {steps.map((step, index) => {
                     const isSelected = selectedStepId === step.id;
                     const isBasla = step.type === 'BASLA' || step.type === 'START';
+                    const isFormAc = step.type === 'FORM_AC' || step.type === 'EKRAN_AC';
 
                     return (
                       <React.Fragment key={step.id || index}>
                         <BaseFlowchartNode
                           id={step.id}
                           stepNumber={isBasla ? undefined : index + 1}
-                          shape={isBasla ? 'terminal' : 'process'}
-                          variant={isBasla ? 'start' : 'process'}
-                          icon={isBasla ? <Play size={13} /> : undefined}
+                          shape={isBasla ? 'terminal' : isFormAc ? 'input' : 'process'}
+                          variant={isBasla ? 'start' : isFormAc ? 'input' : 'process'}
+                          icon={isBasla ? <Play size={13} /> : isFormAc ? <Monitor size={13} /> : undefined}
                           showTopPort={!isBasla}
-                          shapeBadgeText={step.shapeBadgeText || (isBasla ? t('basla', 'Başla') : undefined)}
-                          title={step.title || (isBasla ? t('basla', 'Başla') : '')}
+                          shapeBadgeText={step.shapeBadgeText || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : undefined)}
+                          title={step.title || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : '')}
                           promptPreview={step.prompt}
                           toolCode={step.toolCode}
                           uiActionLabel={step.uiActionLabel}
