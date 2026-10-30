@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, Minus, X } from 'lucide-react';
 import { DocumentHeaderFieldContext } from '../../../pages/base/BaseDocumentPage';
 import { focusNextElement } from '../../../utils/domUtils';
 
 export interface DropdownOption {
     id: string | number;
+    value?: string | number;
     label: string | React.ReactNode;
+    group?: string;
+    isAllOption?: boolean;
     rawValue?: any;
     searchText?: string;
 }
@@ -20,8 +23,9 @@ export interface DropdownExtraAction {
 export interface BaseDropdownSeciciProps {
     id?: string;
     value?: any;
-    onChange?: (id: any, rawValue: any) => void;
+    onChange?: (id: any, rawValue?: any) => void;
     options: DropdownOption[];
+    multiple?: boolean;
     disabled?: boolean;
     placeholder?: string;
     clearable?: boolean;
@@ -134,7 +138,12 @@ export const isOptionMatch = (opt: DropdownOption, query: string): boolean => {
     if (!query) return true;
     const lowerQuery = query.toLocaleLowerCase('tr-TR');
 
-    // 1. DropdownOption searchText kontrolü
+    // 1. Grup adı kontrolü
+    if (opt.group && opt.group.toLocaleLowerCase('tr-TR').includes(lowerQuery)) {
+        return true;
+    }
+
+    // 2. DropdownOption searchText kontrolü
     if (opt.searchText !== undefined && opt.searchText !== null) {
         if (opt.searchText.toLocaleLowerCase('tr-TR').includes(lowerQuery)) {
             return true;
@@ -213,6 +222,7 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
     value,
     onChange,
     options = [],
+    multiple = false,
     disabled = false,
     placeholder = "Seçiniz...",
     clearable = false,
@@ -235,6 +245,25 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
     const dropdownRef = useRef<HTMLDivElement>(null);
     const searchStringRef = useRef<string>('');
 
+    // Çoklu seçim için normalize edilmiş seçili ID dizisi
+    const selectedIds = useMemo<string[]>(() => {
+        if (!multiple) {
+            if (value === undefined || value === null || value === '') return [];
+            return [String(value)];
+        }
+        if (Array.isArray(value)) {
+            return value
+                .filter((v) => v !== undefined && v !== null && v !== '')
+                .map((v) => String(v));
+        }
+        if (value !== undefined && value !== null && value !== '') {
+            return [String(value)];
+        }
+        return [];
+    }, [multiple, value]);
+
+    const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
     // Filtrelenmiş seçenekler
     const filteredOptions = useMemo(() => {
         if (!searchQuery.trim()) {
@@ -242,6 +271,33 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
         }
         return options.filter(opt => isOptionMatch(opt, searchQuery.trim()));
     }, [options, searchQuery]);
+
+    // Gruplanmış görünüm verisi
+    const groupedSections = useMemo(() => {
+        const hasAnyGroup = filteredOptions.some((o) => Boolean(o.group));
+        if (!hasAnyGroup) return null;
+
+        const ungrouped: { opt: DropdownOption; flatIdx: number }[] = [];
+        const groupsMap = new Map<string, { opt: DropdownOption; flatIdx: number }[]>();
+
+        filteredOptions.forEach((opt, flatIdx) => {
+            if (!opt.group) {
+                ungrouped.push({ opt, flatIdx });
+            } else {
+                const list = groupsMap.get(opt.group) || [];
+                list.push({ opt, flatIdx });
+                groupsMap.set(opt.group, list);
+            }
+        });
+
+        return {
+            ungrouped,
+            groups: Array.from(groupsMap.entries()).map(([groupName, items]) => ({
+                groupName,
+                items
+            }))
+        };
+    }, [filteredOptions]);
 
     // Dışarı tıklayınca kapat ve aramayı sıfırla
     useEffect(() => {
@@ -313,6 +369,9 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
         };
     }, [isDropdownOpen, filteredOptions.length]);
 
+    const isAllOptionItem = (opt?: DropdownOption) =>
+        Boolean(opt && (opt.isAllOption || String(opt.id) === 'all'));
+
     const handleSelect = (optionId: any) => {
         searchStringRef.current = '';
         setSearchQuery('');
@@ -320,16 +379,78 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
         if (optionId === 'EXTRA_ACTION' && extraAction) {
             setIsDropdownOpen(false);
             extraAction.onClick();
-        } else {
-            if (onChange) {
-                const selectedOpt = options.find(o => o.id === optionId);
-                onChange(optionId, selectedOpt?.rawValue);
-            }
-            setIsDropdownOpen(false);
+            return;
+        }
 
-            if (autoFocusNext) {
-                focusNextElement(containerRef.current);
+        if (multiple) {
+            const clickedOpt = options.find((o) => String(o.id) === String(optionId));
+            const allOpt = options.find((o) => isAllOptionItem(o));
+            let nextIds: (string | number)[];
+
+            if (isAllOptionItem(clickedOpt)) {
+                nextIds = [clickedOpt!.id];
+            } else {
+                const withoutAll = selectedIds.filter((idStr) => {
+                    const matchOpt = options.find((o) => String(o.id) === idStr);
+                    return !isAllOptionItem(matchOpt);
+                });
+                const targetStr = String(optionId);
+                if (withoutAll.includes(targetStr)) {
+                    const remaining = withoutAll.filter((idStr) => idStr !== targetStr);
+                    nextIds = remaining.length > 0 ? remaining : (allOpt ? [allOpt.id] : []);
+                } else {
+                    nextIds = [...withoutAll, optionId];
+                }
             }
+
+            if (onChange) {
+                const selectedRaw = options
+                    .filter((o) => nextIds.map(String).includes(String(o.id)))
+                    .map((o) => o.rawValue ?? o);
+                onChange(nextIds, selectedRaw);
+            }
+            return;
+        }
+
+        if (onChange) {
+            const selectedOpt = options.find(o => o.id === optionId);
+            onChange(optionId, selectedOpt?.rawValue);
+        }
+        setIsDropdownOpen(false);
+
+        if (autoFocusNext) {
+            focusNextElement(containerRef.current);
+        }
+    };
+
+    const handleGroupToggle = (groupName: string) => {
+        if (!multiple || disabled) return;
+        const groupOpts = options.filter((o) => o.group === groupName && !isAllOptionItem(o));
+        if (groupOpts.length === 0) return;
+
+        const groupIds = groupOpts.map((o) => String(o.id));
+        const allOpt = options.find((o) => isAllOptionItem(o));
+        const withoutAll = selectedIds.filter((idStr) => {
+            const matchOpt = options.find((o) => String(o.id) === idStr);
+            return !isAllOptionItem(matchOpt);
+        });
+
+        const isEveryGroupItemSelected = groupIds.every((gid) => withoutAll.includes(gid));
+        let nextIds: string[];
+
+        if (isEveryGroupItemSelected) {
+            const remaining = withoutAll.filter((idStr) => !groupIds.includes(idStr));
+            nextIds = remaining.length > 0 ? remaining : (allOpt ? [String(allOpt.id)] : []);
+        } else {
+            const combined = new Set([...withoutAll, ...groupIds]);
+            nextIds = Array.from(combined);
+        }
+
+        if (onChange) {
+            const selectedRaw = options
+                .filter((o) => nextIds.includes(String(o.id)))
+                .map((o) => o.rawValue ?? o);
+            onChange(nextIds, selectedRaw);
         }
     };
 
@@ -401,24 +522,43 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
         }
     };
 
+    const getOptionLabelText = (opt: DropdownOption): string => {
+        if (typeof opt.label === 'string') return opt.label;
+        if (opt.searchText) return opt.searchText;
+        const extracted = extractTextFromNode(opt.label);
+        return extracted.trim() ? extracted : `Seçildi (${opt.id})`;
+    };
+
     let resolvedDisplayText = displayText;
     if (!resolvedDisplayText) {
-        const selectedOpt = options.find(o => o.id?.toString() === value?.toString());
-        if (selectedOpt) {
-            if (typeof selectedOpt.label === 'string') {
-                resolvedDisplayText = selectedOpt.label;
-            } else if (selectedOpt.searchText) {
-                resolvedDisplayText = selectedOpt.searchText;
+        if (multiple) {
+            if (selectedIds.length === 0) {
+                resolvedDisplayText = '';
             } else {
-                const extracted = extractTextFromNode(selectedOpt.label);
-                resolvedDisplayText = extracted.trim() ? extracted : `Seçildi (${value})`;
+                const matchedOpts = selectedIds
+                    .map((idStr) => options.find((o) => String(o.id) === idStr))
+                    .filter((o): o is DropdownOption => Boolean(o));
+                if (matchedOpts.length > 0) {
+                    resolvedDisplayText = matchedOpts.map(getOptionLabelText).join(', ');
+                } else {
+                    resolvedDisplayText = selectedIds.join(', ');
+                }
             }
-        } else if (value !== undefined && value !== null && value !== '') {
-            resolvedDisplayText = `Seçildi (${value})`;
         } else {
-            resolvedDisplayText = '';
+            const selectedOpt = options.find(o => o.id?.toString() === value?.toString());
+            if (selectedOpt) {
+                resolvedDisplayText = getOptionLabelText(selectedOpt);
+            } else if (value !== undefined && value !== null && value !== '') {
+                resolvedDisplayText = `Seçildi (${value})`;
+            } else {
+                resolvedDisplayText = '';
+            }
         }
     }
+
+    const hasEffectiveValue = multiple
+        ? selectedIds.length > 0 && !(selectedIds.length === 1 && selectedIds[0] === 'all')
+        : Boolean(value);
 
     const inputValue = (isDropdownOpen && searchQuery) ? searchQuery : (resolvedDisplayText || '');
 
@@ -443,7 +583,7 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                 <input
                     id={id || 'dropdown-secici'}
                     type="text"
-                    className={`form-input ${effectiveError ? 'is-invalid' : ''} ${clearable && value ? 'has-clear' : ''}`}
+                    className={`form-input ${effectiveError ? 'is-invalid' : ''} ${clearable && hasEffectiveValue ? 'has-clear' : ''}`}
                     value={inputValue}
                     onChange={() => {}}
                     onKeyDown={handleKeyDown}
@@ -463,9 +603,12 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                         onClick={(e) => {
                             e.stopPropagation();
                             if (disabled) return;
-                            if (clearable && value) {
+                            if (clearable && hasEffectiveValue) {
                                 // For dropdowns, immediately clear without alert, as standard dropdowns do
-                                if (onChange) onChange(null, null);
+                                const allOpt = options.find((o) => isAllOptionItem(o));
+                                if (onChange) {
+                                    onChange(multiple ? (allOpt ? [allOpt.id] : []) : null, null);
+                                }
                                 searchStringRef.current = '';
                                 setSearchQuery('');
                             } else {
@@ -478,10 +621,10 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                         }}
                         disabled={disabled}
                         tabIndex={-1}
-                        title={(clearable && value) ? "Seçimi Temizle" : "Seçim Menüsü"}
+                        title={(clearable && hasEffectiveValue) ? "Seçimi Temizle" : "Seçim Menüsü"}
                         className="dropdown-action-btn"
                     >
-                        {(clearable && value) ? <X size={16} /> : <ChevronDown size={16} />}
+                        {(clearable && hasEffectiveValue) ? <X size={16} /> : <ChevronDown size={16} />}
                     </button>
                 </div>
             </div>
@@ -501,20 +644,145 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                 >
                     <div className="tree-content">
                         {filteredOptions.length === 0 ? (
-                            <div 
-                                className="tree-node-empty"
-                                style={{ 
-                                    padding: '12px', 
-                                    textAlign: 'center', 
-                                    color: 'var(--text-secondary, #6b7280)', 
-                                    fontSize: '13px' 
-                                }}
-                            >
+                            <div className="tree-node-empty">
                                 {emptyMessage || 'Sonuç bulunamadı'}
                             </div>
+                        ) : groupedSections ? (
+                            <>
+                                {groupedSections.ungrouped.map(({ opt: o, flatIdx: idx }) => {
+                                    const isSelected = selectedIdSet.has(String(o.id));
+                                    return (
+                                        <div
+                                            key={o.id}
+                                            className={`tree-node ${focusedIndex === idx ? 'focused' : ''} ${isSelected ? 'selected' : ''}`}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                                                    e.nativeEvent.stopImmediatePropagation();
+                                                }
+                                                handleSelect(o.id);
+                                            }}
+                                            onMouseEnter={() => setFocusedIndex(idx)}
+                                        >
+                                            <div className="tree-node-content flex justify-between items-center w-full">
+                                                <div className={`tree-node-label flex-1 flex items-center ${isSelected ? 'font-semibold' : ''}`}>
+                                                    {multiple && (
+                                                        <span className={`tree-multi-checkbox ${isSelected ? 'checked' : ''}`}>
+                                                            {isSelected && <Check size={12} />}
+                                                        </span>
+                                                    )}
+                                                    {renderOptionLabel(o, searchQuery)}
+                                                </div>
+                                                {!multiple && isSelected && <Check size={18} className="tree-check-icon" />}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {groupedSections.groups.map(({ groupName, items }) => {
+                                    const groupSelectableItems = items.filter(({ opt }) => !isAllOptionItem(opt));
+                                    const selectedCountInGroup = groupSelectableItems.filter(({ opt }) =>
+                                        selectedIdSet.has(String(opt.id))
+                                    ).length;
+                                    const isAllGroupSelected =
+                                        groupSelectableItems.length > 0 &&
+                                        selectedCountInGroup === groupSelectableItems.length;
+                                    const isPartialGroupSelected =
+                                        selectedCountInGroup > 0 && !isAllGroupSelected;
+
+                                    return (
+                                        <React.Fragment key={`group_${groupName}`}>
+                                            <div
+                                                className={`tree-group-header ${multiple ? 'selectable' : ''} ${
+                                                    isAllGroupSelected ? 'group-selected' : ''
+                                                }`}
+                                                onMouseDown={(e) => {
+                                                    if (!multiple) return;
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                                                        e.nativeEvent.stopImmediatePropagation();
+                                                    }
+                                                    handleGroupToggle(groupName);
+                                                }}
+                                            >
+                                                <div className="flex items-center">
+                                                    {multiple && (
+                                                        <span
+                                                            className={`tree-multi-checkbox ${
+                                                                isAllGroupSelected
+                                                                    ? 'checked'
+                                                                    : isPartialGroupSelected
+                                                                        ? 'partial'
+                                                                        : ''
+                                                            }`}
+                                                        >
+                                                            {isAllGroupSelected ? (
+                                                                <Check size={12} />
+                                                            ) : isPartialGroupSelected ? (
+                                                                <Minus size={12} />
+                                                            ) : null}
+                                                        </span>
+                                                    )}
+                                                    <span>{groupName}</span>
+                                                </div>
+                                                {multiple && groupSelectableItems.length > 0 && (
+                                                    <span className="tree-group-badge">
+                                                        {selectedCountInGroup}/{groupSelectableItems.length}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {items.map(({ opt: o, flatIdx: idx }) => {
+                                                const isSelected = selectedIdSet.has(String(o.id));
+                                                return (
+                                                    <div
+                                                        key={o.id}
+                                                        className={`tree-node grouped-item ${focusedIndex === idx ? 'focused' : ''} ${
+                                                            isSelected ? 'selected' : ''
+                                                        }`}
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                                                                e.nativeEvent.stopImmediatePropagation();
+                                                            }
+                                                            handleSelect(o.id);
+                                                        }}
+                                                        onMouseEnter={() => setFocusedIndex(idx)}
+                                                    >
+                                                        <div className="tree-node-content flex justify-between items-center w-full">
+                                                            <div
+                                                                className={`tree-node-label flex-1 flex items-center ${
+                                                                    isSelected ? 'font-semibold' : ''
+                                                                }`}
+                                                            >
+                                                                {multiple && (
+                                                                    <span
+                                                                        className={`tree-multi-checkbox ${
+                                                                            isSelected ? 'checked' : ''
+                                                                        }`}
+                                                                    >
+                                                                        {isSelected && <Check size={12} />}
+                                                                    </span>
+                                                                )}
+                                                                {renderOptionLabel(o, searchQuery)}
+                                                            </div>
+                                                            {!multiple && isSelected && (
+                                                                <Check size={18} className="tree-check-icon" />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </>
                         ) : (
                             filteredOptions.map((o, idx) => {
-                                const isSelected = value?.toString() === o.id?.toString();
+                                const isSelected = selectedIdSet.has(String(o.id));
                                 return (
                                     <div
                                         key={o.id}
@@ -531,9 +799,14 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                                     >
                                         <div className="tree-node-content flex justify-between items-center w-full">
                                             <div className={`tree-node-label flex-1 flex items-center ${isSelected ? 'font-semibold' : ''}`}>
+                                                {multiple && (
+                                                    <span className={`tree-multi-checkbox ${isSelected ? 'checked' : ''}`}>
+                                                        {isSelected && <Check size={12} />}
+                                                    </span>
+                                                )}
                                                 {renderOptionLabel(o, searchQuery)}
                                             </div>
-                                            {isSelected && <Check size={18} className="tree-check-icon" />}
+                                            {!multiple && isSelected && <Check size={18} className="tree-check-icon" />}
                                         </div>
                                     </div>
                                 );

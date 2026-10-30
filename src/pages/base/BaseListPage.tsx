@@ -139,7 +139,7 @@ const clearStoredDraft = (route?: string, docType?: string) => {
     try {
         const key = route ? `akalin_draft_${route.replace(/^\/+|\/+$/g, '').replace(/\//g, '_').toLowerCase()}` : (docType ? `akalin_draft_${docType.toLowerCase()}` : null);
         if (key) sessionStorage.removeItem(key);
-    } catch (e) {}
+    } catch (e) { }
 };
 
 const BaseListPage = <T extends any = any>({
@@ -224,7 +224,7 @@ const BaseListPage = <T extends any = any>({
         if ((headerSync || showBackButton) && setHeader) {
             setHeader(
                 headerIdRef.current,
-                <BackButton 
+                <BackButton
                     onClick={() => {
                         if (onBack) return onBack();
                         if (backRoute) return navigate(backRoute);
@@ -233,8 +233,8 @@ const BaseListPage = <T extends any = any>({
                         } else if (baseRoute) {
                             navigate(baseRoute);
                         }
-                    }} 
-                    title={t('auto_geri_don', 'Geri Dön')} 
+                    }}
+                    title={t('auto_geri_don', 'Geri Dön')}
                 />
             );
 
@@ -610,7 +610,7 @@ const BaseListPage = <T extends any = any>({
         if (itemId) {
             try {
                 sessionStorage.setItem(listStorageKey, String(itemId));
-            } catch (err) {}
+            } catch (err) { }
         }
         if (onEdit) return onEdit(item, e);
         if (baseRoute) navigate(`${baseRoute}/${(item as any).id}`, { state: { item } });
@@ -898,8 +898,8 @@ const BaseListPage = <T extends any = any>({
             return {
                 ...col,
                 render: (row: T, rowIndex: number, tableActions: any) => {
-                    const originalContent = col.render 
-                        ? col.render(row, rowIndex, tableActions) 
+                    const originalContent = col.render
+                        ? col.render(row, rowIndex, tableActions)
                         : (row as any)?.[col.accessor || col.id || ''];
 
                     if ((row as any)?._isDraftTemplate) {
@@ -923,7 +923,7 @@ const BaseListPage = <T extends any = any>({
         if (hideDefaultActions) return wrappedColumns;
 
         // Zaten actions kolonu elle tanımlanmışsa mükerrer ekleme
-        const hasActionsCol = wrappedColumns.some((col: any) => 
+        const hasActionsCol = wrappedColumns.some((col: any) =>
             col.id === 'actions' || col.id === 'action' || col.id === 'islemler' || col.id === 'islem' ||
             col.accessor === 'actions' || col.accessor === 'action' || col.accessor === 'islemler' || col.accessor === 'islem'
         );
@@ -1104,11 +1104,11 @@ const BaseListPage = <T extends any = any>({
         if (itemId && listStorageKey) {
             try {
                 sessionStorage.setItem(listStorageKey, String(itemId));
-            } catch (err) {}
+            } catch (err) { }
         }
 
         // 2. Action menü üzerinde bulunan seçeneklerden varsayılan seçenek çalıştırılsın:
-        const actionsCol = finalColumns.find((col: any) => 
+        const actionsCol = finalColumns.find((col: any) =>
             col.id === 'actions' || col.id === 'action' || col.id === 'islemler' || col.id === 'islem' ||
             col.accessor === 'actions' || col.accessor === 'action' || col.accessor === 'islemler' || col.accessor === 'islem'
         );
@@ -1133,9 +1133,9 @@ const BaseListPage = <T extends any = any>({
                     // 3. Tehlikeli (danger) olmayan ilk seçenek
                     const defaultAction = actions.find(a => a && (a.isDefault || a.default))
                         || actions.find(a => a && !a.danger && (
-                            a.label === t('Düzenle') || 
-                            a.label === t('auto_duzenle', 'Düzenle') || 
-                            String(a.label).toLowerCase().includes('düzenle') || 
+                            a.label === t('Düzenle') ||
+                            a.label === t('auto_duzenle', 'Düzenle') ||
+                            String(a.label).toLowerCase().includes('düzenle') ||
                             String(a.label).toLowerCase().includes('edit')
                         ))
                         || actions.find(a => a && !a.danger);
@@ -1241,8 +1241,8 @@ const BaseListPage = <T extends any = any>({
     }, [enableViewModeToggle, customHeaderActions, headerActionMenu, viewMode, enableArchive, handleViewModeChange, t]);
 
     return (
-        <div 
-            className={`base-list-page ${containerClassName}`} 
+        <div
+            className={`base-list-page ${containerClassName}`}
             ref={listRef}
         >
             {!hideHeader && (
@@ -1261,12 +1261,12 @@ const BaseListPage = <T extends any = any>({
 
             <div className="table-container">
                 {customRenderContent ? (
-                    customRenderContent({ 
-                        data, 
-                        loading, 
-                        refreshKey, 
-                        setRefreshKey, 
-                        handleEdit, 
+                    customRenderContent({
+                        data,
+                        loading,
+                        refreshKey,
+                        setRefreshKey,
+                        handleEdit,
                         handleDelete,
                         handleDefaultAction: handleRowDoubleClick,
                         searchData: globalSearchData,
@@ -1274,7 +1274,7 @@ const BaseListPage = <T extends any = any>({
                         searchType: globalSearchData.type
                     })
                 ) : (
-                    <DataTable 
+                    <DataTable
                         columns={finalColumns}
                         fetchData={handleFetchData}
                         searchableFields={searchableFields}
@@ -1376,7 +1376,7 @@ const BaseListPage = <T extends any = any>({
                 )
             )}
 
-            <AlertDialog 
+            <AlertDialog
                 isOpen={alertDialog.isOpen}
                 onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
                 type={alertDialog.type}

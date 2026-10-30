@@ -1197,6 +1197,85 @@ input[type="number"] {
           flex-shrink: 0;
         }
 
+        .tree-group-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 12px 6px 12px;
+          margin-top: 6px;
+          margin-bottom: 2px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: var(--text-secondary);
+          background: var(--bg-secondary, rgba(148, 163, 184, 0.08));
+          user-select: none;
+        }
+
+        .tree-group-header:first-child {
+          margin-top: 0;
+        }
+
+        .tree-group-header.selectable {
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .tree-group-header.selectable:hover {
+          background: var(--hover-bg);
+          color: var(--text-primary);
+        }
+
+        .tree-group-header.group-selected {
+          color: var(--accent-primary);
+          background: var(--accent-light);
+        }
+
+        .tree-group-badge {
+          font-size: 10px;
+          font-weight: 600;
+          padding: 1px 6px;
+          border-radius: 999px;
+          background: var(--bg-primary);
+          color: var(--text-secondary);
+          border: 1px solid var(--glass-border);
+        }
+
+        .tree-node.grouped-item {
+          padding-left: 22px;
+        }
+
+        .tree-multi-checkbox {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          height: 16px;
+          border-radius: 4px;
+          border: 1.5px solid var(--text-secondary);
+          margin-right: 10px;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+          background: transparent;
+          color: #ffffff;
+        }
+
+        .tree-multi-checkbox.checked,
+        .tree-multi-checkbox.partial {
+          background: var(--accent-primary);
+          border-color: var(--accent-primary);
+          color: #ffffff;
+        }
+
+        .tree-node-empty {
+          padding: 12px;
+          text-align: center;
+          color: var(--text-secondary, #6b7280);
+          font-size: 13px;
+        }
+
         .tree-node-extra-action {
           border-top: 1px solid var(--glass-border);
           margin-top: 8px;

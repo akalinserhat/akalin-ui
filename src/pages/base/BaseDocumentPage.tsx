@@ -34,7 +34,7 @@ import { updateDocumentTitle, autoFocusFirstInput } from '../../utils/domUtils';
 import { createSingletonContext } from '../../utils/createSingletonContext';
 
 // Hata nesnelerini ve diğer form context verilerini taşımak için
-export const DocumentFormContext = createSingletonContext<{ 
+export const DocumentFormContext = createSingletonContext<{
     errors?: Record<string, string>;
     isDirty?: boolean;
     setIsDirty?: (dirty: boolean) => void;
@@ -93,8 +93,8 @@ export const DocumentHeaderField: React.FC<DocumentHeaderFieldProps> = ({ name, 
 
     return (
         <DocumentHeaderFieldContext.Provider value={{ name, hasError: Boolean(error), error }}>
-            <div 
-                className={`document-header-field ${fullWidth ? 'full-width' : ''} ${error ? 'has-error is-invalid' : ''}`} 
+            <div
+                className={`document-header-field ${fullWidth ? 'full-width' : ''} ${error ? 'has-error is-invalid' : ''}`}
                 style={style}
                 data-field-name={name}
                 data-required={required ? 'true' : undefined}
@@ -521,7 +521,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
                         onDirtyChange(isDirty);
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
     }, [formData, documentId, isDirtyControlled, setIsDocumentDirty, onDirtyChange]);
 
@@ -582,7 +582,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
             if (!detail || !onAiApply) return;
 
             // Eğer belirli bir belge türü hedeflendiyse kontrol et
-            if (detail.documentType && documentType && 
+            if (detail.documentType && documentType &&
                 detail.documentType.toLowerCase() !== documentType.toLowerCase()) {
                 return;
             }
@@ -857,7 +857,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
         if (formData && documentType) {
             try {
                 sessionStorage.setItem(`akalin_${documentType.toLowerCase()}_draft`, JSON.stringify(formData));
-            } catch (e) {}
+            } catch (e) { }
         }
         if (!isCloudRoute) {
             const cleanPath = location.pathname.replace(/\/+$/, '');
@@ -1081,21 +1081,21 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
 
     if (isCloudRoute) {
         return (
-            <FilesOnClouds 
+            <FilesOnClouds
                 isOpen={true}
                 isModal={false}
                 asPage={true}
-                documentId={documentId} 
+                documentId={documentId}
                 documentGuid={effectiveGuid}
-                documentType={documentType} 
+                documentType={documentType}
                 documentNo={documentNo}
-                onClose={handleCloseCloudFiles} 
+                onClose={handleCloseCloudFiles}
             />
         );
     }
 
     return (
-        <DocumentFormContext.Provider value={{ 
+        <DocumentFormContext.Provider value={{
             errors: effectiveErrors,
             isDirty: isDocumentDirty,
             setIsDirty: setIsDocumentDirty,
@@ -1118,157 +1118,157 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
                 containerRef={containerRef}
             >
 
-                    {/* 1. SABİT BÖLÜM: Başlık ve Üst Bilgiler */}
+                {/* 1. SABİT BÖLÜM: Başlık ve Üst Bilgiler */}
+                <div
+                    ref={headerRef}
+                    className={`document-page-header ${headerClassName || ''}`}
+                    style={{
+                        height: headerHeight !== 'auto' ? `${headerHeight}px` : 'auto',
+                        minHeight: minHeaderHeight ? `${minHeaderHeight}px` : undefined,
+                        maxHeight: maxHeaderHeight ? `${maxHeaderHeight}px` : undefined,
+                        ...(contentMaxWidth ? { maxWidth: contentMaxWidth, margin: '0 auto', width: '100%' } : {})
+                    }}
+                >
                     <div
-                        ref={headerRef}
-                        className={`document-page-header ${headerClassName || ''}`}
+                        className="document-page-header-body"
+                        style={{ overflowY: headerHeight !== 'auto' ? 'auto' : 'visible' }}
+                    >
+                        {tabs && tabs.length > 1 ? (
+                            <TabLayout
+                                tabs={tabs.map(t => ({ ...t, label: (t as any).label || t.title || (t as any).name })) as any}
+                                activeId={activeTabId}
+                                onChange={onTabChange}
+                                rightContent={
+                                    (headerActions || documentActionMenu) ? (
+                                        <div className="document-page-tab-actions">
+                                            {headerActions}
+                                            {documentActionMenu}
+                                        </div>
+                                    ) : undefined
+                                }
+                            />
+                        ) : (
+                            (headerActions || documentActionMenu) ? (
+                                <div className="document-page-top-bar">
+                                    {headerActions}
+                                    {documentActionMenu}
+                                </div>
+                            ) : null
+                        )}
+
+                        {headerContent && (
+                            <div className="document-page-header-content">
+                                {headerContent}
+                            </div>
+                        )}
+                    </div>
+                    {/* HEADER RESIZER */}
+                    <HorizontalResizer
+                        onMouseDown={startResizeHeader}
+                        onDoubleClick={() => {
+                            setHeaderHeight('auto');
+                            if (formId) localStorage.removeItem(`BaseDoc_${formId}_headerHeight`);
+                        }}
+                    />
+                </div>
+
+                {/* 2. KAYDIRILABİLİR BÖLÜM: Belge Kalemleri (Datasheet) */}
+                <div
+                    className={`document-page-detail ${detailClassName || ''}`}
+                    style={contentMaxWidth ? { maxWidth: contentMaxWidth, margin: '0 auto', width: '100%' } : undefined}
+                >
+                    <div className={`document-page-detail-inner ${hasGridError ? 'has-validation-error' : ''}`}>
+                        {customDetailContent ? customDetailContent : (
+                            gridProps && (
+                                <SpreadsheetGrid
+                                    bordered={false}
+                                    {...(settingsColumnPosition !== undefined ? { settingsColumnPosition } : {})}
+                                    {...(pinSettingsColumn !== undefined ? { pinSettingsColumn } : {})}
+                                    {...gridProps}
+                                />
+                            )
+                        )}
+                        {hasGridError && (
+                            <div
+                                className="document-grid-validation-badge"
+                                onClick={() => {
+                                    const firstInput = containerRef.current?.querySelector('.spreadsheet-grid tbody tr:first-child input, .spreadsheet-grid tbody tr:first-child td') as HTMLElement;
+                                    if (firstInput) {
+                                        firstInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        firstInput.focus?.();
+                                    }
+                                }}
+                            >
+                                <AlertCircle size={15} className="badge-icon" />
+                                <span>{gridErrorMessage}</span>
+                                <button
+                                    type="button"
+                                    className="badge-close-btn"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDismissedGridError(true);
+                                    }}
+                                    title={t('Kapat', 'Kapat')}
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. SABİT BÖLÜM: Footer (Alt Toplamlar) */}
+                {footerContent && (
+                    <div
+                        ref={footerRef}
+                        className={`document-page-footer ${footerClassName || ''}`}
                         style={{
-                            height: headerHeight !== 'auto' ? `${headerHeight}px` : 'auto',
-                            minHeight: minHeaderHeight ? `${minHeaderHeight}px` : undefined,
-                            maxHeight: maxHeaderHeight ? `${maxHeaderHeight}px` : undefined,
+                            height: footerHeight !== 'auto' ? `${footerHeight}px` : 'auto',
+                            minHeight: minFooterHeight ? `${minFooterHeight}px` : undefined,
+                            maxHeight: maxFooterHeight ? `${maxFooterHeight}px` : undefined,
                             ...(contentMaxWidth ? { maxWidth: contentMaxWidth, margin: '0 auto', width: '100%' } : {})
                         }}
                     >
-                        <div
-                            className="document-page-header-body"
-                            style={{ overflowY: headerHeight !== 'auto' ? 'auto' : 'visible' }}
-                        >
-                            {tabs && tabs.length > 1 ? (
-                                <TabLayout
-                                    tabs={tabs.map(t => ({ ...t, label: (t as any).label || t.title || (t as any).name })) as any}
-                                    activeId={activeTabId}
-                                    onChange={onTabChange}
-                                    rightContent={
-                                        (headerActions || documentActionMenu) ? (
-                                            <div className="document-page-tab-actions">
-                                                {headerActions}
-                                                {documentActionMenu}
-                                            </div>
-                                        ) : undefined
-                                    }
-                                />
-                            ) : (
-                                (headerActions || documentActionMenu) ? (
-                                    <div className="document-page-top-bar">
-                                        {headerActions}
-                                        {documentActionMenu}
-                                    </div>
-                                ) : null
-                            )}
-
-                            {headerContent && (
-                                <div className="document-page-header-content">
-                                    {headerContent}
-                                </div>
-                            )}
-                        </div>
-                        {/* HEADER RESIZER */}
+                        {/* FOOTER RESIZER */}
                         <HorizontalResizer
-                            onMouseDown={startResizeHeader}
+                            onMouseDown={startResizeFooter}
                             onDoubleClick={() => {
-                                setHeaderHeight('auto');
-                                if (formId) localStorage.removeItem(`BaseDoc_${formId}_headerHeight`);
+                                setFooterHeight('auto');
+                                if (formId) localStorage.removeItem(`BaseDoc_${formId}_footerHeight`);
                             }}
                         />
-                    </div>
 
-                    {/* 2. KAYDIRILABİLİR BÖLÜM: Belge Kalemleri (Datasheet) */}
-                    <div 
-                        className={`document-page-detail ${detailClassName || ''}`}
-                        style={contentMaxWidth ? { maxWidth: contentMaxWidth, margin: '0 auto', width: '100%' } : undefined}
-                    >
-                        <div className={`document-page-detail-inner ${hasGridError ? 'has-validation-error' : ''}`}>
-                            {customDetailContent ? customDetailContent : (
-                                gridProps && (
-                                    <SpreadsheetGrid
-                                        bordered={false}
-                                        {...(settingsColumnPosition !== undefined ? { settingsColumnPosition } : {})}
-                                        {...(pinSettingsColumn !== undefined ? { pinSettingsColumn } : {})}
-                                        {...gridProps}
-                                    />
-                                )
-                            )}
-                            {hasGridError && (
-                                <div 
-                                    className="document-grid-validation-badge"
-                                    onClick={() => {
-                                        const firstInput = containerRef.current?.querySelector('.spreadsheet-grid tbody tr:first-child input, .spreadsheet-grid tbody tr:first-child td') as HTMLElement;
-                                        if (firstInput) {
-                                            firstInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            firstInput.focus?.();
-                                        }
-                                    }}
-                                >
-                                    <AlertCircle size={15} className="badge-icon" />
-                                    <span>{gridErrorMessage}</span>
-                                    <button 
-                                        type="button" 
-                                        className="badge-close-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setDismissedGridError(true);
-                                        }}
-                                        title={t('Kapat', 'Kapat')}
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </div>
-                            )}
+                        <div className="document-page-footer-content">
+                            {footerContent}
                         </div>
                     </div>
-
-                    {/* 3. SABİT BÖLÜM: Footer (Alt Toplamlar) */}
-                    {footerContent && (
-                        <div
-                            ref={footerRef}
-                            className={`document-page-footer ${footerClassName || ''}`}
-                            style={{
-                                height: footerHeight !== 'auto' ? `${footerHeight}px` : 'auto',
-                                minHeight: minFooterHeight ? `${minFooterHeight}px` : undefined,
-                                maxHeight: maxFooterHeight ? `${maxFooterHeight}px` : undefined,
-                                ...(contentMaxWidth ? { maxWidth: contentMaxWidth, margin: '0 auto', width: '100%' } : {})
-                            }}
-                        >
-                            {/* FOOTER RESIZER */}
-                            <HorizontalResizer
-                                onMouseDown={startResizeFooter}
-                                onDoubleClick={() => {
-                                    setFooterHeight('auto');
-                                    if (formId) localStorage.removeItem(`BaseDoc_${formId}_footerHeight`);
-                                }}
-                            />
-
-                            <div className="document-page-footer-content">
-                                {footerContent}
-                            </div>
-                        </div>
-                    )}
-
-                </BasePage>
-
-                {documentType && localShowCloudFiles && (
-                    <FilesOnClouds 
-                        isOpen={localShowCloudFiles}
-                        documentId={documentId} 
-                        documentGuid={effectiveGuid}
-                        documentType={documentType} 
-                        documentNo={documentNo}
-                        onClose={handleCloseCloudFiles} 
-                    />
                 )}
 
-                {onAiApply && enableAiAssistant !== false && (
-                    <BaseAiAssistantModal
-                        isOpen={isAiModalOpen}
-                        onClose={() => setIsAiModalOpen(false)}
-                        documentType={documentType || 'Belge'}
-                        documentId={documentId}
-                        currentFormData={formData}
-                        onApply={(data, bulutDosyaId) => {
-                            onAiApply(data, bulutDosyaId);
-                        }}
-                    />
-                )}
+            </BasePage>
+
+            {documentType && localShowCloudFiles && (
+                <FilesOnClouds
+                    isOpen={localShowCloudFiles}
+                    documentId={documentId}
+                    documentGuid={effectiveGuid}
+                    documentType={documentType}
+                    documentNo={documentNo}
+                    onClose={handleCloseCloudFiles}
+                />
+            )}
+
+            {onAiApply && enableAiAssistant !== false && (
+                <BaseAiAssistantModal
+                    isOpen={isAiModalOpen}
+                    onClose={() => setIsAiModalOpen(false)}
+                    documentType={documentType || 'Belge'}
+                    documentId={documentId}
+                    currentFormData={formData}
+                    onApply={(data, bulutDosyaId) => {
+                        onAiApply(data, bulutDosyaId);
+                    }}
+                />
+            )}
         </DocumentFormContext.Provider>
     );
 };
