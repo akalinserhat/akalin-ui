@@ -52,7 +52,7 @@ export interface BasePageProps {
   inModal?: boolean;
   overlayClassName?: string;
 
-  // Harici Düğüm Ayar Sayfası ([sayfaİsmi]settingsForExternal.tsx) Desteği
+  // Harici Düğüm Ayar Sayfası ([sayfaİsmi]SettingsForExternal.tsx) Desteği
   hasExternalSettings?: boolean;
   externalSettingsComponent?: React.ComponentType<any>;
 }

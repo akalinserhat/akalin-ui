@@ -304,7 +304,7 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
         const handleClickOutside = (event: MouseEvent) => {
             const isOutsideContainer = containerRef.current && !containerRef.current.contains(event.target as Node);
             const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target as Node);
-            
+
             if (isOutsideContainer && isOutsideDropdown) {
                 searchStringRef.current = '';
                 setSearchQuery('');
@@ -334,8 +334,8 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
     // Odaklanan item'ı kaydır
     useEffect(() => {
         if (isDropdownOpen && focusedIndex >= 0) {
-            const el = dropdownRef.current?.querySelector('.tree-node.focused') || 
-                       document.body.querySelector('.custom-tree-dropdown .tree-node.focused');
+            const el = dropdownRef.current?.querySelector('.tree-node.focused') ||
+                document.body.querySelector('.custom-tree-dropdown .tree-node.focused');
             if (el) {
                 el.scrollIntoView({ block: 'nearest' });
             }
@@ -346,7 +346,7 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
 
     useEffect(() => {
         if (!isDropdownOpen) return;
-        
+
         const updatePosition = () => {
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
@@ -375,7 +375,7 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
     const handleSelect = (optionId: any) => {
         searchStringRef.current = '';
         setSearchQuery('');
-        
+
         if (optionId === 'EXTRA_ACTION' && extraAction) {
             setIsDropdownOpen(false);
             extraAction.onClick();
@@ -563,8 +563,8 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
     const inputValue = (isDropdownOpen && searchQuery) ? searchQuery : (resolvedDisplayText || '');
 
     return (
-        <div 
-            ref={containerRef} 
+        <div
+            ref={containerRef}
             className={`relative w-full ${className || ''}`}
             style={style}
             onBlur={(e) => {
@@ -585,7 +585,7 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                     type="text"
                     className={`form-input ${effectiveError ? 'is-invalid' : ''} ${clearable && hasEffectiveValue ? 'has-clear' : ''}`}
                     value={inputValue}
-                    onChange={() => {}}
+                    onChange={() => { }}
                     onKeyDown={handleKeyDown}
                     onClick={() => {
                         if (openOnClick && !disabled && !isDropdownOpen) {
@@ -630,9 +630,9 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
             </div>
 
             {isDropdownOpen && createPortal(
-                <div 
-                    ref={dropdownRef} 
-                    className="custom-tree-dropdown fade-in-fast" 
+                <div
+                    ref={dropdownRef}
+                    className="custom-tree-dropdown fade-in-fast"
                     style={dropdownStyles}
                     onMouseDown={(e) => {
                         e.preventDefault();
@@ -694,9 +694,8 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                                     return (
                                         <React.Fragment key={`group_${groupName}`}>
                                             <div
-                                                className={`tree-group-header ${multiple ? 'selectable' : ''} ${
-                                                    isAllGroupSelected ? 'group-selected' : ''
-                                                }`}
+                                                className={`tree-group-header ${multiple ? 'selectable' : ''} ${isAllGroupSelected ? 'group-selected' : ''
+                                                    }`}
                                                 onMouseDown={(e) => {
                                                     if (!multiple) return;
                                                     e.preventDefault();
@@ -710,13 +709,12 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                                                 <div className="flex items-center">
                                                     {multiple && (
                                                         <span
-                                                            className={`tree-multi-checkbox ${
-                                                                isAllGroupSelected
+                                                            className={`tree-multi-checkbox ${isAllGroupSelected
                                                                     ? 'checked'
                                                                     : isPartialGroupSelected
                                                                         ? 'partial'
                                                                         : ''
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {isAllGroupSelected ? (
                                                                 <Check size={12} />
@@ -739,9 +737,8 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                                                 return (
                                                     <div
                                                         key={o.id}
-                                                        className={`tree-node grouped-item ${focusedIndex === idx ? 'focused' : ''} ${
-                                                            isSelected ? 'selected' : ''
-                                                        }`}
+                                                        className={`tree-node grouped-item ${focusedIndex === idx ? 'focused' : ''} ${isSelected ? 'selected' : ''
+                                                            }`}
                                                         onMouseDown={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
@@ -754,15 +751,13 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                                                     >
                                                         <div className="tree-node-content flex justify-between items-center w-full">
                                                             <div
-                                                                className={`tree-node-label flex-1 flex items-center ${
-                                                                    isSelected ? 'font-semibold' : ''
-                                                                }`}
+                                                                className={`tree-node-label flex-1 flex items-center ${isSelected ? 'font-semibold' : ''
+                                                                    }`}
                                                             >
                                                                 {multiple && (
                                                                     <span
-                                                                        className={`tree-multi-checkbox ${
-                                                                            isSelected ? 'checked' : ''
-                                                                        }`}
+                                                                        className={`tree-multi-checkbox ${isSelected ? 'checked' : ''
+                                                                            }`}
                                                                     >
                                                                         {isSelected && <Check size={12} />}
                                                                     </span>
@@ -812,9 +807,9 @@ const BaseDropdownSecici: React.FC<BaseDropdownSeciciProps> = ({
                                 );
                             })
                         )}
-                        
+
                         {extraAction && (
-                            <div 
+                            <div
                                 className={`tree-node tree-node-extra-action ${focusedIndex === filteredOptions.length ? 'focused' : ''}`}
                                 onMouseDown={(e) => {
                                     e.preventDefault();
