@@ -47,6 +47,7 @@ export interface McpVarlikSeciciInputProps {
   externalSettingsComponent?: React.ComponentType<any>;
   externalSettingsValue?: any;
   onExternalSettingsChange?: (settings: any) => void;
+  onExternalSettingsSave?: (settings: any) => void;
   onSettingsClick?: (entity: McpVarlikEntity) => void;
   isSettingsOpen?: boolean;
   onSettingsClose?: () => void;
@@ -99,6 +100,7 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
   externalSettingsComponent: propExternalSettingsComponent,
   externalSettingsValue,
   onExternalSettingsChange,
+  onExternalSettingsSave,
   onSettingsClick,
   isSettingsOpen: propIsSettingsOpen,
   onSettingsClose: propOnSettingsClose,
@@ -440,6 +442,9 @@ export const McpVarlikSeciciInput: React.FC<McpVarlikSeciciInputProps> = ({
           onSave={(updatedSettings: any) => {
             if (onExternalSettingsChange) {
               onExternalSettingsChange(updatedSettings);
+            }
+            if (onExternalSettingsSave) {
+              onExternalSettingsSave(updatedSettings);
             }
             handleSettingsClose();
           }}

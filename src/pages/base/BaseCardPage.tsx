@@ -193,6 +193,9 @@ const BaseCardPage: React.FC<BaseCardPageProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        if (!restBasePageProps.inModal && typeof document !== 'undefined' && document.querySelector('.base-page-overlay')) {
+          return;
+        }
         e.preventDefault();
         handleTriggerSave(e);
       }
