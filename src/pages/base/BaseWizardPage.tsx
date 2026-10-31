@@ -813,7 +813,7 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
             <form 
                 onSubmit={(e) => e.preventDefault()} 
                 noValidate 
-                className="flex-1 flex flex-col min-h-0"
+                className="flex-1 flex flex-col min-h-0 h-full w-full"
             >
                 {wizardContent}
             </form>
