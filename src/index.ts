@@ -32,6 +32,7 @@ export { default as BaseFloatCircleButton, type BaseFloatCircleButtonProps } fro
 export { default as BaseMenuButton, type BaseMenuButtonProps, type MenuButtonItem } from './components/base/button/BaseMenuButton';
 export { BaseCard, type BaseCardProps, type CardVariant } from './components/base/card';
 export { default as BaseDashboardView, type BaseDashboardViewProps } from './components/base/view/BaseDashboardView';
+export { default as BaseJsonView, JsonView, type BaseJsonViewProps, type JsonViewProps } from './components/base/view/BaseJsonView';
 export {
   DashboardStatCard,
   type DashboardStatCardProps,
