@@ -361,6 +361,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: var(--page-header-padding, 20px 24px);
   margin-bottom: var(--page-header-margin-bottom, 16px);
   background: var(--bg-primary);
@@ -377,6 +378,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   box-sizing: border-box;
   padding: var(--page-header-padding, 20px 24px);
   margin-bottom: 0 !important;
@@ -389,6 +391,16 @@
   box-shadow: none !important;
   flex-shrink: 0;
   width: 100%;
+}
+
+.base-card-page-header h1,
+.base-card-header-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0;
+  max-width: 100%;
+  display: block;
 }
 
 .base-card-page .base-card-page-header,

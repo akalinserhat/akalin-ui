@@ -158,6 +158,11 @@
 .shrink-0 { flex-shrink: 0; }
 .self-start { align-self: flex-start; }
 .break-word { word-break: break-word; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .leading-1-4 { line-height: 1.4; }
 .grid-auto-320 { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .hover-bg-danger-light:hover { background-color: rgba(239, 68, 68, 0.1); }

@@ -17,6 +17,11 @@ export interface BaseCardPageHeaderProps extends Omit<BaseCardProps, 'title'> {
   title?: React.ReactNode;
 
   /**
+   * Başlık üzerine gelindiğinde (hover) gösterilecek tam metin ipucu (tooltip)
+   */
+  titleTooltip?: string;
+
+  /**
    * Başlığın solunda gösterilecek büyük ikon
    */
   icon?: React.ReactNode;
@@ -92,6 +97,7 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
   (
     {
       title,
+      titleTooltip,
       icon,
       subtitle,
       subtitleLeft,
@@ -153,11 +159,20 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
             {title && (
               <div className="flex items-center gap-8 group/header-title min-w-0">
                 {typeof title === 'string' ? (
-                  <h1 className="m-0 text-20 font-700 tracking-tight text-primary break-words leading-tight">
+                  <h1
+                    className="m-0 text-20 font-700 tracking-tight text-primary leading-tight truncate base-card-header-title"
+                    title={titleTooltip || title}
+                  >
                     {title}
                   </h1>
                 ) : (
-                  title
+                  titleTooltip ? (
+                    <div className="min-w-0 truncate base-card-header-title" title={titleTooltip}>
+                      {title}
+                    </div>
+                  ) : (
+                    title
+                  )
                 )}
 
                 {onTitleEdit && (
