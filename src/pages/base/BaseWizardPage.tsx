@@ -17,13 +17,13 @@
  * - i18n çok dilli desteği ve Material Design 3 tasarım token'ları ile tam uyumludur.
  * ============================================================================
  */
-import React, { 
-    useState, 
-    ReactNode, 
-    isValidElement, 
-    Children, 
-    useEffect, 
-    useRef, 
+import React, {
+    useState,
+    ReactNode,
+    isValidElement,
+    Children,
+    useEffect,
+    useRef,
     useCallback,
     useMemo
 } from 'react';
@@ -395,7 +395,7 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
             try {
                 const currentPath = currentPathnameRef.current.replace(/\/+$/, '');
                 const destinationPath = window.location.pathname.replace(/\/+$/, '');
-                
+
                 // Eğer gidilen adres mevcut sihirbazın bir alt sayfası DEĞİLSE (örn: /firmalar/yeni -> /firmalar)
                 // hafızadaki adımı temizle ki kullanıcı menüden geldiğinde temiz başlasın.
                 const isSubRoute = currentPath && destinationPath.startsWith(currentPath + '/');
@@ -600,9 +600,9 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
         if (shouldShowBack && setHeader) {
             setHeader(
                 headerIdRef.current,
-                <BackButton 
-                    onClick={handleBackClick} 
-                    title={t('auto_geri_don', 'Geri Dön')} 
+                <BackButton
+                    onClick={handleBackClick}
+                    title={t('auto_geri_don', 'Geri Dön')}
                 />
             );
 
@@ -701,7 +701,7 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
     const resolvedProcessingText = t('auto_isleniyor_3f1b') || 'İşleniyor...';
 
     const wizardContent = (
-        <div 
+        <div
             id={id}
             ref={containerRef}
             className={`base-card-page wizard-page-wrapper flex-col flex-1 min-h-0 ${className || ''}`}
@@ -738,7 +738,7 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
 
                             return (
                                 <React.Fragment key={index}>
-                                    <div 
+                                    <div
                                         className={`wizard-step-item ${isCompleted ? 'completed cursor-pointer' : ''} ${!(isActive || isCompleted) ? 'inactive' : ''}`}
                                         onClick={() => isCompleted && handleStepClick(index)}
                                         title={isCompleted ? t('auto_bu_adima_don', 'Bu adıma dön') : undefined}
@@ -810,9 +810,9 @@ const BaseWizardPage: React.FC<BaseWizardPageProps> = ({
 
     if (asForm) {
         return (
-            <form 
-                onSubmit={(e) => e.preventDefault()} 
-                noValidate 
+            <form
+                onSubmit={(e) => e.preventDefault()}
+                noValidate
                 className="flex-1 flex flex-col min-h-0 h-full w-full"
             >
                 {wizardContent}
