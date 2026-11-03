@@ -165,10 +165,10 @@ const BaseSelectionList = <T extends Record<string, any> = any>({
 
   // Başlangıç arama metnini (prop veya router state üzerinden) çözümleme
   const effectiveInitialSearch = useMemo(() => {
-    if (initialSearchText !== undefined && initialSearchText !== null) return String(initialSearchText);
-    if (initialSearchTerm !== undefined && initialSearchTerm !== null) return String(initialSearchTerm);
-    if (searchText !== undefined && searchText !== null) return String(searchText);
-    if (searchTerm !== undefined && searchTerm !== null) return String(searchTerm);
+    if (initialSearchText !== undefined && initialSearchText !== null && String(initialSearchText).trim() !== '') return String(initialSearchText);
+    if (initialSearchTerm !== undefined && initialSearchTerm !== null && String(initialSearchTerm).trim() !== '') return String(initialSearchTerm);
+    if (searchText !== undefined && searchText !== null && String(searchText).trim() !== '') return String(searchText);
+    if (searchTerm !== undefined && searchTerm !== null && String(searchTerm).trim() !== '') return String(searchTerm);
     const locState = (location?.state || {}) as Record<string, any>;
     if (locState.initialSearchText) return String(locState.initialSearchText);
     if (locState.searchText) return String(locState.searchText);
@@ -180,25 +180,75 @@ const BaseSelectionList = <T extends Record<string, any> = any>({
   }, [initialSearchText, initialSearchTerm, searchText, searchTerm, location]);
 
   const effectiveInitialSearchRef = useRef(effectiveInitialSearch);
+  const isInitialSearchPendingRef = useRef<boolean>(Boolean(effectiveInitialSearch));
+
   useEffect(() => {
     effectiveInitialSearchRef.current = effectiveInitialSearch;
+    if (effectiveInitialSearch) {
+      isInitialSearchPendingRef.current = true;
+    }
   }, [effectiveInitialSearch]);
 
-  // GlobalSearch ile senkronizasyon (Açılışta metni aktarma ve çıkışta temizleme)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleGlobalSearchSync = (e: any) => {
+      const val = e?.detail?.value ?? '';
+      if (isInitialSearchPendingRef.current) {
+        if (val === effectiveInitialSearchRef.current) {
+          isInitialSearchPendingRef.current = false;
+        }
+      }
+    };
+    window.addEventListener('global-search', handleGlobalSearchSync);
+    return () => window.removeEventListener('global-search', handleGlobalSearchSync);
+  }, []);
+
+  // GlobalSearch ile senkronizasyon (Açılışta metni aktarma)
   useEffect(() => {
     if (!syncWithGlobalSearch) return;
+    if (!effectiveInitialSearch || typeof window === 'undefined') return;
 
-    const initialText = effectiveInitialSearchRef.current;
-    if (initialText && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('set-global-search-term', { detail: initialText }));
-    }
+    window.dispatchEvent(new CustomEvent('set-global-search-term', { detail: effectiveInitialSearch }));
+    const syncTimer = setTimeout(() => {
+      if (isInitialSearchPendingRef.current && effectiveInitialSearchRef.current) {
+        window.dispatchEvent(new CustomEvent('set-global-search-term', { detail: effectiveInitialSearchRef.current }));
+        isInitialSearchPendingRef.current = false;
+      }
+    }, 30);
 
+    return () => clearTimeout(syncTimer);
+  }, [syncWithGlobalSearch, effectiveInitialSearch]);
+
+  // GlobalSearch çıkış temizliği
+  useEffect(() => {
+    if (!syncWithGlobalSearch) return;
     return () => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('clear-global-search-term'));
       }
     };
   }, [syncWithGlobalSearch]);
+
+  const effectiveFetchData = useMemo(() => {
+    if (!fetchData) return undefined;
+    return (args: FetchDataArgs) => {
+      if (
+        isInitialSearchPendingRef.current &&
+        effectiveInitialSearchRef.current &&
+        (!args.aramaData || !args.aramaData.value)
+      ) {
+        return fetchData({
+          ...args,
+          aramaData: {
+            ...(args.aramaData || { type: 'Tumu', startDate: '', endDate: '' }),
+            value: effectiveInitialSearchRef.current,
+            displayValue: effectiveInitialSearchRef.current
+          }
+        });
+      }
+      return fetchData(args);
+    };
+  }, [fetchData]);
 
   // Sayfa açıldığında DataTable konteynerine odaklan
   useEffect(() => {
@@ -526,7 +576,7 @@ const BaseSelectionList = <T extends Record<string, any> = any>({
         <DataTable<T>
           columns={columns}
           data={data}
-          fetchData={fetchData}
+          fetchData={effectiveFetchData}
           loading={loading}
           pageSize={pageSize}
           keyExtractor={resolveItemKey}

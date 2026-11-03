@@ -164,17 +164,45 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
     const [isEditingStart, setIsEditingStart] = useState(false);
     const [isEditingEnd, setIsEditingEnd] = useState(false);
 
-    useEffect(() => {
-        if (!isEditingStart) {
-            setStartText(formatDateToDisplay(actualStartDate));
-        }
-    }, [actualStartDate, isEditingStart]);
+    const startTextRef = useRef(formatDateToDisplay(actualStartDate));
+    const endTextRef = useRef(formatDateToDisplay(actualEndDate));
+    const latestStartRef = useRef(normalizeDate(actualStartDate));
+    const latestEndRef = useRef(normalizeDate(actualEndDate));
+    const isUserInteractingRef = useRef(false);
+
+    const updateStartText = useCallback((val: string) => {
+        startTextRef.current = val;
+        setStartText(val);
+    }, []);
+
+    const updateEndText = useCallback((val: string) => {
+        endTextRef.current = val;
+        setEndText(val);
+    }, []);
 
     useEffect(() => {
-        if (!isEditingEnd) {
-            setEndText(formatDateToDisplay(actualEndDate));
+        latestStartRef.current = normalizeDate(actualStartDate);
+        if (!isEditingStart) {
+            updateStartText(formatDateToDisplay(actualStartDate));
         }
-    }, [actualEndDate, isEditingEnd]);
+    }, [actualStartDate, isEditingStart, updateStartText]);
+
+    useEffect(() => {
+        latestEndRef.current = normalizeDate(actualEndDate);
+        if (!isEditingEnd) {
+            updateEndText(formatDateToDisplay(actualEndDate));
+        }
+    }, [actualEndDate, isEditingEnd, updateEndText]);
+
+    const emitChange = useCallback((newStart: string, newEnd: string) => {
+        latestStartRef.current = newStart;
+        latestEndRef.current = newEnd;
+        updateStartText(formatDateToDisplay(newStart));
+        updateEndText(formatDateToDisplay(newEnd));
+        if (onChange) {
+            onChange(newStart, newEnd);
+        }
+    }, [onChange, updateStartText, updateEndText]);
 
     const [viewDate, setViewDate] = useState<Date>(() => {
         const s = normalizeDate(actualStartDate);
@@ -190,7 +218,9 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
     const endInputRef = useRef<HTMLInputElement>(null);
 
     const syncViewDateToField = useCallback((field: 'start' | 'end') => {
-        const targetDate = field === 'end' ? (actualEndDate || actualStartDate) : (actualStartDate || actualEndDate);
+        const currentStart = latestStartRef.current || normalizeDate(actualStartDate);
+        const currentEnd = latestEndRef.current || normalizeDate(actualEndDate);
+        const targetDate = field === 'end' ? (currentEnd || currentStart) : (currentStart || currentEnd);
         const norm = normalizeDate(targetDate);
         if (norm) {
             const [y, m, d] = norm.split('-').map(Number);
@@ -206,7 +236,6 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
             if (!disabled) {
                 setActiveField('start');
                 syncViewDateToField('start');
-                setIsOpen(true);
                 startInputRef.current?.focus();
             }
         }
@@ -218,6 +247,7 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
                 setActiveField(null);
+                isUserInteractingRef.current = false;
             }
         };
 
@@ -234,7 +264,7 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
         if (autoFocus && !disabled) {
             setActiveField('start');
             syncViewDateToField('start');
-            setIsOpen(true);
+            startInputRef.current?.focus();
         }
     }, [autoFocus, disabled, syncViewDateToField]);
 
@@ -302,11 +332,13 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
 
     // Month Navigation handlers
     const handlePrevMonth = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
     };
 
     const handleNextMonth = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
     };
@@ -314,20 +346,16 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
     // Calendar click logic
     const handleDayClick = (dayDate: Date) => {
         const dateStr = getDateString(dayDate);
-        const s = normalizeDate(actualStartDate);
-        const e = normalizeDate(actualEndDate);
+        const s = latestStartRef.current;
+        const e = latestEndRef.current;
 
         if (activeField === 'end') {
             // User explicitly wants to select or update the END date
-            if (s && dateStr < s) {
-                if (onChange) {
-                    onChange(dateStr, s);
-                }
-            } else {
-                if (onChange) {
-                    onChange(s || dateStr, dateStr);
-                }
-            }
+            const newStart = (s && dateStr < s) ? dateStr : (s || dateStr);
+            const newEnd = (s && dateStr < s) ? s : dateStr;
+            setIsEditingStart(false);
+            setIsEditingEnd(false);
+            emitChange(newStart, newEnd);
             setIsOpen(false);
             setActiveField(null);
             return;
@@ -335,115 +363,134 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
 
         if (activeField === 'start') {
             // User explicitly wants to select or update the START date
-            if (e && dateStr > e) {
-                if (onChange) {
-                    onChange(dateStr, '');
-                }
-            } else {
-                if (onChange) {
-                    onChange(dateStr, e || '');
-                }
-            }
+            const newStart = dateStr;
+            const newEnd = (e && dateStr > e) ? '' : (e || '');
+            setIsEditingStart(false);
+            emitChange(newStart, newEnd);
             setActiveField('end');
+            endInputRef.current?.focus();
             return;
         }
 
         // Generic click (neither field specifically focused)
-        if (!s) {
-            if (onChange) {
-                onChange(dateStr, '');
-            }
+        if (!s || (s && e)) {
+            emitChange(dateStr, '');
             setActiveField('end');
-        } else if (!e) {
-            if (dateStr >= s) {
-                if (onChange) {
-                    onChange(s, dateStr);
-                }
-                setIsOpen(false);
-                setActiveField(null);
-            } else {
-                if (onChange) {
-                    onChange(dateStr, s);
-                }
-                setIsOpen(false);
-                setActiveField(null);
-            }
+            endInputRef.current?.focus();
         } else {
-            // Both are set:
-            if (dateStr >= s) {
-                if (onChange) {
-                    onChange(s, dateStr);
-                }
-                setIsOpen(false);
-                setActiveField(null);
-            } else {
-                if (onChange) {
-                    onChange(dateStr, '');
-                }
-                setActiveField('end');
-            }
+            const newStart = dateStr >= s ? s : dateStr;
+            const newEnd = dateStr >= s ? dateStr : s;
+            setIsEditingStart(false);
+            setIsEditingEnd(false);
+            emitChange(newStart, newEnd);
+            setIsOpen(false);
+            setActiveField(null);
         }
+    };
+
+    const checkCloseOnFocusLeave = () => {
+        setTimeout(() => {
+            if (containerRef.current && typeof document !== 'undefined') {
+                const activeEl = document.activeElement;
+                if (!activeEl || !containerRef.current.contains(activeEl)) {
+                    setIsOpen(false);
+                    setActiveField(null);
+                    isUserInteractingRef.current = false;
+                }
+            }
+        }, 0);
     };
 
     // Text Input typing handlers
     const handleStartBlur = () => {
         setIsEditingStart(false);
-        const parsed = parseUserDateInput(startText);
+        const rawText = startTextRef.current;
+        const parsed = parseUserDateInput(rawText);
+        const currentStart = latestStartRef.current;
+        const currentEnd = latestEndRef.current;
+
         if (parsed) {
-            const e = normalizeDate(actualEndDate);
-            if (e && parsed > e) {
-                if (onChange) onChange(parsed, parsed);
+            if (parsed !== currentStart) {
+                if (currentEnd && parsed > currentEnd) {
+                    emitChange(parsed, parsed);
+                } else {
+                    emitChange(parsed, currentEnd || '');
+                }
             } else {
-                if (onChange) onChange(parsed, e || '');
+                updateStartText(formatDateToDisplay(currentStart));
             }
-        } else if (!startText.trim()) {
-            if (onChange) onChange('', normalizeDate(actualEndDate) || '');
+        } else if (!rawText.trim()) {
+            if (currentStart !== '') {
+                emitChange('', currentEnd || '');
+            }
         } else {
-            setStartText(formatDateToDisplay(actualStartDate));
+            updateStartText(formatDateToDisplay(currentStart));
         }
+        checkCloseOnFocusLeave();
     };
 
     const handleEndBlur = () => {
         setIsEditingEnd(false);
-        const parsed = parseUserDateInput(endText);
+        const rawText = endTextRef.current;
+        const parsed = parseUserDateInput(rawText);
+        const currentStart = latestStartRef.current;
+        const currentEnd = latestEndRef.current;
+
         if (parsed) {
-            const s = normalizeDate(actualStartDate);
-            if (s && parsed < s) {
-                if (onChange) onChange(parsed, s);
+            if (parsed !== currentEnd) {
+                if (currentStart && parsed < currentStart) {
+                    emitChange(parsed, currentStart);
+                } else {
+                    emitChange(currentStart || '', parsed);
+                }
             } else {
-                if (onChange) onChange(s || '', parsed);
+                updateEndText(formatDateToDisplay(currentEnd));
             }
-        } else if (!endText.trim()) {
-            if (onChange) onChange(normalizeDate(actualStartDate) || '', '');
+        } else if (!rawText.trim()) {
+            if (currentEnd !== '') {
+                emitChange(currentStart || '', '');
+            }
         } else {
-            setEndText(formatDateToDisplay(actualEndDate));
+            updateEndText(formatDateToDisplay(currentEnd));
         }
+        checkCloseOnFocusLeave();
+    };
+
+    const isCompleteTypedDate = (val: string) => {
+        const s = val.trim();
+        return /^\d{2}[./-]\d{2}[./-]\d{4}$/.test(s) || /^\d{4}-\d{2}-\d{2}$/.test(s) || /^\d{8}$/.test(s);
     };
 
     const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        setStartText(val);
-        const parsed = parseUserDateInput(val);
-        if (parsed) {
-            const currentEnd = normalizeDate(actualEndDate);
-            if (currentEnd && parsed > currentEnd) {
-                if (onChange) onChange(parsed, parsed);
-            } else {
-                if (onChange) onChange(parsed, currentEnd || '');
+        updateStartText(val);
+        if (isCompleteTypedDate(val)) {
+            const parsed = parseUserDateInput(val);
+            if (parsed && parsed !== latestStartRef.current) {
+                const currentEnd = latestEndRef.current;
+                latestStartRef.current = parsed;
+                if (onChange) {
+                    onChange(parsed, currentEnd || '');
+                }
+                const [y, m, d] = parsed.split('-').map(Number);
+                if (y && m) setViewDate(new Date(y, m - 1, d || 1));
             }
         }
     };
 
     const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        setEndText(val);
-        const parsed = parseUserDateInput(val);
-        if (parsed) {
-            const currentStart = normalizeDate(actualStartDate);
-            if (currentStart && parsed < currentStart) {
-                if (onChange) onChange(parsed, currentStart);
-            } else {
-                if (onChange) onChange(currentStart || '', parsed);
+        updateEndText(val);
+        if (isCompleteTypedDate(val)) {
+            const parsed = parseUserDateInput(val);
+            if (parsed && parsed !== latestEndRef.current) {
+                const currentStart = latestStartRef.current;
+                latestEndRef.current = parsed;
+                if (onChange) {
+                    onChange(currentStart || '', parsed);
+                }
+                const [y, m, d] = parsed.split('-').map(Number);
+                if (y && m) setViewDate(new Date(y, m - 1, d || 1));
             }
         }
     };
@@ -452,6 +499,11 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
         if (e.key === 'Escape') {
             setIsOpen(false);
             setActiveField(null);
+        } else if (e.key === 'ArrowDown' && !isOpen) {
+            e.preventDefault();
+            setActiveField(field);
+            syncViewDateToField(field);
+            setIsOpen(true);
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (field === 'start') {
@@ -468,8 +520,9 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
     const handleContainerClick = () => {
         if (disabled) return;
         if (!isOpen) {
-            const s = normalizeDate(actualStartDate);
-            if (!s) {
+            const s = latestStartRef.current;
+            const e = latestEndRef.current;
+            if (!s || (s && e)) {
                 setActiveField('start');
                 syncViewDateToField('start');
             } else {
@@ -481,7 +534,15 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
     };
 
     return (
-        <div id={id} ref={containerRef} className={`flex-col w-full ${className}`} style={{ position: 'relative' }}>
+        <div
+            id={id}
+            ref={containerRef}
+            className={`flex-col w-full ${className}`}
+            style={{ position: 'relative' }}
+            onMouseDown={() => {
+                isUserInteractingRef.current = true;
+            }}
+        >
             <div 
                 className={`tarih-araligi-input-container ${hasError ? 'is-invalid' : ''} ${disabled ? 'disabled' : ''}`}
                 onClick={handleContainerClick}
@@ -503,9 +564,11 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
                     onFocus={() => {
                         setActiveField('start');
                         setIsEditingStart(true);
-                        setStartText(formatDateToDisplay(actualStartDate));
+                        updateStartText(formatDateToDisplay(latestStartRef.current || actualStartDate));
                         syncViewDateToField('start');
-                        setIsOpen(true);
+                        if (isUserInteractingRef.current) {
+                            setIsOpen(true);
+                        }
                     }}
                     onBlur={handleStartBlur}
                     onChange={handleStartChange}
@@ -531,9 +594,11 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
                     onFocus={() => {
                         setActiveField('end');
                         setIsEditingEnd(true);
-                        setEndText(formatDateToDisplay(actualEndDate));
+                        updateEndText(formatDateToDisplay(latestEndRef.current || actualEndDate));
                         syncViewDateToField('end');
-                        setIsOpen(true);
+                        if (isUserInteractingRef.current) {
+                            setIsOpen(true);
+                        }
                     }}
                     onBlur={handleEndBlur}
                     onChange={handleEndChange}
@@ -548,8 +613,9 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
                         e.stopPropagation();
                         if (!disabled) {
                             if (!isOpen) {
-                                const s = normalizeDate(actualStartDate);
-                                if (!s) {
+                                const s = latestStartRef.current;
+                                const eDate = latestEndRef.current;
+                                if (!s || (s && eDate)) {
                                     setActiveField('start');
                                     syncViewDateToField('start');
                                 } else {
@@ -568,7 +634,14 @@ const DateRangeInput = forwardRef<any, DateRangeInputProps>(({
                 </span>
 
                 {isOpen && !disabled && (
-                    <div className="date-range-popover" onClick={(e) => e.stopPropagation()}>
+                    <div
+                        className="date-range-popover"
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="popover-header">
                             <button type="button" className="month-nav-btn" onClick={handlePrevMonth}>
                                 &lt;

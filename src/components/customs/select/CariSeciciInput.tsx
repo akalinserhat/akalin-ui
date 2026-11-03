@@ -103,6 +103,10 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
         return '';
     });
     const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [searchSnap, setSearchSnap] = useState<string>(() => {
+        const st = (location?.state || {}) as Record<string, any>;
+        return st.initialSearchText || st.searchText || '';
+    });
 
     const getCleanStringValue = (val: any): string => {
         if (val === null || val === undefined) return '';
@@ -150,14 +154,16 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
 
     const handleOpen = useCallback(() => {
         if (hasExternalModal) return;
+        const currentSearch = displayValue || '';
+        setSearchSnap(currentSearch);
         setInternalIsOpen(true);
         if (!location.pathname.endsWith('/cari-secim')) {
             const cleanPath = location.pathname.replace(/\/+$/, '').replace(/\/(bulut-dosyalari|excel-import|cari-secim)$/, '');
             navigate(`${cleanPath}/cari-secim`, {
                 state: {
                     ...location.state,
-                    searchText: displayValue,
-                    initialSearchText: displayValue
+                    searchText: currentSearch,
+                    initialSearchText: currentSearch
                 }
             });
         }
@@ -171,6 +177,7 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
         if (!hasExternalModal && location.pathname.endsWith('/cari-secim')) {
             const parentPath = location.pathname.replace(/\/cari-secim$/, '');
             navigate(parentPath, {
+                replace: true,
                 state: {
                     ...location.state
                 }
@@ -281,7 +288,7 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
                     inModal={true}
                     title={modalTitle}
                     subtitle={modalSubtitle}
-                    initialSearchText={displayValue}
+                    initialSearchText={displayValue || searchSnap || (location.state as any)?.initialSearchText || (location.state as any)?.searchText || ''}
                     onClose={handleClose}
                     onSelect={handleCariSelect}
                     {...selectionListProps}
