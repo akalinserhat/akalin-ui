@@ -403,6 +403,100 @@
   display: block;
 }
 
+.base-card-header-title-editable {
+  cursor: pointer;
+  border-radius: var(--md3-shape-small, 6px);
+  transition: color var(--transition-fast, 0.15s ease);
+}
+
+.base-card-header-title-editable:hover {
+  color: var(--accent-primary, #6366f1);
+}
+
+.title-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--md3-shape-small, 6px);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+  flex-shrink: 0;
+}
+
+.title-edit-btn:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--accent-primary, #6366f1);
+}
+
+.title-edit-btn:active {
+  transform: scale(0.95);
+}
+
+.title-edit-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.title-edit-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-surface, var(--bg-secondary));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  border-radius: var(--md3-shape-small, 6px);
+  padding: 4px 12px;
+  outline: none;
+  transition: border-color var(--transition-fast, 0.15s ease), box-shadow var(--transition-fast, 0.15s ease);
+}
+
+.title-edit-input:focus {
+  border-color: var(--accent-primary, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.title-edit-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--md3-shape-small, 6px);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+  flex-shrink: 0;
+}
+
+.title-edit-action-btn.btn-save {
+  background: var(--accent-primary, #6366f1);
+  color: #ffffff;
+}
+
+.title-edit-action-btn.btn-save:hover {
+  opacity: 0.9;
+}
+
+.title-edit-action-btn.btn-cancel {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-secondary);
+}
+
+.title-edit-action-btn.btn-cancel:hover {
+  color: var(--text-primary);
+  background: var(--active-bg, rgba(255, 255, 255, 0.12));
+}
+
 .base-card-page .base-card-page-header,
 .base-card-page .base-page-header,
 .base-list-page .base-card-page-header,

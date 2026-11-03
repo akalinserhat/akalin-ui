@@ -22,6 +22,10 @@ export interface BasePageProps {
   title?: React.ReactNode;
   onTitleEdit?: () => void;
   titleEditTooltip?: string;
+  onTitleChange?: (newTitle: string) => void;
+  titleValue?: string;
+  titlePlaceholder?: string;
+  defaultEditingTitle?: boolean;
   subtitle?: React.ReactNode;
   onSubtitleEdit?: () => void;
   subtitleEditTooltip?: string;
@@ -68,6 +72,10 @@ const BasePage: React.FC<BasePageProps> = ({
   title = '',
   onTitleEdit,
   titleEditTooltip,
+  onTitleChange,
+  titleValue,
+  titlePlaceholder,
+  defaultEditingTitle,
   subtitle,
   onSubtitleEdit,
   subtitleEditTooltip,
@@ -294,6 +302,10 @@ const BasePage: React.FC<BasePageProps> = ({
             title={title}
             onTitleEdit={onTitleEdit || headerProps?.onTitleEdit}
             titleEditTooltip={titleEditTooltip || headerProps?.titleEditTooltip}
+            onTitleChange={onTitleChange || headerProps?.onTitleChange}
+            titleValue={titleValue !== undefined ? titleValue : headerProps?.titleValue}
+            titlePlaceholder={titlePlaceholder || headerProps?.titlePlaceholder}
+            defaultEditingTitle={defaultEditingTitle !== undefined ? defaultEditingTitle : headerProps?.defaultEditingTitle}
             icon={icon}
             subtitle={subtitle}
             onSubtitleEdit={onSubtitleEdit || headerProps?.onSubtitleEdit}

@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { Edit2 } from 'lucide-react';
+import { Edit2, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import BaseCard, { BaseCardProps, CardVariant } from '../base/card/BaseCard';
 
 export interface BaseCardPageHeaderProps extends Omit<BaseCardProps, 'title'> {
@@ -83,6 +84,28 @@ export interface BaseCardPageHeaderProps extends Omit<BaseCardProps, 'title'> {
   titleEditTooltip?: string;
 
   /**
+   * Başlık yerinde (inline) düzenlendiğinde yeni başlık metnini dönen callback.
+   * Verildiğinde başlık yanında kalem ikonu gösterilir ve başlığa veya kaleme tıklandığında yerinde düzenleme kutusu açılır.
+   */
+  onTitleChange?: (newTitle: string) => void;
+
+  /**
+   * Yerinde (inline) başlık düzenleme kutusunun ham metin değeri.
+   * Başlıkta varsayılan/yer tutucu bir metin gösterilirken düzenleme kutusunun gerçek alan değerini (örn. boş string) almasını sağlar.
+   */
+  titleValue?: string;
+
+  /**
+   * Yerinde (inline) başlık düzenleme kutusunun placeholder metni
+   */
+  titlePlaceholder?: string;
+
+  /**
+   * Sayfa açıldığında başlık düzenleme kutusunun varsayılan olarak açık gelip gelmeyeceği
+   */
+  defaultEditingTitle?: boolean;
+
+  /**
    * Alt başlık yanında düzenleme ikonu (kalem) tıklandığında çalışacak callback
    */
   onSubtitleEdit?: () => void;
@@ -110,18 +133,84 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
       children,
       onTitleEdit,
       titleEditTooltip,
+      onTitleChange,
+      titleValue,
+      titlePlaceholder,
+      defaultEditingTitle = false,
       onSubtitleEdit,
       subtitleEditTooltip,
       ...rest
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const actionContent = headerExtra || actions;
     const subLeft = subtitleLeft || subtitle;
+
+    const resolvedRawTitle =
+      titleValue !== undefined ? titleValue : typeof title === 'string' ? title : '';
+    const [isEditingTitle, setIsEditingTitle] = React.useState<boolean>(
+      Boolean(defaultEditingTitle && onTitleChange)
+    );
+    const [draftTitle, setDraftTitle] = React.useState<string>(resolvedRawTitle);
+    const originalTitleRef = React.useRef<string>(resolvedRawTitle);
+    const titleInputRef = React.useRef<HTMLInputElement>(null);
+
+    React.useEffect(() => {
+      if (!isEditingTitle) {
+        setDraftTitle(resolvedRawTitle);
+        originalTitleRef.current = resolvedRawTitle;
+      }
+    }, [resolvedRawTitle, isEditingTitle]);
+
+    React.useEffect(() => {
+      if (isEditingTitle && titleInputRef.current) {
+        titleInputRef.current.focus();
+        titleInputRef.current.select();
+      }
+    }, [isEditingTitle]);
+
+    const handleStartTitleEdit = React.useCallback(
+      (e?: React.MouseEvent) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        if (onTitleChange) {
+          originalTitleRef.current = resolvedRawTitle;
+          setDraftTitle(resolvedRawTitle);
+          setIsEditingTitle(true);
+        }
+        if (onTitleEdit) {
+          onTitleEdit();
+        }
+      },
+      [onTitleChange, onTitleEdit, resolvedRawTitle]
+    );
+
+    const handleCommitTitleEdit = React.useCallback(() => {
+      if (onTitleChange) {
+        const trimmed = draftTitle.trim();
+        setDraftTitle(trimmed);
+        originalTitleRef.current = trimmed;
+        onTitleChange(trimmed);
+      }
+      setIsEditingTitle(false);
+    }, [onTitleChange, draftTitle]);
+
+    const handleCancelTitleEdit = React.useCallback(() => {
+      const orig = originalTitleRef.current;
+      setDraftTitle(orig);
+      if (onTitleChange) {
+        onTitleChange(orig);
+      }
+      setIsEditingTitle(false);
+    }, [onTitleChange]);
 
     // Herhangi bir başlık veya aksiyon içeriği verilmemişse render etme
     if (
       !title &&
+      !onTitleChange &&
       !icon &&
       !subLeft &&
       !subtitleRight &&
@@ -141,6 +230,8 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
       .filter(Boolean)
       .join(' ');
 
+    const isTitleEditable = Boolean(onTitleChange || onTitleEdit);
+
     return (
       <BaseCard
         ref={ref}
@@ -156,39 +247,95 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
           )}
 
           <div className="flex-1 min-w-0 flex flex-col gap-4">
-            {title && (
+            {(title || onTitleChange) && (
               <div className="flex items-center gap-8 group/header-title min-w-0">
-                {typeof title === 'string' ? (
-                  <h1
-                    className="m-0 text-20 font-700 tracking-tight text-primary leading-tight truncate base-card-header-title"
-                    title={titleTooltip || title}
-                  >
-                    {title}
-                  </h1>
+                {isEditingTitle && onTitleChange ? (
+                  <div className="title-edit-box" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      className="title-edit-input"
+                      value={draftTitle}
+                      placeholder={titlePlaceholder || (typeof title === 'string' ? title : '')}
+                      onChange={(e) => {
+                        const nextVal = e.target.value;
+                        setDraftTitle(nextVal);
+                        onTitleChange(nextVal);
+                      }}
+                      onBlur={handleCommitTitleEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCommitTitleEdit();
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCancelTitleEdit();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCommitTitleEdit();
+                      }}
+                      className="title-edit-action-btn btn-save"
+                      title={t('common.ok', 'Tamam')}
+                      aria-label={t('common.ok', 'Tamam')}
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCancelTitleEdit();
+                      }}
+                      className="title-edit-action-btn btn-cancel"
+                      title={t('common.cancel', 'İptal')}
+                      aria-label={t('common.cancel', 'İptal')}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
                 ) : (
-                  titleTooltip ? (
-                    <div className="min-w-0 truncate base-card-header-title" title={titleTooltip}>
-                      {title}
-                    </div>
-                  ) : (
-                    title
-                  )
-                )}
+                  <>
+                    {typeof title === 'string' ? (
+                      <h1
+                        className={`m-0 text-20 font-700 tracking-tight text-primary leading-tight truncate base-card-header-title${isTitleEditable ? ' base-card-header-title-editable' : ''}`}
+                        title={titleEditTooltip || titleTooltip || title}
+                        onClick={isTitleEditable ? handleStartTitleEdit : undefined}
+                      >
+                        {title}
+                      </h1>
+                    ) : (
+                      titleTooltip ? (
+                        <div className="min-w-0 truncate base-card-header-title" title={titleTooltip}>
+                          {title}
+                        </div>
+                      ) : (
+                        title
+                      )
+                    )}
 
-                {onTitleEdit && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onTitleEdit();
-                    }}
-                    className="title-edit-btn"
-                    title={titleEditTooltip || 'Düzenle'}
-                    aria-label={titleEditTooltip || 'Düzenle'}
-                  >
-                    <Edit2 size={16} />
-                  </button>
+                    {isTitleEditable && (
+                      <button
+                        type="button"
+                        onClick={handleStartTitleEdit}
+                        className="title-edit-btn"
+                        title={titleEditTooltip || t('common.edit', 'Düzenle')}
+                        aria-label={titleEditTooltip || t('common.edit', 'Düzenle')}
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
