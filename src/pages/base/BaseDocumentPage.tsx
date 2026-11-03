@@ -1185,6 +1185,11 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
                                     {...(settingsColumnPosition !== undefined ? { settingsColumnPosition } : {})}
                                     {...(pinSettingsColumn !== undefined ? { pinSettingsColumn } : {})}
                                     {...gridProps}
+                                    autoAddRowWhenEmpty={
+                                        Boolean(documentId && formData && !formData.id && !formData.Id && (!formData.kalemler || formData.kalemler.length === 0))
+                                            ? false
+                                            : (gridProps.autoAddRowWhenEmpty ?? true)
+                                    }
                                 />
                             )
                         )}
