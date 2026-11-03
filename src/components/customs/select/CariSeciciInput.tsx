@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BaseSeciciInput } from '@akalin/ui';
 import { type HarfDonusumu } from '@akalin/ui';
@@ -142,10 +142,13 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
         }
     }, [value, isControlledValue]);
 
+    const isClosingRef = useRef(false);
+
     // URL rota değişimi ile seçim penceresi görünürlüğünü senkronize et
     useEffect(() => {
         if (hasExternalModal) return;
         if (location.pathname.endsWith('/cari-secim')) {
+            isClosingRef.current = false;
             setInternalIsOpen(true);
         } else if (!isControlled) {
             setInternalIsOpen(false);
@@ -154,6 +157,7 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
 
     const handleOpen = useCallback(() => {
         if (hasExternalModal) return;
+        isClosingRef.current = false;
         const currentSearch = displayValue || '';
         setSearchSnap(currentSearch);
         setInternalIsOpen(true);
@@ -169,18 +173,53 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
         }
     }, [location.pathname, location.state, navigate, displayValue, hasExternalModal]);
 
-    const handleClose = useCallback(() => {
+    const handleClose = useCallback((selectedCariOverride?: any) => {
         setInternalIsOpen(false);
         if (propOnClose) {
             propOnClose();
         }
-        if (!hasExternalModal && location.pathname.endsWith('/cari-secim')) {
+        if (!hasExternalModal && location.pathname.endsWith('/cari-secim') && !isClosingRef.current) {
+            isClosingRef.current = true;
             const parentPath = location.pathname.replace(/\/cari-secim$/, '');
+            const nextState: Record<string, any> = {
+                ...(location.state || {})
+            };
+            delete nextState.searchText;
+            delete nextState.initialSearchText;
+
+            const isValidCari = selectedCariOverride
+                && typeof selectedCariOverride === 'object'
+                && !('nativeEvent' in selectedCariOverride)
+                && (selectedCariOverride.id !== undefined
+                    || selectedCariOverride.Id !== undefined
+                    || selectedCariOverride.unvan !== undefined
+                    || selectedCariOverride.Unvan !== undefined
+                    || selectedCariOverride.kod !== undefined
+                    || selectedCariOverride.Kod !== undefined);
+
+            if (isValidCari) {
+                const cId = selectedCariOverride.id ?? selectedCariOverride.Id;
+                const cName = selectedCariOverride.unvan
+                    || selectedCariOverride.Unvan
+                    || `${selectedCariOverride.ad || selectedCariOverride.Ad || ''} ${selectedCariOverride.soyad || selectedCariOverride.Soyad || ''}`.trim()
+                    || selectedCariOverride.kod
+                    || selectedCariOverride.Kod
+                    || '';
+                nextState.selectedCari = selectedCariOverride;
+                if (nextState.currentFormData && typeof nextState.currentFormData === 'object') {
+                    nextState.currentFormData = {
+                        ...nextState.currentFormData,
+                        cariId: cId,
+                        cariUnvani: cName,
+                        cariUnvan: cName,
+                        cariMetni: cName
+                    };
+                }
+            }
+
             navigate(parentPath, {
                 replace: true,
-                state: {
-                    ...location.state
-                }
+                state: nextState
             });
         }
     }, [location.pathname, location.state, navigate, propOnClose, hasExternalModal]);
@@ -215,12 +254,14 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
 
     const handleCariSelect = useCallback((selectedCari: any) => {
         setSelectedItem(selectedCari);
-        const displayName = selectedCari?.unvan || `${selectedCari?.ad || ''} ${selectedCari?.soyad || ''}`.trim() || selectedCari?.kod || '';
+        const displayName = selectedCari?.unvan
+            || selectedCari?.Unvan
+            || `${selectedCari?.ad || selectedCari?.Ad || ''} ${selectedCari?.soyad || selectedCari?.Soyad || ''}`.trim()
+            || selectedCari?.kod
+            || selectedCari?.Kod
+            || '';
         if (!isControlledValue) {
             setInternalInputValue(displayName);
-        }
-        if (onSelect) {
-            onSelect(selectedCari);
         }
         if (onChange) {
             const syntheticEvent = {
@@ -230,7 +271,10 @@ const CariSeciciInput: React.FC<CariSeciciInputProps> = ({
             // 2. parametre string displayName, 3. parametre tam selectedCari nesnesi
             onChange(syntheticEvent as any, displayName, selectedCari);
         }
-        handleClose();
+        if (onSelect) {
+            onSelect(selectedCari);
+        }
+        handleClose(selectedCari);
     }, [onSelect, onChange, handleClose, id, isControlledValue]);
 
     const handleClear = useCallback(() => {
