@@ -21,7 +21,7 @@
   --input-bg: #ffffff;
   --sidebar-width: 270px;
   --sidebar-collapsed-width: 80px;
-  --modal-left-offset: 270px;
+  --modal-left-offset: 0px;
 
   /* Akalin Sidebar Theme Integration */
   --sidebar-bg: var(--bg-secondary);

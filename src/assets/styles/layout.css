@@ -41,7 +41,7 @@
 .app-container.sidebar-collapsed {
   --sidebar-width: 80px;
   --sidebar-collapsed-width: 80px;
-  --modal-left-offset: 80px;
+  --modal-left-offset: 0px;
 }
 
 /* Akalin Sidebar Integration & Custom Slots */

@@ -150,7 +150,7 @@ const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div ref={containerRef} className="modal-wrapper" style={{ 
-      position: 'fixed', top: 0, left: 'var(--modal-left-offset, 0px)', right: 0, bottom: 0, 
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
       background: 'rgba(0,0,0,0.5)', zIndex: 2100,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: isFullscreen ? '0' : '20px',
