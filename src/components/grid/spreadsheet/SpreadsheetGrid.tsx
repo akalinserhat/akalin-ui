@@ -844,10 +844,14 @@ const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                                         if (onRowClick) onRowClick(row, rowIndex, e);
                                     }}
                                     onDoubleClick={(e) => {
+                                        const target = e.target as HTMLElement | null;
+                                        if (target && target.closest('input, textarea, select, button, [contenteditable="true"]')) {
+                                            return;
+                                        }
                                         if (onRowDoubleClick) {
                                             onRowDoubleClick(row, rowIndex, e);
                                         } else if (computedRowActions && computedRowActions.length > 0) {
-                                            const defaultAction = computedRowActions[0];
+                                            const defaultAction = computedRowActions.find((a: any) => !a?.danger && !a?.disabled);
                                             if (defaultAction && defaultAction.onClick) {
                                                 defaultAction.onClick(row, rowIndex);
                                             }
