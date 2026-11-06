@@ -247,64 +247,64 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
           )}
 
           <div className="flex-1 min-w-0 flex flex-col gap-4">
-            {(title || onTitleChange) && (
-              <div className="flex items-center gap-8 group/header-title min-w-0">
+              {(title || onTitleChange) && (
+                <div className="flex items-center gap-8 group/header-title min-w-0">
                 {isEditingTitle && onTitleChange ? (
-                  <div className="title-edit-box" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      ref={titleInputRef}
-                      type="text"
-                      className="title-edit-input"
-                      value={draftTitle}
-                      placeholder={titlePlaceholder || (typeof title === 'string' ? title : '')}
-                      onChange={(e) => {
-                        const nextVal = e.target.value;
-                        setDraftTitle(nextVal);
-                        onTitleChange(nextVal);
-                      }}
-                      onBlur={handleCommitTitleEdit}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                    <div className="title-edit-box" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        ref={titleInputRef}
+                        type="text"
+                        className="title-edit-input"
+                        value={draftTitle}
+                        placeholder={titlePlaceholder || (typeof title === 'string' ? title : '')}
+                        onChange={(e) => {
+                          const nextVal = e.target.value;
+                          setDraftTitle(nextVal);
+                          onTitleChange(nextVal);
+                        }}
+                        onBlur={handleCommitTitleEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCommitTitleEdit();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCancelTitleEdit();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           handleCommitTitleEdit();
-                        } else if (e.key === 'Escape') {
+                        }}
+                        className="title-edit-action-btn btn-save"
+                        title={t('common.ok', 'Tamam')}
+                        aria-label={t('common.ok', 'Tamam')}
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           handleCancelTitleEdit();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleCommitTitleEdit();
-                      }}
-                      className="title-edit-action-btn btn-save"
-                      title={t('common.ok', 'Tamam')}
-                      aria-label={t('common.ok', 'Tamam')}
-                    >
-                      <Check size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleCancelTitleEdit();
-                      }}
-                      className="title-edit-action-btn btn-cancel"
-                      title={t('common.cancel', 'İptal')}
-                      aria-label={t('common.cancel', 'İptal')}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
+                        }}
+                        className="title-edit-action-btn btn-cancel"
+                        title={t('common.cancel', 'İptal')}
+                        aria-label={t('common.cancel', 'İptal')}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
                   <>
                     {typeof title === 'string' ? (
                       <h1
@@ -337,8 +337,8 @@ const BaseCardPageHeader = React.forwardRef<HTMLElement, BaseCardPageHeaderProps
                     )}
                   </>
                 )}
-              </div>
-            )}
+                </div>
+              )}
 
             {breadcrumb && (
               <div className="base-page-breadcrumb">
