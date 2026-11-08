@@ -48,6 +48,11 @@ export interface AnahtarOlusturucuInputProps extends Omit<BaseInputProps, 'onCha
   generateButtonProps?: Partial<BaseButtonProps>;
   /** Oluştur düğmesi gösterilsin mi? (Varsayılan: true) */
   showGenerateButton?: boolean;
+  /**
+   * Değer dolu olduğunda oluştur düğmesi gizlensin mi?
+   * AnahtarOlusturucuInput için varsayılan: false (Geriye dönük uyumluluk)
+   */
+  hideGenerateWhenFilled?: boolean;
   /** Kopyala düğmesi gösterilsin mi? (Varsayılan: true) */
   showCopyButton?: boolean;
   /** Kopyala düğmesi ipucu metni (title) */
@@ -98,6 +103,7 @@ const AnahtarOlusturucuInput = forwardRef<HTMLInputElement, AnahtarOlusturucuInp
       generateButtonVariant = 'outline',
       generateButtonProps,
       showGenerateButton = true,
+      hideGenerateWhenFilled = false,
       showCopyButton = true,
       copyButtonTitle,
       icon,
@@ -263,7 +269,7 @@ const AnahtarOlusturucuInput = forwardRef<HTMLInputElement, AnahtarOlusturucuInp
           className="flex-1"
           {...restProps}
         />
-        {showGenerateButton && (
+        {showGenerateButton && (!hideGenerateWhenFilled || !currentValue || currentValue.trim() === '') && (
           <BaseButton
             type="button"
             variant={generateButtonVariant}
