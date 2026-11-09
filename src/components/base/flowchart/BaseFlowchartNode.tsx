@@ -30,12 +30,14 @@ import {
   ChevronRight,
   Sparkles,
   CornerDownRight,
-  Sliders
+  Sliders,
+  Database,
+  Code2
 } from 'lucide-react';
 import './BaseFlowchart.css';
 
-export type FlowchartNodeShape = 'terminal' | 'process' | 'input' | 'decision' | 'document';
-export type FlowchartNodeVariant = 'start' | 'process' | 'input' | 'decision' | 'document' | 'end';
+export type FlowchartNodeShape = 'terminal' | 'process' | 'input' | 'decision' | 'document' | 'storage' | 'script';
+export type FlowchartNodeVariant = 'start' | 'process' | 'input' | 'decision' | 'document' | 'end' | 'storage' | 'script';
 
 export interface BaseFlowchartNodeProps {
   id: string;
@@ -490,7 +492,39 @@ export const FlowchartDecisionNode: React.FC<FlowchartDecisionNodeProps> = ({
   );
 };
 
-// ─── 6. Türetilmiş Bileşen: Bitiş / Tamamlama Düğümü ─────────────────────────
+// ─── 6. Türetilmiş Bileşen: Hafıza / Veri Depolama Düğümü ────────────────────
+export interface FlowchartStorageNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
+
+export const FlowchartStorageNode: React.FC<FlowchartStorageNodeProps> = (props) => {
+  const { t } = useTranslation();
+  return (
+    <BaseFlowchartNode
+      {...props}
+      shape="storage"
+      variant="storage"
+      icon={props.icon || <Database size={11} />}
+      shapeBadgeText={props.shapeBadgeText || t('hafiza', 'Hafıza')}
+    />
+  );
+};
+
+// ─── 7. Türetilmiş Bileşen: Script İşlemi (JavaScript) Düğümü ────────────────
+export interface FlowchartScriptNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
+
+export const FlowchartScriptNode: React.FC<FlowchartScriptNodeProps> = (props) => {
+  const { t } = useTranslation();
+  return (
+    <BaseFlowchartNode
+      {...props}
+      shape="script"
+      variant="script"
+      icon={props.icon || <Code2 size={11} />}
+      shapeBadgeText={props.shapeBadgeText || t('script_islem', 'Script İşlemi')}
+    />
+  );
+};
+
+// ─── 8. Türetilmiş Bileşen: Bitiş / Tamamlama Düğümü ─────────────────────────
 export interface FlowchartEndNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> { }
 
 export const FlowchartEndNode: React.FC<FlowchartEndNodeProps> = (props) => {

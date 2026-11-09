@@ -372,6 +372,95 @@
   color: #22d3ee;
 }
 
+/* 3. AI İşlemi (Process / Dikdörtgen Süreç Kutusu) */
+.base-flowchart-sidebar-item.palette-shape-process {
+  border-color: rgba(99, 102, 241, 0.4);
+  border-left: 3.5px solid #6366f1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(79, 70, 229, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-process:hover {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22) 0%, rgba(79, 70, 229, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-process .base-flowchart-sidebar-item-icon {
+  background: #6366f1;
+  color: #ffffff;
+  border-radius: 6px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-process .base-flowchart-sidebar-item-title {
+  color: #4f46e5;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-process .base-flowchart-sidebar-item-title {
+  color: #818cf8;
+}
+
+/* 4. Hafıza / Veri Depolama (Storage / Silindirik Veri Kutusu) */
+.base-flowchart-sidebar-item.palette-shape-storage {
+  border-color: rgba(245, 158, 11, 0.45);
+  border-left: 3.5px solid #f59e0b;
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-storage:hover {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-storage .base-flowchart-sidebar-item-icon {
+  background: #f59e0b;
+  color: #ffffff;
+  border-radius: 8px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-storage .base-flowchart-sidebar-item-title {
+  color: #d97706;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-storage .base-flowchart-sidebar-item-title {
+  color: #fbbf24;
+}
+
+/* 5. Script İşlemi (JavaScript / Kod Dönüştürücü Kutusu) */
+.base-flowchart-sidebar-item.palette-shape-script {
+  border-color: rgba(168, 85, 247, 0.45);
+  border-left: 3.5px solid #a855f7;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(147, 51, 234, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-script:hover {
+  border-color: #a855f7;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(147, 51, 234, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-script .base-flowchart-sidebar-item-icon {
+  background: #a855f7;
+  color: #ffffff;
+  border-radius: 6px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-script .base-flowchart-sidebar-item-title {
+  color: #9333ea;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-script .base-flowchart-sidebar-item-title {
+  color: #c084fc;
+}
+
 /* Eski Yatay Palet Desteği (Fallback / Geriye Uyumluluk) */
 .base-flowchart-palette {
   display: flex;
@@ -768,6 +857,38 @@
 
 [data-theme='dark'] .base-flowchart-node--document .base-flowchart-shape-badge {
   color: #34d399;
+}
+
+/* ─── Şekil 4B: Storage / Hafıza (Veri & Dosya Depolama) Düğümü ─────────────── */
+.base-flowchart-node--storage {
+  border-left: 4px solid #f59e0b;
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.06) 0%, transparent 35%), var(--bg-secondary);
+}
+
+.base-flowchart-node--storage .base-flowchart-shape-badge {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+[data-theme='dark'] .base-flowchart-node--storage .base-flowchart-shape-badge {
+  color: #fbbf24;
+}
+
+/* ─── Şekil 4C: Script / JavaScript İşlem Düğümü ────────────────────────────── */
+.base-flowchart-node--script {
+  border-left: 4px solid #a855f7;
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.06) 0%, transparent 35%), var(--bg-secondary);
+}
+
+.base-flowchart-node--script .base-flowchart-shape-badge {
+  background: rgba(168, 85, 247, 0.14);
+  color: #9333ea;
+}
+
+[data-theme='dark'] .base-flowchart-node--script .base-flowchart-shape-badge {
+  color: #c084fc;
 }
 
 /* ─── Şekil 5: Decision / Karar & Onay Düğümü (Baklava / Diamond + Dallanma) ─ */

@@ -9,6 +9,8 @@ export {
   FlowchartProcessNode,
   FlowchartDecisionNode,
   FlowchartDocumentNode,
+  FlowchartStorageNode,
+  FlowchartScriptNode,
   FlowchartEndNode,
   BaseFlowchartConnector,
   type FlowchartNodeShape,
@@ -19,6 +21,8 @@ export {
   type FlowchartProcessNodeProps,
   type FlowchartDecisionNodeProps,
   type FlowchartDocumentNodeProps,
+  type FlowchartStorageNodeProps,
+  type FlowchartScriptNodeProps,
   type FlowchartEndNodeProps,
   type BaseFlowchartConnectorProps
 } from './BaseFlowchartNode';

@@ -15,6 +15,8 @@ import {
   Play,
   Monitor,
   Cpu,
+  Database,
+  Code2,
   Layers,
   Plus,
   ZoomIn,
@@ -282,6 +284,40 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     </div>
                     <Plus size={13} className="base-flowchart-sidebar-item-add" />
                   </button>
+
+                  {/* Geleneksel Standart Flowchart Öğesi 4: Hafıza (Storage / Veri Depolama) */}
+                  <button
+                    type="button"
+                    onClick={() => onAddStep && onAddStep('HAFIZA')}
+                    className="base-flowchart-sidebar-item palette-shape-storage"
+                    title={t('hafiza_adimi_ekle', 'Hafıza Düğümü Ekle')}
+                  >
+                    <div className="base-flowchart-sidebar-item-icon">
+                      <Database size={13} />
+                    </div>
+                    <div className="base-flowchart-sidebar-item-text">
+                      <span className="base-flowchart-sidebar-item-title">{t('hafiza', 'Hafıza')}</span>
+                      <span className="base-flowchart-sidebar-item-sub">{t('llm_verisini_dosya_olarak_depola', 'LLM Verisini Dosya Olarak Depola')}</span>
+                    </div>
+                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                  </button>
+
+                  {/* Geleneksel Standart Flowchart Öğesi 5: Script İşlemi (JavaScript / MCP Dönüştürücü) */}
+                  <button
+                    type="button"
+                    onClick={() => onAddStep && onAddStep('SCRIPT_ISLEM')}
+                    className="base-flowchart-sidebar-item palette-shape-script"
+                    title={t('script_islem_adimi_ekle', 'Script İşlemi Düğümü Ekle')}
+                  >
+                    <div className="base-flowchart-sidebar-item-icon">
+                      <Code2 size={13} />
+                    </div>
+                    <div className="base-flowchart-sidebar-item-text">
+                      <span className="base-flowchart-sidebar-item-title">{t('script_islem', 'Script İşlemi')}</span>
+                      <span className="base-flowchart-sidebar-item-sub">{t('javascript_ile_mcp_json_uret', 'JavaScript Kodu Çalıştır & MCP Besle')}</span>
+                    </div>
+                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                  </button>
                 </>
               )}
             </div>
@@ -327,18 +363,62 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     const isSelected = selectedStepId === step.id;
                     const isBasla = step.type === 'BASLA' || step.type === 'START';
                     const isFormAc = step.type === 'FORM_AC' || step.type === 'EKRAN_AC';
+                    const isHafiza = step.type === 'HAFIZA';
+                    const isScriptIslem = step.type === 'SCRIPT_ISLEM';
+
+                    const resolvedShape: FlowchartNodeShape = isBasla
+                      ? 'terminal'
+                      : isFormAc
+                        ? 'input'
+                        : isHafiza
+                          ? 'storage'
+                          : isScriptIslem
+                            ? 'script'
+                            : 'process';
+
+                    const resolvedVariant = isBasla
+                      ? 'start'
+                      : isFormAc
+                        ? 'input'
+                        : isHafiza
+                          ? 'storage'
+                          : isScriptIslem
+                            ? 'script'
+                            : 'process';
+
+                    const resolvedIcon = isBasla ? (
+                      <Play size={13} />
+                    ) : isFormAc ? (
+                      <Monitor size={13} />
+                    ) : isHafiza ? (
+                      <Database size={13} />
+                    ) : isScriptIslem ? (
+                      <Code2 size={13} />
+                    ) : (
+                      <Cpu size={13} />
+                    );
+
+                    const defaultTypeTitle = isBasla
+                      ? t('basla', 'Başla')
+                      : isFormAc
+                        ? t('form_ac', 'Form Aç')
+                        : isHafiza
+                          ? t('hafiza', 'Hafıza')
+                          : isScriptIslem
+                            ? t('script_islem', 'Script İşlemi')
+                            : t('ai_islem', 'AI İşlemi');
 
                     return (
                       <React.Fragment key={step.id || index}>
                         <BaseFlowchartNode
                           id={step.id}
                           stepNumber={isBasla ? undefined : index + 1}
-                          shape={isBasla ? 'terminal' : isFormAc ? 'input' : 'process'}
-                          variant={isBasla ? 'start' : isFormAc ? 'input' : 'process'}
-                          icon={isBasla ? <Play size={13} /> : isFormAc ? <Monitor size={13} /> : <Cpu size={13} />}
+                          shape={resolvedShape}
+                          variant={resolvedVariant}
+                          icon={resolvedIcon}
                           showTopPort={!isBasla}
-                          shapeBadgeText={step.shapeBadgeText || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : t('ai_islem', 'AI İşlemi'))}
-                          title={step.title || (isBasla ? t('basla', 'Başla') : isFormAc ? t('form_ac', 'Form Aç') : t('ai_islem', 'AI İşlemi'))}
+                          shapeBadgeText={step.shapeBadgeText || defaultTypeTitle}
+                          title={step.title || defaultTypeTitle}
                           promptPreview={step.prompt}
                           toolCode={step.toolCode}
                           uiActionLabel={step.uiActionLabel}
