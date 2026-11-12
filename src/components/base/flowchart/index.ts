@@ -12,9 +12,12 @@ export {
   FlowchartStorageNode,
   FlowchartScriptNode,
   FlowchartEndNode,
+  FlowchartToolSubNode,
+  FlowchartNodeToolDock,
   BaseFlowchartConnector,
   type FlowchartNodeShape,
   type FlowchartNodeVariant,
+  type FlowchartAttachedToolItem,
   type BaseFlowchartNodeProps,
   type FlowchartStartNodeProps,
   type FlowchartInputNodeProps,
@@ -24,6 +27,8 @@ export {
   type FlowchartStorageNodeProps,
   type FlowchartScriptNodeProps,
   type FlowchartEndNodeProps,
+  type FlowchartToolSubNodeProps,
+  type FlowchartNodeToolDockProps,
   type BaseFlowchartConnectorProps
 } from './BaseFlowchartNode';
 

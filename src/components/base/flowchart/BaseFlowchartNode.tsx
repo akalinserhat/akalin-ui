@@ -32,12 +32,24 @@ import {
   CornerDownRight,
   Sliders,
   Database,
-  Code2
+  Code2,
+  Wrench,
+  Search
 } from 'lucide-react';
 import './BaseFlowchart.css';
 
-export type FlowchartNodeShape = 'terminal' | 'process' | 'input' | 'decision' | 'document' | 'storage' | 'script';
-export type FlowchartNodeVariant = 'start' | 'process' | 'input' | 'decision' | 'document' | 'end' | 'storage' | 'script';
+export type FlowchartNodeShape = 'terminal' | 'process' | 'input' | 'decision' | 'document' | 'storage' | 'script' | 'tool';
+export type FlowchartNodeVariant = 'start' | 'process' | 'input' | 'decision' | 'document' | 'end' | 'storage' | 'script' | 'tool';
+
+export interface FlowchartAttachedToolItem {
+  id: string;
+  type: string;
+  title: string;
+  badgeText?: string;
+  summary?: string;
+  toolCode?: string;
+  icon?: React.ReactNode;
+}
 
 export interface BaseFlowchartNodeProps {
   id: string;
@@ -588,6 +600,180 @@ export const BaseFlowchartConnector: React.FC<BaseFlowchartConnectorProps> = ({
           </span>
         </button>
       )}
+    </div>
+  );
+};
+
+// ─── 9. Türetilmiş Bileşen: AI İşlemi Bağlı Araç Alt Düğümü (Tool Sub-Node) ───
+export interface FlowchartToolSubNodeProps {
+  tool: FlowchartAttachedToolItem;
+  parentStepId: string;
+  selected?: boolean;
+  onSelect?: (parentStepId: string, toolId: string) => void;
+  onDoubleClick?: (parentStepId: string, toolId: string) => void;
+  onDelete?: (parentStepId: string, toolId: string, e: React.MouseEvent) => void;
+}
+
+export const FlowchartToolSubNode: React.FC<FlowchartToolSubNodeProps> = ({
+  tool,
+  parentStepId,
+  selected = false,
+  onSelect,
+  onDoubleClick,
+  onDelete
+}) => {
+  const { t } = useTranslation();
+  const lastClickRef = React.useRef<number>(0);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastClickRef.current < 350) {
+      lastClickRef.current = 0;
+      if (onDoubleClick) {
+        onDoubleClick(parentStepId, tool.id);
+      }
+      return;
+    }
+    lastClickRef.current = now;
+    if (onSelect) {
+      onSelect(parentStepId, tool.id);
+    }
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    lastClickRef.current = 0;
+    if (onDoubleClick) {
+      onDoubleClick(parentStepId, tool.id);
+    }
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      className={`base-flowchart-tool-subnode ${selected ? 'is-selected' : ''}`}
+      title={t('cift_tikla_arac_duzenle', 'Araç ayarlarını yapılandırmak için çift tıklayın')}
+    >
+      <div className="base-flowchart-tool-subnode-port" />
+      <div className="base-flowchart-tool-subnode-header">
+        <span className="base-flowchart-tool-subnode-badge">
+          {tool.icon || <Search size={11} />}
+          <span>{tool.badgeText || t('ai_arac_dugumu', 'AI Aracı')}</span>
+        </span>
+        <div className="base-flowchart-node-actions" onClick={(e) => e.stopPropagation()}>
+          {onDoubleClick && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDoubleClick(parentStepId, tool.id);
+              }}
+              className="base-flowchart-action-btn is-settings"
+              title={t('arac_ayarlari', 'Araç Ayarları')}
+            >
+              <Sliders size={11} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(parentStepId, tool.id, e);
+              }}
+              className="base-flowchart-action-btn is-danger"
+              title={t('araci_kaldir', 'Aracı Kaldır')}
+            >
+              <Trash2 size={11} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="base-flowchart-tool-subnode-title">{tool.title}</div>
+
+      {tool.toolCode && (
+        <div className="base-flowchart-tool-subnode-code">
+          <Wrench size={10} />
+          <span>{tool.toolCode}</span>
+        </div>
+      )}
+
+      {tool.summary && (
+        <div className="base-flowchart-tool-subnode-summary">{tool.summary}</div>
+      )}
+    </div>
+  );
+};
+
+// ─── 10. AI İşlemi Araç Bağlantı İstasyonu (Tool Dock / Sub-Node Port) ────────
+export interface FlowchartNodeToolDockProps {
+  parentStepId: string;
+  tools?: FlowchartAttachedToolItem[];
+  selectedToolId?: string | null;
+  onAddTool?: (parentStepId: string, toolType?: string) => void;
+  onSelectTool?: (parentStepId: string, toolId: string) => void;
+  onDoubleClickTool?: (parentStepId: string, toolId: string) => void;
+  onDeleteTool?: (parentStepId: string, toolId: string, e: React.MouseEvent) => void;
+}
+
+export const FlowchartNodeToolDock: React.FC<FlowchartNodeToolDockProps> = ({
+  parentStepId,
+  tools = [],
+  selectedToolId,
+  onAddTool,
+  onSelectTool,
+  onDoubleClickTool,
+  onDeleteTool
+}) => {
+  const { t } = useTranslation();
+  const hasTools = tools.length > 0;
+
+  return (
+    <div className={`base-flowchart-tool-dock ${hasTools ? 'has-tools' : 'is-empty'}`}>
+      <div className="base-flowchart-tool-link-row">
+        <div className="base-flowchart-tool-port-dot" title={t('bagli_ai_araclari', 'Bağlı AI Araçları (Tools)')} />
+        <svg className="base-flowchart-tool-link-svg" viewBox="0 0 36 16" preserveAspectRatio="none">
+          <line x1="0" y1="8" x2="30" y2="8" className="base-flowchart-tool-link-line" />
+          <polygon points="28,4 36,8 28,12" className="base-flowchart-tool-link-arrow" />
+        </svg>
+      </div>
+
+      <div className="base-flowchart-tool-dock-stack">
+        {tools.map((toolItem) => (
+          <FlowchartToolSubNode
+            key={toolItem.id}
+            tool={toolItem}
+            parentStepId={parentStepId}
+            selected={selectedToolId === toolItem.id}
+            onSelect={onSelectTool}
+            onDoubleClick={onDoubleClickTool}
+            onDelete={onDeleteTool}
+          />
+        ))}
+
+        {onAddTool && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddTool(parentStepId, 'RAG_ARAC');
+            }}
+            className="base-flowchart-tool-attach-btn"
+            title={t('ai_islemine_rag_araci_ekle', 'Bu AI İşlemi düğümüne RAG Sorgu Aracı bağla')}
+          >
+            <Plus size={12} />
+            <span>
+              {hasTools
+                ? t('arac_ekle_kisa', 'Araç Ekle')
+                : t('rag_araci_bagla', 'RAG Aracı Bağla')}
+            </span>
+          </button>
+        )}
+      </div>
     </div>
   );
 };

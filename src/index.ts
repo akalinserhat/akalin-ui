@@ -61,9 +61,12 @@ export {
   FlowchartStorageNode,
   FlowchartScriptNode,
   FlowchartEndNode,
+  FlowchartToolSubNode,
+  FlowchartNodeToolDock,
   BaseFlowchartConnector,
   type FlowchartStepItem,
   type FlowchartPaletteItem,
+  type FlowchartAttachedToolItem,
   type BaseFlowchartProps,
   type FlowchartNodeShape,
   type FlowchartNodeVariant,
@@ -76,6 +79,8 @@ export {
   type FlowchartStorageNodeProps,
   type FlowchartScriptNodeProps,
   type FlowchartEndNodeProps,
+  type FlowchartToolSubNodeProps,
+  type FlowchartNodeToolDockProps,
   type BaseFlowchartConnectorProps
 } from './components/base/flowchart';
 export { default as BaseDropdownSecici, type BaseDropdownSeciciProps, type DropdownOption } from './components/base/list/BaseDropdownSecici';

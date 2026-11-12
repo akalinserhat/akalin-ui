@@ -18,6 +18,7 @@ import {
   Database,
   Code2,
   Layers,
+  Wrench,
   Plus,
   ZoomIn,
   ZoomOut,
@@ -26,7 +27,9 @@ import {
 import {
   BaseFlowchartNode,
   BaseFlowchartConnector,
-  FlowchartNodeShape
+  FlowchartNodeToolDock,
+  FlowchartNodeShape,
+  FlowchartAttachedToolItem
 } from './BaseFlowchartNode';
 import './BaseFlowchart.css';
 
@@ -43,6 +46,8 @@ export interface FlowchartStepItem {
   nextStepId?: string;
   yesStepId?: string;
   noStepId?: string;
+  supportsTools?: boolean;
+  attachedTools?: FlowchartAttachedToolItem[];
 }
 
 export interface FlowchartPaletteItem {
@@ -51,6 +56,7 @@ export interface FlowchartPaletteItem {
   title: string;
   subTitle?: string;
   shape?: FlowchartNodeShape;
+  category?: 'step' | 'tool';
   icon?: React.ReactNode;
   onClick?: () => void;
 }
@@ -70,11 +76,16 @@ export interface BaseFlowchartProps {
   paletteItems?: FlowchartPaletteItem[];
   steps?: FlowchartStepItem[];
   selectedStepId?: string | null;
+  selectedToolId?: string | null;
   onSelectStep?: (stepId: string) => void;
   onDoubleClickStep?: (stepId: string) => void;
   onAddStep?: (stepType: string, insertAtIndex?: number) => void;
   onMoveStep?: (index: number, direction: 'up' | 'down', e?: React.MouseEvent) => void;
   onDeleteStep?: (stepId: string, e?: React.MouseEvent) => void;
+  onAddToolToStep?: (parentStepId: string, toolType?: string) => void;
+  onSelectTool?: (parentStepId: string, toolId: string) => void;
+  onDoubleClickTool?: (parentStepId: string, toolId: string) => void;
+  onDeleteTool?: (parentStepId: string, toolId: string, e?: React.MouseEvent) => void;
   emptyMessage?: string;
   className?: string;
   initialZoom?: number;
@@ -99,11 +110,16 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   paletteItems,
   steps = [],
   selectedStepId,
+  selectedToolId,
   onSelectStep,
   onDoubleClickStep,
   onAddStep,
   onMoveStep,
   onDeleteStep,
+  onAddToolToStep,
+  onSelectTool,
+  onDoubleClickTool,
+  onDeleteTool,
   emptyMessage,
   className = '',
   initialZoom = 1,
@@ -209,29 +225,67 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
               {sidebar ? (
                 sidebar
               ) : paletteItems && paletteItems.length > 0 ? (
-                paletteItems.map(item => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      if (item.onClick) item.onClick();
-                      else if (onAddStep) onAddStep(item.type);
-                    }}
-                    className={`base-flowchart-sidebar-item palette-shape-${item.shape || 'process'}`}
-                    title={item.title}
-                  >
-                    <div className="base-flowchart-sidebar-item-icon">
-                      {item.icon}
-                    </div>
-                    <div className="base-flowchart-sidebar-item-text">
-                      <span className="base-flowchart-sidebar-item-title">{item.title}</span>
-                      {item.subTitle && (
-                        <span className="base-flowchart-sidebar-item-sub">{item.subTitle}</span>
-                      )}
-                    </div>
-                    <Plus size={13} className="base-flowchart-sidebar-item-add" />
-                  </button>
-                ))
+                <>
+                  {paletteItems
+                    .filter(item => item.category !== 'tool')
+                    .map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          if (item.onClick) item.onClick();
+                          else if (onAddStep) onAddStep(item.type);
+                        }}
+                        className={`base-flowchart-sidebar-item palette-shape-${item.shape || 'process'}`}
+                        title={item.title}
+                      >
+                        <div className="base-flowchart-sidebar-item-icon">
+                          {item.icon}
+                        </div>
+                        <div className="base-flowchart-sidebar-item-text">
+                          <span className="base-flowchart-sidebar-item-title">{item.title}</span>
+                          {item.subTitle && (
+                            <span className="base-flowchart-sidebar-item-sub">{item.subTitle}</span>
+                          )}
+                        </div>
+                        <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                      </button>
+                    ))}
+
+                  {paletteItems.some(item => item.category === 'tool') && (
+                    <>
+                      <div className="base-flowchart-sidebar-section-divider">
+                        <Wrench size={12} />
+                        <span>{t('ai_islemi_araclari', 'AI İşlemi Araçları')}</span>
+                      </div>
+                      {paletteItems
+                        .filter(item => item.category === 'tool')
+                        .map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              if (item.onClick) item.onClick();
+                              else if (onAddStep) onAddStep(item.type);
+                            }}
+                            className={`base-flowchart-sidebar-item palette-shape-${item.shape || 'tool'}`}
+                            title={item.title}
+                          >
+                            <div className="base-flowchart-sidebar-item-icon">
+                              {item.icon}
+                            </div>
+                            <div className="base-flowchart-sidebar-item-text">
+                              <span className="base-flowchart-sidebar-item-title">{item.title}</span>
+                              {item.subTitle && (
+                                <span className="base-flowchart-sidebar-item-sub">{item.subTitle}</span>
+                              )}
+                            </div>
+                            <Plus size={13} className="base-flowchart-sidebar-item-add" />
+                          </button>
+                        ))}
+                    </>
+                  )}
+                </>
               ) : (
                 <>
                   {/* Geleneksel Standart Flowchart Öğesi 1: Başla (Terminator / Oval Kapsül) */}
@@ -408,30 +462,57 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                             ? t('script_islem', 'Script İşlemi')
                             : t('ai_islem', 'AI İşlemi');
 
+                    const canAttachTools = Boolean(
+                      step.supportsTools ||
+                      step.type === 'AI_ISLEM' ||
+                      (step.attachedTools && step.attachedTools.length > 0)
+                    );
+
+                    const mainStepNode = (
+                      <BaseFlowchartNode
+                        id={step.id}
+                        stepNumber={isBasla ? undefined : index + 1}
+                        shape={resolvedShape}
+                        variant={resolvedVariant}
+                        icon={resolvedIcon}
+                        showTopPort={!isBasla}
+                        shapeBadgeText={step.shapeBadgeText || defaultTypeTitle}
+                        title={step.title || defaultTypeTitle}
+                        promptPreview={step.prompt}
+                        toolCode={step.toolCode}
+                        uiActionLabel={step.uiActionLabel}
+                        routePath={step.routePath}
+                        selected={isSelected}
+                        isFirst={index === 0}
+                        isLast={index === steps.length - 1}
+                        onSelect={onSelectStep}
+                        onDoubleClick={onDoubleClickStep ? () => onDoubleClickStep(step.id) : undefined}
+                        onMoveUp={onMoveStep ? (e) => onMoveStep(index, 'up', e) : undefined}
+                        onMoveDown={onMoveStep ? (e) => onMoveStep(index, 'down', e) : undefined}
+                        onDelete={onDeleteStep ? (e) => onDeleteStep(step.id, e) : undefined}
+                      />
+                    );
+
                     return (
                       <React.Fragment key={step.id || index}>
-                        <BaseFlowchartNode
-                          id={step.id}
-                          stepNumber={isBasla ? undefined : index + 1}
-                          shape={resolvedShape}
-                          variant={resolvedVariant}
-                          icon={resolvedIcon}
-                          showTopPort={!isBasla}
-                          shapeBadgeText={step.shapeBadgeText || defaultTypeTitle}
-                          title={step.title || defaultTypeTitle}
-                          promptPreview={step.prompt}
-                          toolCode={step.toolCode}
-                          uiActionLabel={step.uiActionLabel}
-                          routePath={step.routePath}
-                          selected={isSelected}
-                          isFirst={index === 0}
-                          isLast={index === steps.length - 1}
-                          onSelect={onSelectStep}
-                          onDoubleClick={onDoubleClickStep ? () => onDoubleClickStep(step.id) : undefined}
-                          onMoveUp={onMoveStep ? (e) => onMoveStep(index, 'up', e) : undefined}
-                          onMoveDown={onMoveStep ? (e) => onMoveStep(index, 'down', e) : undefined}
-                          onDelete={onDeleteStep ? (e) => onDeleteStep(step.id, e) : undefined}
-                        />
+                        {canAttachTools && (onAddToolToStep || (step.attachedTools && step.attachedTools.length > 0)) ? (
+                          <div className="base-flowchart-step-with-tools">
+                            <div className="base-flowchart-step-main-col">
+                              {mainStepNode}
+                            </div>
+                            <FlowchartNodeToolDock
+                              parentStepId={step.id}
+                              tools={step.attachedTools}
+                              selectedToolId={selectedToolId}
+                              onAddTool={onAddToolToStep}
+                              onSelectTool={onSelectTool}
+                              onDoubleClickTool={onDoubleClickTool}
+                              onDeleteTool={onDeleteTool}
+                            />
+                          </div>
+                        ) : (
+                          mainStepNode
+                        )}
                         {index < steps.length - 1 && (
                           <BaseFlowchartConnector active={isSelected} />
                         )}

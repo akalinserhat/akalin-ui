@@ -461,6 +461,51 @@
   color: #c084fc;
 }
 
+/* 6. Sol Palet: Alt Grup Başlığı & Bağlanabilir AI Araç (Tool) Öğesi */
+.base-flowchart-sidebar-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 4px 4px 4px;
+  border-top: 1px dashed var(--glass-border);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.base-flowchart-sidebar-item.palette-shape-tool {
+  border-color: rgba(20, 184, 166, 0.45);
+  border-left: 3.5px dashed #14b8a6;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(13, 148, 136, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-tool:hover {
+  border-color: #14b8a6;
+  border-left-style: solid;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.22) 0%, rgba(13, 148, 136, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-tool .base-flowchart-sidebar-item-icon {
+  background: #0d9488;
+  color: #ffffff;
+  border-radius: 50%;
+}
+
+.base-flowchart-sidebar-item.palette-shape-tool .base-flowchart-sidebar-item-title {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-tool .base-flowchart-sidebar-item-title {
+  color: #2dd4bf;
+}
+
 /* Eski Yatay Palet Desteği (Fallback / Geriye Uyumluluk) */
 .base-flowchart-palette {
   display: flex;
@@ -1221,4 +1266,225 @@
   background: var(--surface-ground, var(--bg-primary));
   border: 1px solid var(--glass-border);
   color: var(--text-secondary);
+}
+
+/* ─── AI İşlemi Bağlı Araç Alt Düğümleri (Attached Tool Sub-Nodes / Dock) ──── */
+.base-flowchart-step-with-tools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.base-flowchart-step-main-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.base-flowchart-tool-dock {
+  position: absolute;
+  left: calc(50% + 192px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 4;
+}
+
+.base-flowchart-tool-link-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.base-flowchart-tool-port-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid #14b8a6;
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.16);
+}
+
+.base-flowchart-tool-link-svg {
+  width: 34px;
+  height: 16px;
+  overflow: visible;
+}
+
+.base-flowchart-tool-link-line {
+  stroke: #14b8a6;
+  stroke-width: 1.75;
+  stroke-dasharray: 4 3;
+}
+
+.base-flowchart-tool-link-arrow {
+  fill: #14b8a6;
+}
+
+.base-flowchart-tool-dock-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.base-flowchart-tool-subnode {
+  position: relative;
+  width: 235px;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.08) 0%, transparent 55%), var(--bg-secondary);
+  border: 1.5px dashed rgba(20, 184, 166, 0.55);
+  border-left: 4px solid #14b8a6;
+  border-radius: 11px;
+  padding: 9px 11px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 3px 12px rgba(13, 148, 136, 0.08);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='dark'] .base-flowchart-tool-subnode {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, transparent 55%), var(--surface-card, #14141a);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.base-flowchart-tool-subnode:hover {
+  border-style: solid;
+  border-color: #14b8a6;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(20, 184, 166, 0.18);
+}
+
+.base-flowchart-tool-subnode.is-selected {
+  border-style: solid;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.22), 0 8px 22px rgba(20, 184, 166, 0.2);
+}
+
+.base-flowchart-tool-subnode-port {
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #14b8a6;
+}
+
+.base-flowchart-tool-subnode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.base-flowchart-tool-subnode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  background: rgba(20, 184, 166, 0.14);
+  color: #0f766e;
+}
+
+[data-theme='dark'] .base-flowchart-tool-subnode-badge {
+  color: #2dd4bf;
+}
+
+.base-flowchart-tool-subnode-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.base-flowchart-tool-subnode-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  background: var(--surface-ground, var(--bg-primary));
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.base-flowchart-tool-subnode-summary {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.base-flowchart-tool-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  border: 1.5px dashed rgba(20, 184, 166, 0.55);
+  background: var(--bg-secondary);
+  color: #0f766e;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .base-flowchart-tool-attach-btn {
+  background: var(--surface-card, #14141a);
+  color: #2dd4bf;
+}
+
+.base-flowchart-tool-attach-btn:hover {
+  border-style: solid;
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.14);
+  transform: translateX(2px);
+}
+
+@media (max-width: 960px) {
+  .base-flowchart-step-with-tools {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .base-flowchart-tool-dock {
+    position: static;
+    transform: none;
+    flex-direction: column;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .base-flowchart-tool-link-row {
+    display: none;
+  }
+
+  .base-flowchart-tool-dock-stack {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .base-flowchart-tool-subnode {
+    width: 100%;
+  }
 }
