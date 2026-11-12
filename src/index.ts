@@ -52,6 +52,7 @@ export { BaseTreeView, type BaseTreeViewProps, type TreeItem } from './component
 export { default as BaseTreeTableView, type BaseTreeTableViewProps, type BaseTreeTableItem } from './components/base/treeview/BaseTreeTableView';
 export {
   BaseFlowchart,
+  computeAutoLayoutPositions,
   BaseFlowchartNode,
   FlowchartStartNode,
   FlowchartInputNode,
@@ -67,6 +68,8 @@ export {
   type FlowchartStepItem,
   type FlowchartPaletteItem,
   type FlowchartAttachedToolItem,
+  type FlowchartPoint,
+  type FlowchartConnectionBranch,
   type BaseFlowchartProps,
   type FlowchartNodeShape,
   type FlowchartNodeVariant,

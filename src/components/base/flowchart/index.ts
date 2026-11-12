@@ -17,6 +17,8 @@ export {
   BaseFlowchartConnector,
   type FlowchartNodeShape,
   type FlowchartNodeVariant,
+  type FlowchartPoint,
+  type FlowchartConnectionBranch,
   type FlowchartAttachedToolItem,
   type BaseFlowchartNodeProps,
   type FlowchartStartNodeProps,
@@ -34,6 +36,7 @@ export {
 
 export {
   BaseFlowchart,
+  computeAutoLayoutPositions,
   type FlowchartStepItem,
   type FlowchartPaletteItem,
   type BaseFlowchartProps

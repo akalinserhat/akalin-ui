@@ -461,6 +461,70 @@
   color: #c084fc;
 }
 
+/* 5B. Belge Oluştur (Document / Dalgalı Alt Kenarlı Belge Kutusu) */
+.base-flowchart-sidebar-item.palette-shape-document {
+  border-color: rgba(16, 185, 129, 0.45);
+  border-left: 3.5px solid #10b981;
+  border-bottom-right-radius: 16px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-document:hover {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-document .base-flowchart-sidebar-item-icon {
+  background: #10b981;
+  color: #ffffff;
+  border-radius: 6px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-document .base-flowchart-sidebar-item-title {
+  color: #059669;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-document .base-flowchart-sidebar-item-title {
+  color: #34d399;
+}
+
+/* 5C. Karar / Onay (Decision / Baklava Geometrisi) */
+.base-flowchart-sidebar-item.palette-shape-decision {
+  border-color: rgba(245, 158, 11, 0.45);
+  border-left: 3.5px solid #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-decision:hover {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-decision .base-flowchart-sidebar-item-icon {
+  background: #f59e0b;
+  color: #ffffff;
+  border-radius: 6px;
+  transform: rotate(45deg);
+}
+
+.base-flowchart-sidebar-item.palette-shape-decision .base-flowchart-sidebar-item-icon > * {
+  transform: rotate(-45deg);
+}
+
+.base-flowchart-sidebar-item.palette-shape-decision .base-flowchart-sidebar-item-title {
+  color: #d97706;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-decision .base-flowchart-sidebar-item-title {
+  color: #fbbf24;
+}
+
 /* 6. Sol Palet: Alt Grup Başlığı & Bağlanabilir AI Araç (Tool) Öğesi */
 .base-flowchart-sidebar-section-divider {
   display: flex;
@@ -1488,3 +1552,532 @@
     width: 100%;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   n8n Tarzı 2B Serbest Konumlandırılabilir Tuval & Dinamik SVG Bağlantı Motoru
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.base-flowchart-stage.is-free-canvas {
+  padding: 0;
+  display: block;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  background-size: 16px 16px;
+}
+
+.base-flowchart-stage.is-free-canvas.is-panning {
+  cursor: grabbing;
+}
+
+.base-flowchart-stage.is-free-canvas.is-connecting {
+  cursor: crosshair;
+}
+
+.base-flowchart-free-surface {
+  position: relative;
+  flex-shrink: 0;
+  transition: zoom 0.16s cubic-bezier(0.2, 0, 0, 1);
+  will-change: zoom;
+}
+
+.base-flowchart-free-surface.is-wheel-zooming {
+  transition: none !important;
+}
+
+/* ─── Dinamik SVG Kenar Katmanı (Cubic Bezier Edges) ──────────────────────── */
+.base-flowchart-edges-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+
+.fc-marker-fill-default {
+  fill: var(--text-secondary);
+  fill-opacity: 0.75;
+}
+
+.fc-marker-fill-active {
+  fill: var(--accent-primary);
+}
+
+.fc-marker-fill-yes {
+  fill: #10b981;
+}
+
+.fc-marker-fill-no {
+  fill: #ef4444;
+}
+
+.fc-marker-fill-tool {
+  fill: #14b8a6;
+}
+
+.base-flowchart-svg-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  pointer-events: stroke;
+}
+
+.base-flowchart-svg-edge {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-opacity: 0.55;
+  stroke-width: 2.2px;
+  transition: stroke 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease;
+}
+
+.base-flowchart-svg-edge.is-active {
+  stroke: var(--accent-primary);
+  stroke-opacity: 0.95;
+  stroke-width: 2.6px;
+}
+
+.base-flowchart-svg-edge.branch-yes {
+  stroke: #10b981;
+  stroke-opacity: 0.88;
+}
+
+.base-flowchart-svg-edge.branch-no {
+  stroke: #ef4444;
+  stroke-opacity: 0.88;
+}
+
+.base-flowchart-svg-tool-edge {
+  fill: none;
+  stroke: #14b8a6;
+  stroke-width: 1.9px;
+  stroke-dasharray: 5 4;
+  stroke-opacity: 0.78;
+  transition: stroke-width 0.18s ease, stroke-opacity 0.18s ease;
+}
+
+.base-flowchart-svg-tool-edge.is-active {
+  stroke-opacity: 1;
+  stroke-width: 2.4px;
+}
+
+.base-flowchart-svg-edge-draft {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 2.4px;
+  stroke-dasharray: 6 4;
+}
+
+.base-flowchart-svg-edge-draft.branch-yes {
+  stroke: #10b981;
+}
+
+.base-flowchart-svg-edge-draft.branch-no {
+  stroke: #ef4444;
+}
+
+/* ─── Bağlantı Orta Noktası Kontrolleri (+ Araya Ekle / × Bağlantıyı Kopar) ─ */
+.base-flowchart-edge-controls {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 6;
+  pointer-events: auto;
+}
+
+.base-flowchart-edge-branch-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1.5px 7px;
+  border-radius: 9999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.base-flowchart-edge-branch-tag.branch-yes {
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+[data-theme='dark'] .base-flowchart-edge-branch-tag.branch-yes {
+  color: #34d399;
+}
+
+.base-flowchart-edge-branch-tag.branch-no {
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+[data-theme='dark'] .base-flowchart-edge-branch-tag.branch-no {
+  color: #f87171;
+}
+
+.base-flowchart-edge-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.32;
+  transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.base-flowchart-edge-controls:hover .base-flowchart-edge-btn {
+  opacity: 1;
+}
+
+.base-flowchart-edge-btn.is-insert:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #ffffff;
+  transform: scale(1.12);
+}
+
+.base-flowchart-edge-btn.is-disconnect:hover {
+  background: var(--danger, #ef4444);
+  border-color: var(--danger, #ef4444);
+  color: #ffffff;
+  transform: scale(1.12);
+}
+
+/* ─── 2B Tuval Üzerindeki Konumlu Ana Düğümler ve Alt Araçlar ──────────────── */
+.base-flowchart-canvas-node {
+  position: absolute;
+  width: 276px;
+  z-index: 4;
+  cursor: grab;
+}
+
+.base-flowchart-canvas-node.is-terminal-node {
+  width: 248px;
+}
+
+.base-flowchart-canvas-node.is-z-top {
+  z-index: 9;
+}
+
+.base-flowchart-canvas-node.is-dragging {
+  cursor: grabbing;
+  z-index: 16;
+}
+
+.base-flowchart-canvas-node.is-dragging .base-flowchart-node {
+  transition: none;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+}
+
+.base-flowchart-canvas-tool {
+  position: absolute;
+  width: 224px;
+  z-index: 4;
+  cursor: grab;
+}
+
+.base-flowchart-canvas-tool.is-z-top {
+  z-index: 9;
+}
+
+.base-flowchart-canvas-tool.is-dragging {
+  cursor: grabbing;
+  z-index: 16;
+}
+
+.base-flowchart-canvas-tool .base-flowchart-tool-subnode {
+  width: 100%;
+}
+
+.base-flowchart-canvas-tool.is-dragging .base-flowchart-tool-subnode {
+  transition: none;
+  box-shadow: 0 12px 28px rgba(13, 148, 136, 0.22);
+}
+
+/* ─── Yatay Port Mimarisi (Sol Giriş -> Sağ Çıkış + Alt Tool Portu) ───────── */
+.base-flowchart-node-wrapper.is-horizontal {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.base-flowchart-node-wrapper.is-horizontal .base-flowchart-diamond-crest {
+  align-self: center;
+}
+
+.base-flowchart-node-wrapper.is-horizontal.is-connect-target .base-flowchart-node {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.26);
+}
+
+.base-flowchart-node.is-inactive,
+.base-flowchart-tool-subnode.is-inactive {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.base-flowchart-handle {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2.5px solid var(--accent-primary);
+  padding: 0;
+  z-index: 7;
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.base-flowchart-handle.handle-left {
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.base-flowchart-handle.handle-left.handle-decision {
+  border-color: #f59e0b;
+}
+
+.base-flowchart-node-wrapper.is-connect-target .base-flowchart-handle.handle-left {
+  transform: translateY(-50%) scale(1.35);
+  background: #10b981;
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+}
+
+.base-flowchart-handle.handle-right {
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: crosshair;
+}
+
+.base-flowchart-handle.handle-right:hover {
+  transform: translateY(-50%) scale(1.3);
+  background: var(--accent-primary);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+
+.base-flowchart-handle.handle-right.handle-start-out {
+  border-color: #10b981;
+}
+
+.base-flowchart-handle.handle-right.handle-start-out:hover {
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22);
+}
+
+/* Karar / Onay Çift Sağ Çıkış Portu (Evet & Hayır) */
+.base-flowchart-decision-port-group {
+  position: absolute;
+  right: -7px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 8;
+}
+
+.base-flowchart-decision-port-group.is-yes {
+  top: 38%;
+}
+
+.base-flowchart-decision-port-group.is-no {
+  top: 72%;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle {
+  position: static;
+  transform: none;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-yes {
+  border-color: #10b981;
+  cursor: crosshair;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-yes:hover {
+  transform: scale(1.28);
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22);
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-no {
+  border-color: #ef4444;
+  cursor: crosshair;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-no:hover {
+  transform: scale(1.28);
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.22);
+}
+
+.base-flowchart-decision-port-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  pointer-events: none;
+  line-height: 1.3;
+}
+
+.base-flowchart-decision-port-label.is-yes {
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+[data-theme='dark'] .base-flowchart-decision-port-label.is-yes {
+  color: #34d399;
+}
+
+.base-flowchart-decision-port-label.is-no {
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+[data-theme='dark'] .base-flowchart-decision-port-label.is-no {
+  color: #f87171;
+}
+
+/* AI İşlemi Alt Tool Portu & Ekleme Rozeti */
+.base-flowchart-bottom-tool-slot {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 8;
+}
+
+.base-flowchart-handle.handle-bottom-tool {
+  position: static;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  transform: rotate(45deg);
+  border: 2px solid #14b8a6;
+  background: var(--bg-secondary);
+}
+
+.base-flowchart-handle.handle-bottom-tool.has-tools {
+  background: #14b8a6;
+}
+
+.base-flowchart-bottom-tool-add-pill {
+  position: absolute;
+  top: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px dashed rgba(20, 184, 166, 0.65);
+  background: var(--bg-secondary);
+  color: #0f766e;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0.78;
+  transition: all 0.15s ease;
+}
+
+[data-theme='dark'] .base-flowchart-bottom-tool-add-pill {
+  color: #2dd4bf;
+  background: var(--surface-card, #14141a);
+}
+
+.base-flowchart-bottom-tool-add-pill:hover {
+  opacity: 1;
+  border-style: solid;
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.15);
+  transform: translateY(1px);
+}
+
+/* Alt Araç Düğümü Üst Bağlantı Portu */
+.base-flowchart-tool-subnode-top-port {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  border-radius: 2.5px;
+  background: #14b8a6;
+  border: 2px solid var(--bg-secondary);
+  z-index: 6;
+}
+
+/* Standart Düğüm Kartı Özeti ve Uyarı Rozeti */
+.base-flowchart-node-summary-line {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 156px;
+}
+
+.base-flowchart-node-summary-box {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--surface-ground, var(--bg-primary));
+  border: 1px solid var(--glass-border);
+  border-radius: 7px;
+  padding: 6px 8px;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.base-flowchart-node-summary-empty {
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--text-secondary);
+  opacity: 0.72;
+}
+
+.base-flowchart-warning-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+
+[data-theme='dark'] .base-flowchart-warning-pill {
+  color: #fbbf24;
+}
+
+.base-flowchart-floating-zoom .base-flowchart-zoom-btn.is-autolayout:hover {
+  color: var(--accent-primary);
+}
+
