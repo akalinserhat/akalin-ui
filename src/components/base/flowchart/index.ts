@@ -12,6 +12,7 @@ export {
   FlowchartStorageNode,
   FlowchartScriptNode,
   FlowchartEndNode,
+  FlowchartPageNode,
   FlowchartToolSubNode,
   FlowchartNodeToolDock,
   BaseFlowchartConnector,
@@ -29,6 +30,7 @@ export {
   type FlowchartStorageNodeProps,
   type FlowchartScriptNodeProps,
   type FlowchartEndNodeProps,
+  type FlowchartPageNodeProps,
   type FlowchartToolSubNodeProps,
   type FlowchartNodeToolDockProps,
   type BaseFlowchartConnectorProps
@@ -38,6 +40,9 @@ export {
   BaseFlowchart,
   computeAutoLayoutPositions,
   type FlowchartStepItem,
+  type FlowchartEdgeItem,
+  type FlowchartAutoLayoutOptions,
+  type FlowchartRenderNodeContext,
   type FlowchartPaletteItem,
   type BaseFlowchartProps
 } from './BaseFlowchart';

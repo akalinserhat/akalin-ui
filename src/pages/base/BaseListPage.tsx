@@ -539,11 +539,13 @@ const BaseListPage = <T extends any = any>({
         }
     }, [apiEndpoint, fetchParamsStr, customFetchData, service, pageSize, enableViewModeToggle, viewMode, baseRoute, aiDocumentType, t]);
 
+    const hasCustomRender = Boolean(customRenderContent);
+
     useEffect(() => {
-        if (customRenderContent && (apiEndpoint || customFetchData || service)) {
+        if (hasCustomRender && (apiEndpoint || customFetchData || service)) {
             handleFetchData().then(res => setData(res?.data || []));
         }
-    }, [customRenderContent, handleFetchData, refreshKey, apiEndpoint, customFetchData, service]);
+    }, [hasCustomRender, handleFetchData, refreshKey, apiEndpoint, customFetchData, service]);
 
     useEffect(() => {
         const handleRefresh = () => setRefreshKey(prev => prev + 1);
@@ -1240,6 +1242,14 @@ const BaseListPage = <T extends any = any>({
         );
     }, [enableViewModeToggle, customHeaderActions, headerActionMenu, viewMode, enableArchive, handleViewModeChange, t]);
 
+    const visibleCustomData = useMemo(() => {
+        if (!hasCustomRender || hiddenRowIds.length === 0) return data;
+        return data.filter((item: any) => {
+            const itemId = item?.id ?? item?.Id ?? item?.kod;
+            return itemId === undefined || !hiddenRowIds.includes(itemId);
+        });
+    }, [hasCustomRender, data, hiddenRowIds]);
+
     return (
         <div
             className={`base-list-page ${containerClassName}`}
@@ -1262,12 +1272,16 @@ const BaseListPage = <T extends any = any>({
             <div className="table-container">
                 {customRenderContent ? (
                     customRenderContent({
-                        data,
+                        data: visibleCustomData,
                         loading,
                         refreshKey,
                         setRefreshKey,
+                        viewMode,
                         handleEdit,
                         handleDelete,
+                        handleArchive,
+                        handleUnarchive,
+                        handleRestore,
                         handleDefaultAction: handleRowDoubleClick,
                         searchData: globalSearchData,
                         searchTerm: globalSearchData.value,

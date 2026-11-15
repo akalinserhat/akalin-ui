@@ -26,7 +26,8 @@ import {
   Code2,
   Wrench,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Globe
 } from 'lucide-react';
 import './BaseFlowchart.css';
 
@@ -38,6 +39,8 @@ export type FlowchartNodeShape =
   | 'document'
   | 'storage'
   | 'script'
+  | 'page'
+  | 'custom'
   | 'tool';
 
 export type FlowchartNodeVariant =
@@ -49,6 +52,7 @@ export type FlowchartNodeVariant =
   | 'end'
   | 'storage'
   | 'script'
+  | 'page'
   | 'tool';
 
 export type FlowchartConnectionBranch = 'next' | 'yes' | 'no';
@@ -109,6 +113,16 @@ export interface BaseFlowchartNodeProps {
     e: React.PointerEvent<HTMLButtonElement>
   ) => void;
   onAddTool?: (parentStepId: string) => void;
+  /** Düğüm kartının sağ üst başlığında ayar/silme aksiyonlarının yanında gösterilecek özel eylemler (örn. ActionMenu) */
+  headerActions?: React.ReactNode;
+  /** Özel görsel içerik gövdesi (örneğin sayfa küçük önizleme görseli) */
+  renderBody?: () => React.ReactNode;
+  /** Özelleştirilmiş gövdelerde varsayılan "Yapılandırmak için çift tıklayın" özet kutusunu gizler */
+  hideSummary?: boolean;
+  /** Sol giriş portu ipucu metni */
+  leftPortTitle?: string;
+  /** Sağ çıkış portu ipucu metni */
+  rightPortTitle?: string;
   children?: React.ReactNode;
   className?: string;
 }
@@ -143,6 +157,11 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   onDelete,
   onStartConnection,
   onAddTool,
+  headerActions,
+  renderBody,
+  hideSummary = false,
+  leftPortTitle,
+  rightPortTitle,
   children,
   className = ''
 }) => {
@@ -276,7 +295,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         <div
           className={`base-flowchart-handle handle-left ${isDecision ? 'handle-decision' : ''}`}
           data-node-input-id={id}
-          title={t('flowchart_giris_portu', 'Giriş Bağlantı Noktası')}
+          title={leftPortTitle || t('flowchart_giris_portu', 'Giriş Bağlantı Noktası')}
         />
       )}
 
@@ -317,12 +336,13 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             )}
           </div>
 
-          {(onDoubleClick || onDelete) && (
+          {(headerActions || onDoubleClick || onDelete) && (
             <div
               className="base-flowchart-node-actions"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
+              {headerActions}
               {onDoubleClick && (
                 <button
                   type="button"
@@ -353,14 +373,26 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         {/* 1. Sabit Düğüm Başlığı */}
         <div className="base-flowchart-node-title">{title}</div>
 
-        {/* 2. Tek Satırlık Yapılandırma Özeti */}
-        {resolvedSummary ? (
+        {/* 2. Özelleştirilmiş Görsel Gövde (ör. Web Sayfası Görsel Önizlemesi) veya Standart Özet */}
+        {renderBody && (
+          <div className="base-flowchart-node-custom-body">{renderBody()}</div>
+        )}
+
+        {!hideSummary &&
+          !renderBody &&
+          (resolvedSummary ? (
+            <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
+              {resolvedSummary}
+            </div>
+          ) : (
+            <div className="base-flowchart-node-summary-empty">
+              {t('yapilandirmak_icin_cift_tiklayin', 'Yapılandırmak için çift tıklayın')}
+            </div>
+          ))}
+
+        {!hideSummary && renderBody && resolvedSummary && (
           <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
             {resolvedSummary}
-          </div>
-        ) : (
-          <div className="base-flowchart-node-summary-empty">
-            {t('yapilandirmak_icin_cift_tiklayin', 'Yapılandırmak için çift tıklayın')}
           </div>
         )}
 
@@ -382,7 +414,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         <button
           type="button"
           className="base-flowchart-handle handle-right"
-          title={t('baglanti_cekmek_icin_surukle', 'Bağlantı kurmak için sürükleyin')}
+          title={rightPortTitle || t('baglanti_cekmek_icin_surukle', 'Bağlantı kurmak için sürükleyin')}
           onPointerDown={(e) => {
             e.stopPropagation();
             if (onStartConnection) onStartConnection(id, 'next', e);
@@ -584,6 +616,23 @@ export const FlowchartEndNode: React.FC<FlowchartEndNodeProps> = (props) => {
       shapeBadgeText={props.shapeBadgeText || t('flowchart_akis_sonu', 'AKIŞ SONU')}
       showLeftPort={true}
       showRightPort={false}
+    />
+  );
+};
+
+export interface FlowchartPageNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export const FlowchartPageNode: React.FC<FlowchartPageNodeProps> = (props) => {
+  const { t } = useTranslation();
+  return (
+    <BaseFlowchartNode
+      {...props}
+      shape="page"
+      variant="page"
+      icon={props.icon || <Globe size={12} />}
+      shapeBadgeText={props.shapeBadgeText || props.routePath || t('sayfa', 'Sayfa')}
+      showLeftPort={props.showLeftPort ?? true}
+      showRightPort={props.showRightPort ?? true}
+      hideSummary={props.hideSummary ?? true}
     />
   );
 };

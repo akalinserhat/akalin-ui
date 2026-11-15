@@ -40,6 +40,7 @@ import './BaseFlowchart.css';
 
 const GRID_SIZE = 16;
 const DEFAULT_NODE_WIDTH = 276;
+const DEFAULT_PAGE_NODE_WIDTH = 264;
 const DEFAULT_TERMINAL_WIDTH = 248;
 const DEFAULT_NODE_HEIGHT = 114;
 const DEFAULT_TOOL_WIDTH = 224;
@@ -47,12 +48,17 @@ const DEFAULT_TOOL_HEIGHT = 96;
 const H_SPACING = 352;
 const V_SPACING = 196;
 
-const snapToGrid = (value: number): number =>
-  Math.max(24, Math.round(value / GRID_SIZE) * GRID_SIZE);
+const snapToGrid = (value: number, gridSize: number = GRID_SIZE): number => {
+  if (gridSize <= 1) {
+    return Math.max(12, Math.round(value));
+  }
+  return Math.max(24, Math.round(value / gridSize) * gridSize);
+};
 
 export interface FlowchartStepItem {
   id: string;
   type?: string;
+  shape?: FlowchartNodeShape;
   title: string;
   shapeBadgeText?: string;
   summaryText?: string;
@@ -69,6 +75,45 @@ export interface FlowchartStepItem {
   position?: FlowchartPoint;
   supportsTools?: boolean;
   attachedTools?: FlowchartAttachedToolItem[];
+  allowInputPort?: boolean;
+  allowOutputPort?: boolean;
+  meta?: any;
+}
+
+export interface FlowchartEdgeItem {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  branch?: FlowchartConnectionBranch;
+  label?: string;
+  dashed?: boolean;
+  autoDetected?: boolean;
+  deletable?: boolean;
+}
+
+export interface FlowchartAutoLayoutOptions {
+  hSpacing?: number;
+  vSpacing?: number;
+  startX?: number;
+  startY?: number;
+  edges?: FlowchartEdgeItem[];
+  snapGridSize?: number;
+}
+
+export interface FlowchartRenderNodeContext {
+  step: FlowchartStepItem;
+  index: number;
+  selected: boolean;
+  isDragging: boolean;
+  isConnectTarget: boolean;
+  onSelect?: (stepId: string) => void;
+  onDoubleClick?: (stepId: string, e?: React.MouseEvent) => void;
+  onDelete?: (stepId: string, e?: React.MouseEvent) => void;
+  onStartConnection: (
+    sourceId: string,
+    branch: FlowchartConnectionBranch,
+    e: React.PointerEvent<HTMLButtonElement>
+  ) => void;
 }
 
 export interface FlowchartPaletteItem {
@@ -85,6 +130,7 @@ export interface FlowchartPaletteItem {
 export interface BaseFlowchartProps {
   title?: React.ReactNode;
   showHeader?: boolean;
+  toolbarContent?: React.ReactNode;
   fit?: boolean;
   startTitle?: React.ReactNode;
   startSubtitle?: React.ReactNode;
@@ -96,6 +142,20 @@ export interface BaseFlowchartProps {
   sidebar?: React.ReactNode;
   paletteItems?: FlowchartPaletteItem[];
   steps?: FlowchartStepItem[];
+  /** Çoklu veya serbest bağlantılar için açık kenar (ok) listesi */
+  edges?: FlowchartEdgeItem[];
+  /** 'horizontal' (klasik n8n sol->sağ) veya 'smart-2d' (serbest 2B yerleşime duyarlı yönlü oklar) */
+  edgeRouting?: 'horizontal' | 'smart-2d';
+  /** Düğüm taşıma adım hassasiyeti (1 = tam serbest piksel konumlandırma, varsayılan 16px grid) */
+  snapGridSize?: number;
+  /** Başlangıç/ana düğümlere de gelen bağlantı kabul edilmesine izin verir */
+  allowInputOnStartNodes?: boolean;
+  /** Otomatik hizalama boşluk/ızgara ayarları */
+  autoLayoutOptions?: FlowchartAutoLayoutOptions;
+  /** Düğüm kartı içeriğini veya düğüm bileşenini özelleştirmek için render fonksiyonu */
+  renderNode?: (ctx: FlowchartRenderNodeContext) => React.ReactNode;
+  /** Sol alt köşede gösterilecek etkileşim ipucu / özet şeridi */
+  floatingHint?: React.ReactNode;
   selectedStepId?: string | null;
   selectedToolId?: string | null;
   onSelectStep?: (stepId: string) => void;
@@ -120,11 +180,12 @@ export interface BaseFlowchartProps {
     branch: FlowchartConnectionBranch
   ) => void;
   onDisconnectSteps?: (sourceId: string, branch: FlowchartConnectionBranch) => void;
+  onDisconnectEdge?: (edge: FlowchartEdgeItem) => void;
   onAddToolToStep?: (parentStepId: string, toolType?: string) => void;
   onSelectTool?: (parentStepId: string, toolId: string) => void;
   onDoubleClickTool?: (parentStepId: string, toolId: string) => void;
   onDeleteTool?: (parentStepId: string, toolId: string, e?: React.MouseEvent) => void;
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
   className?: string;
   initialZoom?: number;
   minZoom?: number;
@@ -138,6 +199,10 @@ interface ComputedEdge {
   sourceId: string;
   targetId: string;
   branch: FlowchartConnectionBranch;
+  label?: string;
+  dashed?: boolean;
+  autoDetected?: boolean;
+  deletable?: boolean;
   sx: number;
   sy: number;
   tx: number;
@@ -200,11 +265,103 @@ function buildVerticalToolBezier(sx: number, sy: number, tx: number, ty: number)
   return `M ${sx} ${sy} C ${sx} ${sy + dy}, ${tx} ${ty - dy}, ${tx} ${ty}`;
 }
 
+function buildSmart2DBezier(
+  sPos: FlowchartPoint,
+  sSize: { w: number; h: number },
+  tPos: FlowchartPoint,
+  tSize: { w: number; h: number },
+  outIdx: number = 0,
+  outTotal: number = 1,
+  inIdx: number = 0,
+  inTotal: number = 1
+): { sx: number; sy: number; tx: number; ty: number; path: string; midX: number; midY: number } {
+  const scx = sPos.x + sSize.w * 0.5;
+  const scy = sPos.y + sSize.h * 0.5;
+  const tcx = tPos.x + tSize.w * 0.5;
+  const tcy = tPos.y + tSize.h * 0.5;
+  const dx = tcx - scx;
+  const dy = tcy - scy;
+
+  const outSpread = outTotal > 1 ? (outIdx - (outTotal - 1) / 2) * 18 : 0;
+  const inSpread = inTotal > 1 ? (inIdx - (inTotal - 1) / 2) * 18 : 0;
+
+  const normDx = Math.abs(dx) / Math.max(1, (sSize.w + tSize.w) * 0.5);
+  const normDy = Math.abs(dy) / Math.max(1, (sSize.h + tSize.h) * 0.5);
+
+  let sx: number;
+  let sy: number;
+  let tx: number;
+  let ty: number;
+  let c1x: number;
+  let c1y: number;
+  let c2x: number;
+  let c2y: number;
+
+  if (normDx >= normDy) {
+    if (dx >= 0) {
+      sx = sPos.x + sSize.w;
+      sy = scy + outSpread;
+      tx = tPos.x;
+      ty = tcy + inSpread;
+      const offset = Math.max(56, Math.abs(tx - sx) * 0.45);
+      c1x = sx + offset;
+      c1y = sy;
+      c2x = tx - offset;
+      c2y = ty;
+    } else {
+      sx = sPos.x;
+      sy = scy + outSpread;
+      tx = tPos.x + tSize.w;
+      ty = tcy + inSpread;
+      const offset = Math.max(56, Math.abs(tx - sx) * 0.45);
+      c1x = sx - offset;
+      c1y = sy;
+      c2x = tx + offset;
+      c2y = ty;
+    }
+  } else if (dy >= 0) {
+    sx = scx + outSpread;
+    sy = sPos.y + sSize.h;
+    tx = tcx + inSpread;
+    ty = tPos.y;
+    const offset = Math.max(56, Math.abs(ty - sy) * 0.45);
+    c1x = sx;
+    c1y = sy + offset;
+    c2x = tx;
+    c2y = ty - offset;
+  } else {
+    sx = scx + outSpread;
+    sy = sPos.y;
+    tx = tcx + inSpread;
+    ty = tPos.y + tSize.h;
+    const offset = Math.max(56, Math.abs(ty - sy) * 0.45);
+    c1x = sx;
+    c1y = sy - offset;
+    c2x = tx;
+    c2y = ty + offset;
+  }
+
+  const midX = 0.125 * sx + 0.375 * c1x + 0.375 * c2x + 0.125 * tx;
+  const midY = 0.125 * sy + 0.375 * c1y + 0.375 * c2y + 0.125 * ty;
+  return {
+    sx,
+    sy,
+    tx,
+    ty,
+    path: `M ${sx} ${sy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tx} ${ty}`,
+    midX,
+    midY
+  };
+}
+
 /**
- * Soldan sağa topolojik yerleşim (n8n Auto-Layout) hesaplayıcısı.
- * Koordinatı olmayan mevcut akışlar için de otomatik olarak kullanılır.
+ * Soldan sağa topolojik yerleşim (Auto-Layout) hesaplayıcısı.
+ * Koordinatı olmayan mevcut akışlar ve çoklu kenarlı sayfa haritaları için otomatik çalışır.
  */
-export function computeAutoLayoutPositions(steps: FlowchartStepItem[]): {
+export function computeAutoLayoutPositions(
+  steps: FlowchartStepItem[],
+  options?: FlowchartAutoLayoutOptions
+): {
   nodePositions: Record<string, FlowchartPoint>;
   toolPositions: Record<string, FlowchartPoint>;
 } {
@@ -214,11 +371,48 @@ export function computeAutoLayoutPositions(steps: FlowchartStepItem[]): {
     return { nodePositions, toolPositions };
   }
 
+  const hSpacing = options?.hSpacing ?? H_SPACING;
+  const vSpacing = options?.vSpacing ?? V_SPACING;
+  const startX = options?.startX ?? 64;
+  const baseStartY = options?.startY ?? 144;
+  const layoutGridSize = options?.snapGridSize ?? GRID_SIZE;
+
   const byId = new Map<string, FlowchartStepItem>();
   steps.forEach((s) => byId.set(s.id, s));
 
+  const adj = new Map<string, Array<{ targetId: string; rowDelta: number }>>();
+  steps.forEach((s) => adj.set(s.id, []));
+
+  if (Array.isArray(options?.edges) && options.edges.length > 0) {
+    options.edges.forEach((e) => {
+      if (byId.has(e.sourceId) && byId.has(e.targetId) && e.sourceId !== e.targetId) {
+        const list = adj.get(e.sourceId) || [];
+        if (!list.some((x) => x.targetId === e.targetId)) {
+          list.push({ targetId: e.targetId, rowDelta: list.length });
+          adj.set(e.sourceId, list);
+        }
+      }
+    });
+  } else {
+    steps.forEach((item) => {
+      const list = adj.get(item.id) || [];
+      if (item.type === 'KARAR_ONAY') {
+        if (item.yesStepId && byId.has(item.yesStepId)) {
+          list.push({ targetId: item.yesStepId, rowDelta: -0.75 });
+        }
+        if (item.noStepId && byId.has(item.noStepId)) {
+          list.push({ targetId: item.noStepId, rowDelta: 0.75 });
+        }
+      } else if (item.nextStepId && byId.has(item.nextStepId)) {
+        list.push({ targetId: item.nextStepId, rowDelta: 0 });
+      }
+      adj.set(item.id, list);
+    });
+  }
+
   const startStep =
-    steps.find((s) => s.type === 'BASLA' || s.type === 'START' || s.id === 'BASLA') || steps[0];
+    steps.find((s) => s.type === 'BASLA' || s.type === 'START' || s.id === 'BASLA' || s.routePath === '/') ||
+    steps[0];
 
   const colOf = new Map<string, number>();
   const rowOf = new Map<string, number>();
@@ -251,48 +445,55 @@ export function computeAutoLayoutPositions(steps: FlowchartStepItem[]): {
     colOf.set(curr.id, curr.col);
     rowOf.set(curr.id, assignedRow);
 
-    if (item.type === 'KARAR_ONAY') {
-      if (item.yesStepId && byId.has(item.yesStepId) && !visited.has(item.yesStepId)) {
-        queue.push({ id: item.yesStepId, col: curr.col + 1, row: assignedRow - 0.75 });
+    const targets = adj.get(curr.id) || [];
+    const totalOut = targets.length;
+    targets.forEach((edgeTarget, idx) => {
+      if (!visited.has(edgeTarget.targetId)) {
+        const spreadDelta =
+          totalOut > 1 && options?.edges?.length
+            ? idx - (totalOut - 1) * 0.5
+            : edgeTarget.rowDelta;
+        queue.push({
+          id: edgeTarget.targetId,
+          col: curr.col + 1,
+          row: assignedRow + spreadDelta
+        });
       }
-      if (item.noStepId && byId.has(item.noStepId) && !visited.has(item.noStepId)) {
-        queue.push({ id: item.noStepId, col: curr.col + 1, row: assignedRow + 0.75 });
-      }
-    } else if (item.nextStepId && byId.has(item.nextStepId) && !visited.has(item.nextStepId)) {
-      queue.push({ id: item.nextStepId, col: curr.col + 1, row: assignedRow });
-    }
+    });
   }
 
-  // Bağlantısız (serbest) kalan düğümleri alt satırlara yerleştir
-  let disconnectedCol = 1;
+  // Bağlantısız (serbest) kalan düğümleri temiz ızgara düzeninde yerleştir
+  let freeIdx = 0;
   steps.forEach((s) => {
     if (!visited.has(s.id)) {
-      const assignedRow = reserveSlot(disconnectedCol, 2);
-      colOf.set(s.id, disconnectedCol);
+      const col = (freeIdx % 3) + (visited.size > 1 ? 1 : 0);
+      const prefRow = Math.floor(freeIdx / 3) + (visited.size > 0 ? 1.5 : 0);
+      const assignedRow = reserveSlot(col, prefRow);
+      colOf.set(s.id, col);
       rowOf.set(s.id, assignedRow);
-      disconnectedCol += 1;
+      freeIdx += 1;
     }
   });
 
   const rows = Array.from(rowOf.values());
   const minRow = rows.length > 0 ? Math.min(...rows) : 0;
-  const baseY = 144 - minRow * V_SPACING;
+  const baseY = baseStartY - minRow * vSpacing;
 
   steps.forEach((s) => {
     const c = colOf.get(s.id) ?? 0;
     const r = rowOf.get(s.id) ?? 0;
-    const nx = snapToGrid(64 + c * H_SPACING);
-    const ny = snapToGrid(baseY + r * V_SPACING);
+    const nx = snapToGrid(startX + c * hSpacing, layoutGridSize);
+    const ny = snapToGrid(baseY + r * vSpacing, layoutGridSize);
     nodePositions[s.id] = { x: nx, y: ny };
 
     if (Array.isArray(s.attachedTools) && s.attachedTools.length > 0) {
       const totalWidth =
         s.attachedTools.length * DEFAULT_TOOL_WIDTH + (s.attachedTools.length - 1) * 20;
-      const startX = nx + (DEFAULT_NODE_WIDTH - totalWidth) / 2;
+      const toolStartX = nx + (DEFAULT_NODE_WIDTH - totalWidth) / 2;
       s.attachedTools.forEach((tool, idx) => {
         toolPositions[tool.id] = {
-          x: snapToGrid(startX + idx * (DEFAULT_TOOL_WIDTH + 20)),
-          y: snapToGrid(ny + DEFAULT_NODE_HEIGHT + 76)
+          x: snapToGrid(toolStartX + idx * (DEFAULT_TOOL_WIDTH + 20), layoutGridSize),
+          y: snapToGrid(ny + DEFAULT_NODE_HEIGHT + 76, layoutGridSize)
         };
       });
     }
@@ -304,11 +505,19 @@ export function computeAutoLayoutPositions(steps: FlowchartStepItem[]): {
 export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   title,
   showHeader = false,
+  toolbarContent,
   fit = false,
   showSidebar = true,
   sidebar,
   paletteItems,
   steps = [],
+  edges,
+  edgeRouting = 'horizontal',
+  snapGridSize,
+  allowInputOnStartNodes = false,
+  autoLayoutOptions,
+  renderNode,
+  floatingHint,
   selectedStepId,
   selectedToolId,
   onSelectStep,
@@ -320,10 +529,12 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   onAutoLayout,
   onConnectSteps,
   onDisconnectSteps,
+  onDisconnectEdge,
   onAddToolToStep,
   onSelectTool,
   onDoubleClickTool,
   onDeleteTool,
+  emptyMessage,
   className = '',
   initialZoom = 1,
   minZoom = 0.45,
@@ -332,6 +543,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   children
 }) => {
   const { t } = useTranslation();
+  const activeGridSize = snapGridSize ?? GRID_SIZE;
   const [zoom, setZoom] = useState<number>(initialZoom);
   const [isWheelZooming, setIsWheelZooming] = useState<boolean>(false);
   const zoomRef = useRef<number>(zoom);
@@ -426,7 +638,15 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   }, [steps, draggingToolKey]);
 
   // Otomatik yerleşim tabanı (koordinatı kayıtlı olmayan düğümler için)
-  const autoLayoutDefaults = useMemo(() => computeAutoLayoutPositions(steps), [steps]);
+  const autoLayoutDefaults = useMemo(
+    () =>
+      computeAutoLayoutPositions(steps, {
+        ...autoLayoutOptions,
+        edges: edges ?? autoLayoutOptions?.edges,
+        snapGridSize: activeGridSize
+      }),
+    [steps, edges, autoLayoutOptions, activeGridSize]
+  );
 
   // Efektif düğüm koordinatları (önce yerel anlık sürükleme -> sonra kayıtlı prop pozisyonu -> sonra Auto-Layout)
   const effectiveNodePositions = useMemo<Record<string, FlowchartPoint>>(() => {
@@ -453,7 +673,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     steps.forEach((step) => {
       const parentPos = effectiveNodePositions[step.id] || { x: 80, y: 144 };
       const parentSize = nodeSizes[step.id] || {
-        w: DEFAULT_NODE_WIDTH,
+        w: step.shape === 'page' ? DEFAULT_PAGE_NODE_WIDTH : DEFAULT_NODE_WIDTH,
         h: DEFAULT_NODE_HEIGHT
       };
       (step.attachedTools || []).forEach((tool, idx) => {
@@ -469,37 +689,58 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           map[tool.id] = autoLayoutDefaults.toolPositions[tool.id];
         } else {
           map[tool.id] = {
-            x: snapToGrid(parentPos.x + idx * (DEFAULT_TOOL_WIDTH + 20)),
-            y: snapToGrid(parentPos.y + parentSize.h + 72)
+            x: snapToGrid(parentPos.x + idx * (DEFAULT_TOOL_WIDTH + 20), activeGridSize),
+            y: snapToGrid(parentPos.y + parentSize.h + 72, activeGridSize)
           };
         }
       });
     });
     return map;
-  }, [steps, effectiveNodePositions, localToolPositions, autoLayoutDefaults.toolPositions, nodeSizes]);
+  }, [
+    steps,
+    effectiveNodePositions,
+    localToolPositions,
+    autoLayoutDefaults.toolPositions,
+    nodeSizes,
+    activeGridSize
+  ]);
 
-  // Düğüm DOM boyutlarını ölç (port merkezlerinin milimetrik hizalanması için)
+  // Düğüm DOM boyutlarını ölç ve ResizeObserver ile izle (port ve okların milimetrik hizalanması için)
   useEffect(() => {
-    const nextSizes: Record<string, { w: number; h: number }> = {};
-    let changed = false;
+    const measureAll = () => {
+      const updates: Record<string, { w: number; h: number }> = {};
+      let changed = false;
 
+      steps.forEach((step) => {
+        const el = nodeDomRefs.current[step.id];
+        if (!el) return;
+        const w = el.offsetWidth || (step.shape === 'page' ? DEFAULT_PAGE_NODE_WIDTH : DEFAULT_NODE_WIDTH);
+        const h = el.offsetHeight || DEFAULT_NODE_HEIGHT;
+        updates[step.id] = { w, h };
+      });
+
+      setNodeSizes((prev) => {
+        for (const [id, dims] of Object.entries(updates)) {
+          const cur = prev[id];
+          if (!cur || Math.abs(cur.w - dims.w) > 1 || Math.abs(cur.h - dims.h) > 1) {
+            changed = true;
+            break;
+          }
+        }
+        return changed ? { ...prev, ...updates } : prev;
+      });
+    };
+
+    measureAll();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => measureAll());
     steps.forEach((step) => {
       const el = nodeDomRefs.current[step.id];
-      if (el) {
-        const w = el.offsetWidth || DEFAULT_NODE_WIDTH;
-        const h = el.offsetHeight || DEFAULT_NODE_HEIGHT;
-        const prev = nodeSizes[step.id];
-        if (!prev || Math.abs(prev.w - w) > 1 || Math.abs(prev.h - h) > 1) {
-          changed = true;
-        }
-        nextSizes[step.id] = { w, h };
-      }
+      if (el) observer.observe(el);
     });
-
-    if (changed) {
-      setNodeSizes((prev) => ({ ...prev, ...nextSizes }));
-    }
-  }, [steps, nodeSizes]);
+    return () => observer.disconnect();
+  }, [steps]);
 
   // Tuval çalışma alanı genişlik/yükseklik hesabı (dinamik genişleyen sonsuz tuval)
   const canvasDimensions = useMemo(() => {
@@ -507,7 +748,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     let maxY = 720;
     Object.values(effectiveNodePositions).forEach((p) => {
       if (p.x + 480 > maxX) maxX = p.x + 480;
-      if (p.y + 360 > maxY) maxY = p.y + 360;
+      if (p.y + 420 > maxY) maxY = p.y + 420;
     });
     Object.values(effectiveToolPositions).forEach((p) => {
       if (p.x + 380 > maxX) maxX = p.x + 380;
@@ -517,37 +758,129 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   }, [effectiveNodePositions, effectiveToolPositions]);
 
   // Port koordinat yardımcıları
-  const getOutputPortCoords = useCallback(
-    (step: FlowchartStepItem, branch: FlowchartConnectionBranch): FlowchartPoint => {
+  const getNodeRect = useCallback(
+    (step: FlowchartStepItem) => {
       const pos = effectiveNodePositions[step.id] || { x: 80, y: 144 };
       const isBasla = step.type === 'BASLA' || step.type === 'START';
+      const defaultW = isBasla
+        ? DEFAULT_TERMINAL_WIDTH
+        : step.shape === 'page'
+          ? DEFAULT_PAGE_NODE_WIDTH
+          : DEFAULT_NODE_WIDTH;
       const size = nodeSizes[step.id] || {
-        w: isBasla ? DEFAULT_TERMINAL_WIDTH : DEFAULT_NODE_WIDTH,
+        w: defaultW,
         h: isBasla ? 68 : DEFAULT_NODE_HEIGHT
       };
+      return { pos, size };
+    },
+    [effectiveNodePositions, nodeSizes]
+  );
+
+  const getOutputPortCoords = useCallback(
+    (step: FlowchartStepItem, branch: FlowchartConnectionBranch): FlowchartPoint => {
+      const { pos, size } = getNodeRect(step);
       if (step.type === 'KARAR_ONAY') {
         const ratio = branch === 'yes' ? 0.38 : 0.72;
         return { x: pos.x + size.w, y: pos.y + size.h * ratio };
       }
       return { x: pos.x + size.w, y: pos.y + size.h * 0.5 };
     },
-    [effectiveNodePositions, nodeSizes]
+    [getNodeRect]
   );
 
   const getInputPortCoords = useCallback(
     (step: FlowchartStepItem): FlowchartPoint => {
-      const pos = effectiveNodePositions[step.id] || { x: 80, y: 144 };
-      const size = nodeSizes[step.id] || { w: DEFAULT_NODE_WIDTH, h: DEFAULT_NODE_HEIGHT };
+      const { pos, size } = getNodeRect(step);
       return { x: pos.x, y: pos.y + size.h * 0.5 };
     },
-    [effectiveNodePositions, nodeSizes]
+    [getNodeRect]
   );
 
-  // Ana akış SVG bağlantıları (Sol -> Sağ Cubic Bezier)
+  // Ana akış SVG bağlantıları (Açık Çoklu Kenarlar veya Adım Bağlantıları -> Dinamik Oklar)
   const computedEdges = useMemo<ComputedEdge[]>(() => {
     const byId = new Map<string, FlowchartStepItem>();
     steps.forEach((s) => byId.set(s.id, s));
     const list: ComputedEdge[] = [];
+
+    if (Array.isArray(edges)) {
+      const outgoingCounts = new Map<string, number>();
+      const incomingCounts = new Map<string, number>();
+      const validEdges = edges.filter(
+        (e) => e.sourceId && e.targetId && e.sourceId !== e.targetId && byId.has(e.sourceId) && byId.has(e.targetId)
+      );
+
+      validEdges.forEach((e) => {
+        outgoingCounts.set(e.sourceId, (outgoingCounts.get(e.sourceId) || 0) + 1);
+        incomingCounts.set(e.targetId, (incomingCounts.get(e.targetId) || 0) + 1);
+      });
+
+      const outgoingSeen = new Map<string, number>();
+      const incomingSeen = new Map<string, number>();
+
+      validEdges.forEach((edge) => {
+        const sourceStep = byId.get(edge.sourceId)!;
+        const targetStep = byId.get(edge.targetId)!;
+        const outIdx = outgoingSeen.get(edge.sourceId) || 0;
+        outgoingSeen.set(edge.sourceId, outIdx + 1);
+        const inIdx = incomingSeen.get(edge.targetId) || 0;
+        incomingSeen.set(edge.targetId, inIdx + 1);
+
+        const outTotal = outgoingCounts.get(edge.sourceId) || 1;
+        const inTotal = incomingCounts.get(edge.targetId) || 1;
+        const branch: FlowchartConnectionBranch = edge.branch || 'next';
+
+        if (edgeRouting === 'smart-2d') {
+          const sRect = getNodeRect(sourceStep);
+          const tRect = getNodeRect(targetStep);
+          const smart = buildSmart2DBezier(
+            sRect.pos,
+            sRect.size,
+            tRect.pos,
+            tRect.size,
+            outIdx,
+            outTotal,
+            inIdx,
+            inTotal
+          );
+          list.push({
+            id: edge.id,
+            sourceId: edge.sourceId,
+            targetId: edge.targetId,
+            branch,
+            label: edge.label,
+            dashed: edge.dashed,
+            autoDetected: edge.autoDetected,
+            deletable: edge.deletable,
+            ...smart
+          });
+        } else {
+          const outPt = getOutputPortCoords(sourceStep, branch);
+          const inPt = getInputPortCoords(targetStep);
+          const syOffset = outTotal > 1 ? (outIdx - (outTotal - 1) / 2) * 14 : 0;
+          const tyOffset = inTotal > 1 ? (inIdx - (inTotal - 1) / 2) * 14 : 0;
+          const bez = buildHorizontalBezier(outPt.x, outPt.y + syOffset, inPt.x, inPt.y + tyOffset);
+          list.push({
+            id: edge.id,
+            sourceId: edge.sourceId,
+            targetId: edge.targetId,
+            branch,
+            label: edge.label,
+            dashed: edge.dashed,
+            autoDetected: edge.autoDetected,
+            deletable: edge.deletable,
+            sx: outPt.x,
+            sy: outPt.y + syOffset,
+            tx: inPt.x,
+            ty: inPt.y + tyOffset,
+            path: bez.path,
+            midX: bez.midX,
+            midY: bez.midY
+          });
+        }
+      });
+
+      return list;
+    }
 
     steps.forEach((step) => {
       if (step.type === 'KARAR_ONAY') {
@@ -611,7 +944,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     });
 
     return list;
-  }, [steps, getOutputPortCoords, getInputPortCoords]);
+  }, [steps, edges, edgeRouting, getNodeRect, getOutputPortCoords, getInputPortCoords]);
 
   // Alt Araç (Tool Sub-Node) SVG bağlantıları (AI İşlemi Alt Port -> Tool Üst Port)
   const computedToolEdges = useMemo<ComputedToolEdge[]>(() => {
@@ -775,8 +1108,8 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           dragOriginRef.current.moved = true;
         }
         const nextPos = {
-          x: snapToGrid(dragOriginRef.current.startX + dx),
-          y: snapToGrid(dragOriginRef.current.startY + dy)
+          x: snapToGrid(dragOriginRef.current.startX + dx, activeGridSize),
+          y: snapToGrid(dragOriginRef.current.startY + dy, activeGridSize)
         };
         setLocalNodePositions((prev) => ({ ...prev, [draggingNodeId]: nextPos }));
 
@@ -785,8 +1118,8 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           const movedTools: Record<string, FlowchartPoint> = {};
           Object.entries(toolSnap).forEach(([tId, orig]) => {
             movedTools[tId] = {
-              x: snapToGrid(orig.x + dx),
-              y: snapToGrid(orig.y + dy)
+              x: snapToGrid(orig.x + dx, activeGridSize),
+              y: snapToGrid(orig.y + dy, activeGridSize)
             };
           });
           setLocalToolPositions((prev) => ({ ...prev, ...movedTools }));
@@ -801,8 +1134,8 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           dragOriginRef.current.moved = true;
         }
         const nextPos = {
-          x: snapToGrid(dragOriginRef.current.startX + dx),
-          y: snapToGrid(dragOriginRef.current.startY + dy)
+          x: snapToGrid(dragOriginRef.current.startX + dx, activeGridSize),
+          y: snapToGrid(dragOriginRef.current.startY + dy, activeGridSize)
         };
         setLocalToolPositions((prev) => ({ ...prev, [draggingToolKey.toolId]: nextPos }));
         return;
@@ -814,15 +1147,23 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
 
         for (const s of steps) {
           if (s.id === connectionDraft.sourceId) continue;
-          if (s.type === 'BASLA' || s.type === 'START') continue;
+          const isBasla = s.type === 'BASLA' || s.type === 'START';
+          const acceptsInput =
+            s.allowInputPort !== undefined ? s.allowInputPort : allowInputOnStartNodes || !isBasla;
+          if (!acceptsInput) continue;
           const pos = effectiveNodePositions[s.id];
-          const size = nodeSizes[s.id] || { w: DEFAULT_NODE_WIDTH, h: DEFAULT_NODE_HEIGHT };
+          const size = nodeSizes[s.id] || {
+            w: s.shape === 'page' ? DEFAULT_PAGE_NODE_WIDTH : DEFAULT_NODE_WIDTH,
+            h: DEFAULT_NODE_HEIGHT
+          };
           if (!pos) continue;
+          const maxHitX =
+            edgeRouting === 'smart-2d' ? pos.x + size.w + 24 : pos.x + size.w * 0.72;
           const withinBox =
             pt.x >= pos.x - 28 &&
-            pt.x <= pos.x + size.w * 0.65 &&
-            pt.y >= pos.y - 16 &&
-            pt.y <= pos.y + size.h + 16;
+            pt.x <= maxHitX &&
+            pt.y >= pos.y - 20 &&
+            pt.y <= pos.y + size.h + 20;
           if (withinBox) {
             hoveredId = s.id;
             break;
@@ -914,6 +1255,9 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     effectiveNodePositions,
     effectiveToolPositions,
     nodeSizes,
+    activeGridSize,
+    allowInputOnStartNodes,
+    edgeRouting,
     clientToCanvasPoint,
     onNodePositionChange,
     onToolPositionChange,
@@ -922,7 +1266,11 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
 
   // Otomatik Hizala (Auto-Layout) aksiyonu
   const handleTriggerAutoLayout = useCallback(() => {
-    const computed = computeAutoLayoutPositions(steps);
+    const computed = computeAutoLayoutPositions(steps, {
+      ...autoLayoutOptions,
+      edges: edges ?? autoLayoutOptions?.edges,
+      snapGridSize: activeGridSize
+    });
     setLocalNodePositions(computed.nodePositions);
     setLocalToolPositions(computed.toolPositions);
     if (onAutoLayout) {
@@ -935,7 +1283,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     if (stageRef.current) {
       stageRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
     }
-  }, [steps, onAutoLayout, onNodePositionChange]);
+  }, [steps, edges, autoLayoutOptions, activeGridSize, onAutoLayout, onNodePositionChange]);
 
   // Zoom Kontrolleri
   const handleZoomIn = useCallback(() => {
@@ -1027,12 +1375,12 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
 
       if (onAddStep) {
         onAddStep(droppedType, undefined, {
-          x: snapToGrid(dropPt.x - DEFAULT_NODE_WIDTH * 0.5),
-          y: snapToGrid(dropPt.y - 48)
+          x: snapToGrid(dropPt.x - DEFAULT_NODE_WIDTH * 0.5, activeGridSize),
+          y: snapToGrid(dropPt.y - 48, activeGridSize)
         });
       }
     },
-    [steps, effectiveNodePositions, clientToCanvasPoint, onAddStep, onAddToolToStep]
+    [steps, effectiveNodePositions, activeGridSize, clientToCanvasPoint, onAddStep, onAddToolToStep]
   );
 
   // Varsayılan Palet Öğeleri (paletteItems verilmemişse)
@@ -1117,6 +1465,9 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             <span>{title || t('gorev_akis_diyagrami', 'Görev Akış Diyagramı (Flowchart)')}</span>
             <span className="base-flowchart-count-pill">{steps.length}</span>
           </div>
+          {toolbarContent && (
+            <div className="base-flowchart-toolbar-actions">{toolbarContent}</div>
+          )}
         </div>
       )}
 
@@ -1302,6 +1653,17 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     <path d="M 0 1.5 L 9 5 L 0 8.5 z" className="fc-marker-fill-no" />
                   </marker>
                   <marker
+                    id="fc-arrow-auto"
+                    viewBox="0 0 10 10"
+                    refX="8.5"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1.5 L 9 5 L 0 8.5 z" className="fc-marker-fill-auto" />
+                  </marker>
+                  <marker
                     id="fc-arrow-tool"
                     viewBox="0 0 10 10"
                     refX="5"
@@ -1328,7 +1690,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                   );
                 })}
 
-                {/* Ana Akış (Sol -> Sağ) Dinamik Bezier Eğrileri */}
+                {/* Ana Akış (Sol -> Sağ / Serbest 2B) Dinamik Bezier Okları */}
                 {computedEdges.map((edge) => {
                   const isEdgeSelected =
                     selectedStepId === edge.sourceId || selectedStepId === edge.targetId;
@@ -1339,14 +1701,16 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                         ? 'url(#fc-arrow-no)'
                         : isEdgeSelected
                           ? 'url(#fc-arrow-active)'
-                          : 'url(#fc-arrow-default)';
+                          : edge.autoDetected
+                            ? 'url(#fc-arrow-auto)'
+                            : 'url(#fc-arrow-default)';
 
                   return (
                     <g key={edge.id} className="base-flowchart-svg-edge-group">
                       <path d={edge.path} className="base-flowchart-svg-edge-hit" />
                       <path
                         d={edge.path}
-                        className={`base-flowchart-svg-edge branch-${edge.branch} ${isEdgeSelected ? 'is-active' : ''}`}
+                        className={`base-flowchart-svg-edge branch-${edge.branch} ${isEdgeSelected ? 'is-active' : ''} ${edge.dashed ? 'is-dashed' : ''} ${edge.autoDetected ? 'is-auto' : ''}`}
                         markerEnd={markerId}
                       />
                     </g>
@@ -1363,7 +1727,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                 )}
               </svg>
 
-              {/* 2. KATMAN: BAĞLANTI ORTA NOKTASI EYLEMLERİ (+ Araya Ekle / × Bağlantıyı Kaldır) */}
+              {/* 2. KATMAN: BAĞLANTI ORTA NOKTASI EYLEMLERİ & ETİKETLER */}
               {computedEdges.map((edge) => (
                 <div
                   key={`ctrl_${edge.id}`}
@@ -1381,6 +1745,12 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     </span>
                   )}
 
+                  {edge.label && (
+                    <span className="base-flowchart-edge-label" title={edge.label}>
+                      {edge.label}
+                    </span>
+                  )}
+
                   {onAddStep && (
                     <button
                       type="button"
@@ -1392,8 +1762,8 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                           'AI_ISLEM',
                           undefined,
                           {
-                            x: snapToGrid(edge.midX - DEFAULT_NODE_WIDTH * 0.5),
-                            y: snapToGrid(edge.midY - 48)
+                            x: snapToGrid(edge.midX - DEFAULT_NODE_WIDTH * 0.5, activeGridSize),
+                            y: snapToGrid(edge.midY - 48, activeGridSize)
                           },
                           {
                             sourceId: edge.sourceId,
@@ -1407,14 +1777,27 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     </button>
                   )}
 
-                  {onDisconnectSteps && (
+                  {edge.deletable !== false && (onDisconnectEdge || onDisconnectSteps) && (
                     <button
                       type="button"
                       className="base-flowchart-edge-btn is-disconnect"
                       title={t('baglantiyi_kaldir', 'Bağlantıyı Kaldır')}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDisconnectSteps(edge.sourceId, edge.branch);
+                        if (onDisconnectEdge) {
+                          onDisconnectEdge({
+                            id: edge.id,
+                            sourceId: edge.sourceId,
+                            targetId: edge.targetId,
+                            branch: edge.branch,
+                            label: edge.label,
+                            dashed: edge.dashed,
+                            autoDetected: edge.autoDetected,
+                            deletable: edge.deletable
+                          });
+                        } else if (onDisconnectSteps) {
+                          onDisconnectSteps(edge.sourceId, edge.branch);
+                        }
                       }}
                     >
                       <X size={11} />
@@ -1436,34 +1819,41 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                 const isScriptIslem = step.type === 'SCRIPT_ISLEM';
                 const isBelgeOlustur = step.type === 'BELGE_OLUSTUR';
                 const isKararOnay = step.type === 'KARAR_ONAY';
+                const isPageNode = step.shape === 'page' || step.type === 'SAYFA';
 
-                const resolvedShape: FlowchartNodeShape = isBasla
-                  ? 'terminal'
-                  : isFormAc
-                    ? 'input'
-                    : isHafiza
-                      ? 'storage'
-                      : isScriptIslem
-                        ? 'script'
-                        : isBelgeOlustur
-                          ? 'document'
-                          : isKararOnay
-                            ? 'decision'
-                            : 'process';
+                const resolvedShape: FlowchartNodeShape =
+                  step.shape ||
+                  (isBasla
+                    ? 'terminal'
+                    : isFormAc
+                      ? 'input'
+                      : isHafiza
+                        ? 'storage'
+                        : isScriptIslem
+                          ? 'script'
+                          : isBelgeOlustur
+                            ? 'document'
+                            : isKararOnay
+                              ? 'decision'
+                              : isPageNode
+                                ? 'page'
+                                : 'process');
 
-                const resolvedVariant = isBasla
-                  ? 'start'
-                  : isFormAc
-                    ? 'input'
-                    : isHafiza
-                      ? 'storage'
-                      : isScriptIslem
-                        ? 'script'
-                        : isBelgeOlustur
-                          ? 'document'
-                          : isKararOnay
-                            ? 'decision'
-                            : 'process';
+                const resolvedVariant = isPageNode
+                  ? 'page'
+                  : isBasla
+                    ? 'start'
+                    : isFormAc
+                      ? 'input'
+                      : isHafiza
+                        ? 'storage'
+                        : isScriptIslem
+                          ? 'script'
+                          : isBelgeOlustur
+                            ? 'document'
+                            : isKararOnay
+                              ? 'decision'
+                              : 'process';
 
                 const resolvedIcon = isBasla ? (
                   <Play size={13} />
@@ -1501,6 +1891,13 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     (step.attachedTools && step.attachedTools.length > 0)
                 );
 
+                const showLeftHandle =
+                  step.allowInputPort !== undefined
+                    ? step.allowInputPort
+                    : allowInputOnStartNodes || !isBasla;
+                const showRightHandle =
+                  step.allowOutputPort !== undefined ? step.allowOutputPort : true;
+
                 return (
                   <div
                     key={step.id || index}
@@ -1508,48 +1905,68 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                       nodeDomRefs.current[step.id] = el;
                     }}
                     onPointerDown={(e) => handleNodePointerDown(step, e)}
-                    className={`base-flowchart-canvas-node ${isBasla ? 'is-terminal-node' : ''} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-z-top' : ''}`}
+                    className={`base-flowchart-canvas-node ${resolvedShape === 'terminal' ? 'is-terminal-node' : ''} ${resolvedShape === 'page' ? 'is-page-node' : ''} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-z-top' : ''}`}
                     style={{
                       left: `${pos.x}px`,
                       top: `${pos.y}px`
                     }}
                   >
-                    <BaseFlowchartNode
-                      id={step.id}
-                      stepNumber={isBasla ? undefined : index}
-                      shape={resolvedShape}
-                      variant={resolvedVariant}
-                      icon={resolvedIcon}
-                      showLeftPort={!isBasla}
-                      showRightPort={true}
-                      showBottomToolPort={canAttachTools}
-                      hasAttachedTools={Boolean(step.attachedTools && step.attachedTools.length > 0)}
-                      isConnectTarget={isConnectTarget}
-                      shapeBadgeText={step.shapeBadgeText || defaultTypeTitle}
-                      title={step.title || defaultTypeTitle}
-                      summaryText={step.summaryText}
-                      warningText={step.warningText}
-                      inactive={step.inactive}
-                      promptPreview={step.prompt}
-                      toolCode={step.toolCode}
-                      uiActionLabel={step.uiActionLabel}
-                      routePath={step.routePath}
-                      selected={isSelected}
-                      onSelect={onSelectStep}
-                      onDoubleClick={
-                        onDoubleClickStep ? () => onDoubleClickStep(step.id) : undefined
-                      }
-                      onDelete={!isBasla && onDeleteStep ? (e) => onDeleteStep(step.id, e) : undefined}
-                      onStartConnection={handleStartConnection}
-                      onAddTool={
-                        canAttachTools && onAddToolToStep
-                          ? (pId) => onAddToolToStep(pId, 'RAG_ARAC')
-                          : undefined
-                      }
-                    />
+                    {renderNode ? (
+                      renderNode({
+                        step,
+                        index,
+                        selected: isSelected,
+                        isDragging,
+                        isConnectTarget,
+                        onSelect: onSelectStep,
+                        onDoubleClick: onDoubleClickStep,
+                        onDelete: onDeleteStep,
+                        onStartConnection: handleStartConnection
+                      })
+                    ) : (
+                      <BaseFlowchartNode
+                        id={step.id}
+                        stepNumber={isBasla ? undefined : index}
+                        shape={resolvedShape}
+                        variant={resolvedVariant}
+                        icon={resolvedIcon}
+                        showLeftPort={showLeftHandle}
+                        showRightPort={showRightHandle}
+                        showBottomToolPort={canAttachTools}
+                        hasAttachedTools={Boolean(step.attachedTools && step.attachedTools.length > 0)}
+                        isConnectTarget={isConnectTarget}
+                        shapeBadgeText={step.shapeBadgeText || defaultTypeTitle}
+                        title={step.title || defaultTypeTitle}
+                        summaryText={step.summaryText}
+                        warningText={step.warningText}
+                        inactive={step.inactive}
+                        promptPreview={step.prompt}
+                        toolCode={step.toolCode}
+                        uiActionLabel={step.uiActionLabel}
+                        routePath={step.routePath}
+                        selected={isSelected}
+                        onSelect={onSelectStep}
+                        onDoubleClick={
+                          onDoubleClickStep ? () => onDoubleClickStep(step.id) : undefined
+                        }
+                        onDelete={!isBasla && onDeleteStep ? (e) => onDeleteStep(step.id, e) : undefined}
+                        onStartConnection={handleStartConnection}
+                        onAddTool={
+                          canAttachTools && onAddToolToStep
+                            ? (pId) => onAddToolToStep(pId, 'RAG_ARAC')
+                            : undefined
+                        }
+                      />
+                    )}
                   </div>
                 );
               })}
+
+              {steps.length === 0 && emptyMessage && (
+                <div className="base-flowchart-empty-overlay">
+                  <span>{emptyMessage}</span>
+                </div>
+              )}
 
               {/* 4. KATMAN: SERBEST KONUMLU ALT ARAÇ DÜĞÜMLERİ (TOOL SUB-NODES) */}
               {steps.map((step) =>
@@ -1583,6 +2000,14 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             </div>
           )}
         </div>
+
+        {!children && steps.length === 0 && emptyMessage && (
+          <div className="base-flowchart-empty-overlay">{emptyMessage}</div>
+        )}
+
+        {floatingHint && (
+          <div className="base-flowchart-floating-hint">{floatingHint}</div>
+        )}
 
         {/* SAĞ ALT KÖŞE: YAKINLAŞTIRMA & OTOMATİK HİZALAMA (AUTO-LAYOUT) KONTROLLERİ */}
         {showZoomControls && (

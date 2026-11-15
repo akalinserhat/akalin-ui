@@ -717,8 +717,14 @@
 
 .base-list-page .table-container>.spreadsheet-table-wrapper,
 .base-list-page .table-container>.birimler-table-wrapper,
-.base-list-page .table-container>div.spreadsheet-table-wrapper {
+.base-list-page .table-container>div.spreadsheet-table-wrapper,
+.base-list-page .table-container>.base-flowchart-list-wrapper {
   padding: 0 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
 }
 
 /* BaseSystemPage Centralized Architecture */
