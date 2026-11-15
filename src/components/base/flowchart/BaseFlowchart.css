@@ -129,7 +129,7 @@
   color: var(--accent-primary);
 }
 
-/* ─── Floating Zoom Kontrolleri (Varsayılan Sağ Alt Dikey / Sağ Üst Yatay) ──── */
+/* ─── Dikey Floating Zoom Kontrolleri (Sağ Alt veya Sağ Üst Konum) ───────── */
 .base-flowchart-floating-zoom {
   position: absolute;
   right: 18px;
@@ -149,18 +149,9 @@
 }
 
 .base-flowchart-floating-zoom.is-top-right {
-  top: 14px;
-  right: 16px;
+  top: 16px;
+  right: 18px;
   bottom: auto;
-  flex-direction: row;
-  padding: 4px 6px;
-  gap: 3px;
-}
-
-.base-flowchart-floating-zoom.is-top-right .base-flowchart-zoom-divider {
-  width: 1px;
-  height: 18px;
-  margin: 0 2px;
 }
 
 .base-flowchart-floating-zoom .base-flowchart-zoom-btn {
