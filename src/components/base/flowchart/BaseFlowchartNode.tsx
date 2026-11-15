@@ -318,95 +318,101 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         className={`base-flowchart-node base-flowchart-node--${shape} variant-${variant} ${selected ? 'is-selected' : ''} ${inactive ? 'is-inactive' : ''} ${className}`}
         title={t('cift_tikla_duzenle', 'Düzenlemek için çift tıklayın')}
       >
-        <div className="base-flowchart-node-header">
-          <div className="base-flowchart-node-header-left">
-            {stepNumber !== undefined && (
-              <span className="base-flowchart-step-badge">#{stepNumber}</span>
-            )}
-            {shapeBadgeText && (
-              <span className="base-flowchart-shape-badge">
-                {icon}
-                <span>{shapeBadgeText}</span>
-              </span>
-            )}
-            {warningText && (
-              <span className="base-flowchart-warning-pill" title={warningText}>
-                <AlertTriangle size={11} />
-              </span>
-            )}
-          </div>
+        {shape === 'page' && renderBody ? (
+          <div className="base-flowchart-page-sheet-root">{renderBody()}</div>
+        ) : (
+          <>
+            <div className="base-flowchart-node-header">
+              <div className="base-flowchart-node-header-left">
+                {stepNumber !== undefined && (
+                  <span className="base-flowchart-step-badge">#{stepNumber}</span>
+                )}
+                {shapeBadgeText && (
+                  <span className="base-flowchart-shape-badge">
+                    {icon}
+                    <span>{shapeBadgeText}</span>
+                  </span>
+                )}
+                {warningText && (
+                  <span className="base-flowchart-warning-pill" title={warningText}>
+                    <AlertTriangle size={11} />
+                  </span>
+                )}
+              </div>
 
-          {(headerActions || onDoubleClick || onDelete) && (
-            <div
-              className="base-flowchart-node-actions"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {headerActions}
-              {onDoubleClick && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDoubleClick(id, e);
-                  }}
-                  className="base-flowchart-action-btn is-settings"
-                  title={t('dugum_ayarlari', 'Düğüm Ayarları')}
+              {(headerActions || onDoubleClick || onDelete) && (
+                <div
+                  className="base-flowchart-node-actions"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Sliders size={12} />
-                </button>
+                  {headerActions}
+                  {onDoubleClick && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDoubleClick(id, e);
+                      }}
+                      className="base-flowchart-action-btn is-settings"
+                      title={t('dugum_ayarlari', 'Düğüm Ayarları')}
+                    >
+                      <Sliders size={12} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className="base-flowchart-action-btn is-danger"
+                      title={t('adimi_sil', 'Adımı Sil')}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
               )}
-              {onDelete && (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className="base-flowchart-action-btn is-danger"
-                  title={t('adimi_sil', 'Adımı Sil')}
-                >
-                  <Trash2 size={12} />
-                </button>
-              )}
             </div>
-          )}
-        </div>
 
-        {/* 1. Sabit Düğüm Başlığı */}
-        <div className="base-flowchart-node-title">{title}</div>
+            {/* 1. Sabit Düğüm Başlığı */}
+            <div className="base-flowchart-node-title">{title}</div>
 
-        {/* 2. Özelleştirilmiş Görsel Gövde (ör. Web Sayfası Görsel Önizlemesi) veya Standart Özet */}
-        {renderBody && (
-          <div className="base-flowchart-node-custom-body">{renderBody()}</div>
+            {/* 2. Özelleştirilmiş Görsel Gövde (ör. Web Sayfası Görsel Önizlemesi) veya Standart Özet */}
+            {renderBody && (
+              <div className="base-flowchart-node-custom-body">{renderBody()}</div>
+            )}
+
+            {!hideSummary &&
+              !renderBody &&
+              (resolvedSummary ? (
+                <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
+                  {resolvedSummary}
+                </div>
+              ) : (
+                <div className="base-flowchart-node-summary-empty">
+                  {t('yapilandirmak_icin_cift_tiklayin', 'Yapılandırmak için çift tıklayın')}
+                </div>
+              ))}
+
+            {!hideSummary && renderBody && resolvedSummary && (
+              <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
+                {resolvedSummary}
+              </div>
+            )}
+
+            {/* 3. Teknik MCP / Rota Kodu Etiketi (Varsa) */}
+            {toolCode && (
+              <div className="base-flowchart-node-tags">
+                <span className="base-flowchart-tag">
+                  <Wrench size={10} />
+                  <span>{toolCode}</span>
+                </span>
+              </div>
+            )}
+
+            {children}
+          </>
         )}
-
-        {!hideSummary &&
-          !renderBody &&
-          (resolvedSummary ? (
-            <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
-              {resolvedSummary}
-            </div>
-          ) : (
-            <div className="base-flowchart-node-summary-empty">
-              {t('yapilandirmak_icin_cift_tiklayin', 'Yapılandırmak için çift tıklayın')}
-            </div>
-          ))}
-
-        {!hideSummary && renderBody && resolvedSummary && (
-          <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
-            {resolvedSummary}
-          </div>
-        )}
-
-        {/* 3. Teknik MCP / Rota Kodu Etiketi (Varsa) */}
-        {toolCode && (
-          <div className="base-flowchart-node-tags">
-            <span className="base-flowchart-tag">
-              <Wrench size={10} />
-              <span>{toolCode}</span>
-            </span>
-          </div>
-        )}
-
-        {children}
       </div>
 
       {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır Portları) */}

@@ -40,9 +40,10 @@ import './BaseFlowchart.css';
 
 const GRID_SIZE = 16;
 const DEFAULT_NODE_WIDTH = 276;
-const DEFAULT_PAGE_NODE_WIDTH = 264;
+const DEFAULT_PAGE_NODE_WIDTH = 280;
 const DEFAULT_TERMINAL_WIDTH = 248;
 const DEFAULT_NODE_HEIGHT = 114;
+const DEFAULT_PAGE_NODE_HEIGHT = 276;
 const DEFAULT_TOOL_WIDTH = 224;
 const DEFAULT_TOOL_HEIGHT = 96;
 const H_SPACING = 352;
@@ -191,6 +192,8 @@ export interface BaseFlowchartProps {
   minZoom?: number;
   maxZoom?: number;
   showZoomControls?: boolean;
+  /** Yakınlaştırma kontrol çubuğunun konumu (varsayılan: 'bottom-right') */
+  zoomControlsPosition?: 'bottom-right' | 'top-right';
   children?: React.ReactNode;
 }
 
@@ -540,6 +543,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   minZoom = 0.45,
   maxZoom = 1.8,
   showZoomControls = true,
+  zoomControlsPosition = 'bottom-right',
   children
 }) => {
   const { t } = useTranslation();
@@ -715,7 +719,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
         const el = nodeDomRefs.current[step.id];
         if (!el) return;
         const w = el.offsetWidth || (step.shape === 'page' ? DEFAULT_PAGE_NODE_WIDTH : DEFAULT_NODE_WIDTH);
-        const h = el.offsetHeight || DEFAULT_NODE_HEIGHT;
+        const h = el.offsetHeight || (step.shape === 'page' ? DEFAULT_PAGE_NODE_HEIGHT : DEFAULT_NODE_HEIGHT);
         updates[step.id] = { w, h };
       });
 
@@ -769,7 +773,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           : DEFAULT_NODE_WIDTH;
       const size = nodeSizes[step.id] || {
         w: defaultW,
-        h: isBasla ? 68 : DEFAULT_NODE_HEIGHT
+        h: isBasla ? 68 : step.shape === 'page' ? DEFAULT_PAGE_NODE_HEIGHT : DEFAULT_NODE_HEIGHT
       };
       return { pos, size };
     },
@@ -2009,10 +2013,10 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           <div className="base-flowchart-floating-hint">{floatingHint}</div>
         )}
 
-        {/* SAĞ ALT KÖŞE: YAKINLAŞTIRMA & OTOMATİK HİZALAMA (AUTO-LAYOUT) KONTROLLERİ */}
+        {/* YAKINLAŞTIRMA & OTOMATİK HİZALAMA KONTROLLERİ */}
         {showZoomControls && (
           <div
-            className="base-flowchart-floating-zoom"
+            className={`base-flowchart-floating-zoom ${zoomControlsPosition === 'top-right' ? 'is-top-right' : 'is-bottom-right'}`}
             aria-label={t('yakinlastirma_kontrolleri', 'Yakınlaştırma Kontrolleri')}
           >
             {!children && steps.length > 0 && (
