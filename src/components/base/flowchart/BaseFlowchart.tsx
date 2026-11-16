@@ -74,6 +74,9 @@ export interface FlowchartStepItem {
   nextStepId?: string;
   yesStepId?: string;
   noStepId?: string;
+  loopStepId?: string;
+  doneStepId?: string;
+  loopTargetTitle?: string;
   position?: FlowchartPoint;
   supportsTools?: boolean;
   attachedTools?: FlowchartAttachedToolItem[];
@@ -406,6 +409,14 @@ export function computeAutoLayoutPositions(
         }
         if (item.noStepId && byId.has(item.noStepId)) {
           list.push({ targetId: item.noStepId, rowDelta: 0.75 });
+        }
+      } else if (item.type === 'LOOP' || item.type === 'DONGU' || item.shape === 'loop') {
+        if (item.loopStepId && byId.has(item.loopStepId)) {
+          list.push({ targetId: item.loopStepId, rowDelta: -0.75 });
+        }
+        const doneId = item.doneStepId || item.nextStepId;
+        if (doneId && byId.has(doneId)) {
+          list.push({ targetId: doneId, rowDelta: 0.75 });
         }
       } else if (item.nextStepId && byId.has(item.nextStepId)) {
         list.push({ targetId: item.nextStepId, rowDelta: 0 });
@@ -788,6 +799,10 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
         const ratio = branch === 'yes' ? 0.38 : 0.72;
         return { x: pos.x + size.w, y: pos.y + size.h * ratio };
       }
+      if (step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop') {
+        const ratio = branch === 'loop' ? 0.38 : 0.72;
+        return { x: pos.x + size.w, y: pos.y + size.h * ratio };
+      }
       return { x: pos.x + size.w, y: pos.y + size.h * 0.5 };
     },
     [getNodeRect]
@@ -918,6 +933,48 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             sourceId: step.id,
             targetId: target.id,
             branch: 'no',
+            sx: outPt.x,
+            sy: outPt.y,
+            tx: inPt.x,
+            ty: inPt.y,
+            path: bez.path,
+            midX: bez.midX,
+            midY: bez.midY
+          });
+        }
+      } else if (step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop') {
+        if (step.loopStepId && byId.has(step.loopStepId)) {
+          const target = byId.get(step.loopStepId)!;
+          const outPt = getOutputPortCoords(step, 'loop');
+          const inPt = getInputPortCoords(target);
+          const bez = buildHorizontalBezier(outPt.x, outPt.y, inPt.x, inPt.y);
+          list.push({
+            id: `${step.id}__loop__${target.id}`,
+            sourceId: step.id,
+            targetId: target.id,
+            branch: 'loop',
+            label: t('dongu_ici', 'Döngü İçi'),
+            sx: outPt.x,
+            sy: outPt.y,
+            tx: inPt.x,
+            ty: inPt.y,
+            path: bez.path,
+            midX: bez.midX,
+            midY: bez.midY
+          });
+        }
+        const doneTargetId = step.doneStepId || step.nextStepId;
+        if (doneTargetId && byId.has(doneTargetId)) {
+          const target = byId.get(doneTargetId)!;
+          const outPt = getOutputPortCoords(step, 'done');
+          const inPt = getInputPortCoords(target);
+          const bez = buildHorizontalBezier(outPt.x, outPt.y, inPt.x, inPt.y);
+          list.push({
+            id: `${step.id}__done__${target.id}`,
+            sourceId: step.id,
+            targetId: target.id,
+            branch: 'done',
+            label: t('tamamlandi', 'Tamamlandı'),
             sx: outPt.x,
             sy: outPt.y,
             tx: inPt.x,
@@ -1955,6 +2012,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                         warningText={step.warningText}
                         inactive={step.inactive}
                         promptPreview={step.prompt}
+                        loopTargetTitle={step.loopTargetTitle}
                         toolCode={step.toolCode}
                         uiActionLabel={step.uiActionLabel}
                         routePath={step.routePath}

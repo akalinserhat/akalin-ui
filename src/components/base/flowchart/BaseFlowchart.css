@@ -2007,6 +2007,107 @@
   color: #f87171;
 }
 
+/* Döngü (Loop) Çift Sağ Çıkış Portu (Döngü & Bitti) */
+.base-flowchart-decision-port-group.is-loop {
+  top: 38%;
+}
+
+.base-flowchart-decision-port-group.is-done {
+  top: 72%;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-loop {
+  border-color: #8b5cf6;
+  cursor: crosshair;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-loop:hover {
+  transform: scale(1.28);
+  background: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.25);
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-done {
+  border-color: #10b981;
+  cursor: crosshair;
+}
+
+.base-flowchart-decision-port-group .base-flowchart-handle.handle-done:hover {
+  transform: scale(1.28);
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+}
+
+.base-flowchart-decision-port-label.is-loop {
+  color: #7c3aed;
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+[data-theme='dark'] .base-flowchart-decision-port-label.is-loop {
+  color: #a78bfa;
+}
+
+.base-flowchart-decision-port-label.is-done {
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+[data-theme='dark'] .base-flowchart-decision-port-label.is-done {
+  color: #34d399;
+}
+
+/* Döngü Kartı İçi Bağlı Düğüm Önizleme Şeridi */
+.base-flowchart-loop-inner-preview {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px dashed rgba(139, 92, 246, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.base-flowchart-loop-inner-preview .loop-inner-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #7c3aed;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+[data-theme='dark'] .base-flowchart-loop-inner-preview .loop-inner-label {
+  color: #a78bfa;
+}
+
+.base-flowchart-loop-inner-preview .loop-inner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 600;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.base-flowchart-loop-inner-preview .loop-inner-badge.is-empty {
+  color: var(--text-tertiary);
+  font-style: italic;
+  border-style: dashed;
+}
+
 /* AI İşlemi Alt Tool Portu & Ekleme Rozeti */
 .base-flowchart-bottom-tool-slot {
   position: absolute;

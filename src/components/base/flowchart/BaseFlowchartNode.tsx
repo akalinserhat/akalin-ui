@@ -58,7 +58,7 @@ export type FlowchartNodeVariant =
   | 'loop'
   | 'tool';
 
-export type FlowchartConnectionBranch = 'next' | 'yes' | 'no';
+export type FlowchartConnectionBranch = 'next' | 'yes' | 'no' | 'loop' | 'done';
 
 export interface FlowchartPoint {
   x: number;
@@ -122,6 +122,8 @@ export interface BaseFlowchartNodeProps {
   renderBody?: () => React.ReactNode;
   /** Özelleştirilmiş gövdelerde varsayılan "Yapılandırmak için çift tıklayın" özet kutusunu gizler */
   hideSummary?: boolean;
+  /** Döngü (Loop) düğümünde döngü içi bağlı düğümün başlığı */
+  loopTargetTitle?: string;
   /** Sol giriş portu ipucu metni */
   leftPortTitle?: string;
   /** Sağ çıkış portu ipucu metni */
@@ -163,6 +165,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   headerActions,
   renderBody,
   hideSummary = false,
+  loopTargetTitle,
   leftPortTitle,
   rightPortTitle,
   children,
@@ -174,6 +177,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   const isStartTerminal = shape === 'terminal' && variant === 'start';
   const isEndTerminal = shape === 'terminal' && variant === 'end';
   const isDecision = shape === 'decision';
+  const isLoop = shape === 'loop' || variant === 'loop';
 
   const effectiveLeftPort =
     showLeftPort !== undefined ? showLeftPort : !isStartTerminal;
@@ -413,13 +417,25 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
               </div>
             )}
 
+            {/* 4. Döngü (Loop) İçin Döngü İçi Bağlı Düğüm Önizlemesi */}
+            {isLoop && (
+              <div className="base-flowchart-loop-inner-preview" title={t('dongu_ici_bagli_dugum', 'Bu döngü her iterasyonda bu düğümü çalıştırır')}>
+                <span className="loop-inner-label">
+                  <Repeat size={10} /> {t('dongu_ici_kisa', 'Döngü İçi:')}
+                </span>
+                <span className={`loop-inner-badge ${loopTargetTitle ? 'has-target' : 'is-empty'}`}>
+                  {loopTargetTitle || t('dugum_baglanmadi', 'Düğüm Bağlanmadı')}
+                </span>
+              </div>
+            )}
+
             {children}
           </>
         )}
       </div>
 
-      {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır Portları) */}
-      {effectiveRightPort && !isDecision && (
+      {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır, Döngü Düğümünde Döngü & Bitti Portları) */}
+      {effectiveRightPort && !isDecision && !isLoop && (
         <button
           type="button"
           className="base-flowchart-handle handle-right"
@@ -429,6 +445,40 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             if (onStartConnection) onStartConnection(id, 'next', e);
           }}
         />
+      )}
+
+      {effectiveRightPort && isLoop && (
+        <>
+          <div className="base-flowchart-decision-port-group is-loop">
+            <span className="base-flowchart-decision-port-label is-loop">
+              <Repeat size={10} /> {t('dongu_kisa', 'Döngü')}
+            </span>
+            <button
+              type="button"
+              className="base-flowchart-handle handle-right handle-loop"
+              title={t('dongu_ici_cikis_baglantisi', 'DÖNGÜ İÇİ (Her İterasyon) Çıkışı — Bağlantı kurmak için sürükleyin')}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (onStartConnection) onStartConnection(id, 'loop', e);
+              }}
+            />
+          </div>
+
+          <div className="base-flowchart-decision-port-group is-done">
+            <span className="base-flowchart-decision-port-label is-done">
+              <CheckCircle2 size={10} /> {t('bitti_kisa', 'Bitti')}
+            </span>
+            <button
+              type="button"
+              className="base-flowchart-handle handle-right handle-done"
+              title={t('dongu_bitti_cikis_baglantisi', 'TAMAMLANDI (Döngü Bitti) Çıkışı — Bağlantı kurmak için sürükleyin')}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (onStartConnection) onStartConnection(id, 'done', e);
+              }}
+            />
+          </div>
+        </>
       )}
 
       {effectiveRightPort && isDecision && (
