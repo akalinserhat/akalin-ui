@@ -26,7 +26,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  LayoutGrid
+  LayoutGrid,
+  Repeat
 } from 'lucide-react';
 import {
   BaseFlowchartNode,
@@ -1823,6 +1824,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                 const isScriptIslem = step.type === 'SCRIPT_ISLEM';
                 const isBelgeOlustur = step.type === 'BELGE_OLUSTUR';
                 const isKararOnay = step.type === 'KARAR_ONAY';
+                const isLoop = step.type === 'LOOP' || step.type === 'DONGU';
                 const isPageNode = step.shape === 'page' || step.type === 'SAYFA';
 
                 const resolvedShape: FlowchartNodeShape =
@@ -1839,9 +1841,11 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                             ? 'document'
                             : isKararOnay
                               ? 'decision'
-                              : isPageNode
-                                ? 'page'
-                                : 'process');
+                              : isLoop
+                                ? 'loop'
+                                : isPageNode
+                                  ? 'page'
+                                  : 'process');
 
                 const resolvedVariant = isPageNode
                   ? 'page'
@@ -1857,7 +1861,9 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                             ? 'document'
                             : isKararOnay
                               ? 'decision'
-                              : 'process';
+                              : isLoop
+                                ? 'loop'
+                                : 'process';
 
                 const resolvedIcon = isBasla ? (
                   <Play size={13} />
@@ -1871,6 +1877,8 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                   <FileText size={13} />
                 ) : isKararOnay ? (
                   <GitBranch size={13} />
+                ) : isLoop ? (
+                  <Repeat size={13} />
                 ) : (
                   <Cpu size={13} />
                 );
@@ -1887,7 +1895,9 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                           ? t('belge_olustur', 'Belge Oluştur')
                           : isKararOnay
                             ? t('karar_onay', 'Karar / Onay')
-                            : t('ai_islem', 'AI İşlemi');
+                            : isLoop
+                              ? t('loop_dongu', 'Döngü (Loop)')
+                              : t('ai_islem', 'AI İşlemi');
 
                 const canAttachTools = Boolean(
                   step.supportsTools ||

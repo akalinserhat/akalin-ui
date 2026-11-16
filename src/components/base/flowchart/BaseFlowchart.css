@@ -531,6 +531,35 @@
   color: #fbbf24;
 }
 
+/* 5D. Döngü (Loop / Tekrarlayıcı Düğüm Kutusu) */
+.base-flowchart-sidebar-item.palette-shape-loop {
+  border-color: rgba(99, 102, 241, 0.45);
+  border-left: 3.5px solid #6366f1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(79, 70, 229, 0.04) 100%);
+  padding: 8px 10px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-loop:hover {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22) 0%, rgba(79, 70, 229, 0.08) 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
+}
+
+.base-flowchart-sidebar-item.palette-shape-loop .base-flowchart-sidebar-item-icon {
+  background: #6366f1;
+  color: #ffffff;
+  border-radius: 6px;
+}
+
+.base-flowchart-sidebar-item.palette-shape-loop .base-flowchart-sidebar-item-title {
+  color: #4f46e5;
+  font-weight: 800;
+}
+
+[data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-loop .base-flowchart-sidebar-item-title {
+  color: #818cf8;
+}
+
 /* 6. Sol Palet: Alt Grup Başlığı & Bağlanabilir AI Araç (Tool) Öğesi */
 .base-flowchart-sidebar-section-divider {
   display: flex;
@@ -1004,6 +1033,21 @@
 
 [data-theme='dark'] .base-flowchart-node--script .base-flowchart-shape-badge {
   color: #c084fc;
+}
+
+/* ─── Şekil 4D: Loop / Döngü İşlem Düğümü ────────────────────────────────────── */
+.base-flowchart-node--loop {
+  border-left: 4px solid #6366f1;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.06) 0%, transparent 35%), var(--bg-secondary);
+}
+
+.base-flowchart-node--loop .base-flowchart-shape-badge {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4f46e5;
+}
+
+[data-theme='dark'] .base-flowchart-node--loop .base-flowchart-shape-badge {
+  color: #818cf8;
 }
 
 /* ─── Şekil 5: Decision / Karar & Onay Düğümü (Baklava / Diamond + Dallanma) ─ */

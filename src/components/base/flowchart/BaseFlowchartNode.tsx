@@ -27,7 +27,8 @@ import {
   Wrench,
   Search,
   AlertTriangle,
-  Globe
+  Globe,
+  Repeat
 } from 'lucide-react';
 import './BaseFlowchart.css';
 
@@ -40,6 +41,7 @@ export type FlowchartNodeShape =
   | 'storage'
   | 'script'
   | 'page'
+  | 'loop'
   | 'custom'
   | 'tool';
 
@@ -53,6 +55,7 @@ export type FlowchartNodeVariant =
   | 'storage'
   | 'script'
   | 'page'
+  | 'loop'
   | 'tool';
 
 export type FlowchartConnectionBranch = 'next' | 'yes' | 'no';
@@ -606,6 +609,20 @@ export const FlowchartScriptNode: React.FC<FlowchartScriptNodeProps> = (props) =
       variant="script"
       icon={props.icon || <Code2 size={11} />}
       shapeBadgeText={props.shapeBadgeText || t('script_islem', 'Script İşlemi')}
+    />
+  );
+};
+
+export interface FlowchartLoopNodeProps extends Omit<BaseFlowchartNodeProps, 'shape' | 'variant'> {}
+export const FlowchartLoopNode: React.FC<FlowchartLoopNodeProps> = (props) => {
+  const { t } = useTranslation();
+  return (
+    <BaseFlowchartNode
+      {...props}
+      shape="loop"
+      variant="loop"
+      icon={props.icon || <Repeat size={11} />}
+      shapeBadgeText={props.shapeBadgeText || t('loop_dongu', 'Döngü (Loop)')}
     />
   );
 };
