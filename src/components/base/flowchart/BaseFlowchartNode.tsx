@@ -417,24 +417,12 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
               </div>
             )}
 
-            {/* 4. Döngü (Loop) İçin Döngü İçi Bağlı Düğüm Önizlemesi */}
-            {isLoop && (
-              <div className="base-flowchart-loop-inner-preview" title={t('dongu_ici_bagli_dugum', 'Bu döngü her iterasyonda bu düğümü çalıştırır')}>
-                <span className="loop-inner-label">
-                  <Repeat size={10} /> {t('dongu_ici_kisa', 'Döngü İçi:')}
-                </span>
-                <span className={`loop-inner-badge ${loopTargetTitle ? 'has-target' : 'is-empty'}`}>
-                  {loopTargetTitle || t('dugum_baglanmadi', 'Düğüm Bağlanmadı')}
-                </span>
-              </div>
-            )}
-
             {children}
           </>
         )}
       </div>
 
-      {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır, Döngü Düğümünde Döngü & Bitti Portları) */}
+      {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır, Döngü Düğümünde loop & done Portları) */}
       {effectiveRightPort && !isDecision && !isLoop && (
         <button
           type="button"
@@ -451,12 +439,12 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         <>
           <div className="base-flowchart-decision-port-group is-loop">
             <span className="base-flowchart-decision-port-label is-loop">
-              <Repeat size={10} /> {t('dongu_kisa', 'Döngü')}
+              <Repeat size={10} /> loop
             </span>
             <button
               type="button"
               className="base-flowchart-handle handle-right handle-loop"
-              title={t('dongu_ici_cikis_baglantisi', 'DÖNGÜ İÇİ (Her İterasyon) Çıkışı — Bağlantı kurmak için sürükleyin')}
+              title="loop (Her İterasyon Çıkışı)"
               onPointerDown={(e) => {
                 e.stopPropagation();
                 if (onStartConnection) onStartConnection(id, 'loop', e);
@@ -466,12 +454,12 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
 
           <div className="base-flowchart-decision-port-group is-done">
             <span className="base-flowchart-decision-port-label is-done">
-              <CheckCircle2 size={10} /> {t('bitti_kisa', 'Bitti')}
+              <CheckCircle2 size={10} /> done
             </span>
             <button
               type="button"
               className="base-flowchart-handle handle-right handle-done"
-              title={t('dongu_bitti_cikis_baglantisi', 'TAMAMLANDI (Döngü Bitti) Çıkışı — Bağlantı kurmak için sürükleyin')}
+              title="done (Döngü Tamamlandı Çıkışı)"
               onPointerDown={(e) => {
                 e.stopPropagation();
                 if (onStartConnection) onStartConnection(id, 'done', e);

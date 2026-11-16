@@ -251,15 +251,15 @@ function buildHorizontalBezier(
     };
   }
 
-  // Hedef düğüm kaynağın soluna taşınmışsa geri dönüş S-eğrisi
-  const loopOffset = 110;
-  const verticalArc = sy <= ty ? Math.max(sy, ty) + 110 : Math.min(sy, ty) - 110;
-  const c1x = sx + loopOffset;
-  const c1y = verticalArc;
-  const c2x = tx - loopOffset;
-  const c2y = verticalArc;
-  const midX = 0.125 * sx + 0.375 * c1x + 0.375 * c2x + 0.125 * tx;
-  const midY = 0.125 * sy + 0.375 * c1y + 0.375 * c2y + 0.125 * ty;
+  // Hedef düğüm kaynağın soluna taşınmışsa geri dönüş eğrisi (n8n Loop-Back Curve)
+  const isTargetBelow = sy > ty + 60;
+  const archY = isTargetBelow ? Math.max(sy, ty) + 80 : Math.min(sy, ty) - 80;
+  const c1x = sx + 80;
+  const c1y = archY;
+  const c2x = tx - 80;
+  const c2y = archY;
+  const midX = 0.5 * (sx + tx);
+  const midY = archY;
   return {
     path: `M ${sx} ${sy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tx} ${ty}`,
     midX,
@@ -953,7 +953,6 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             sourceId: step.id,
             targetId: target.id,
             branch: 'loop',
-            label: t('dongu_ici', 'Döngü İçi'),
             sx: outPt.x,
             sy: outPt.y,
             tx: inPt.x,
@@ -974,7 +973,6 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             sourceId: step.id,
             targetId: target.id,
             branch: 'done',
-            label: t('tamamlandi', 'Tamamlandı'),
             sx: outPt.x,
             sy: outPt.y,
             tx: inPt.x,
@@ -1715,6 +1713,28 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     <path d="M 0 1.5 L 9 5 L 0 8.5 z" className="fc-marker-fill-no" />
                   </marker>
                   <marker
+                    id="fc-arrow-loop"
+                    viewBox="0 0 10 10"
+                    refX="8.5"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1.5 L 9 5 L 0 8.5 z" className="fc-marker-fill-loop" />
+                  </marker>
+                  <marker
+                    id="fc-arrow-done"
+                    viewBox="0 0 10 10"
+                    refX="8.5"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1.5 L 9 5 L 0 8.5 z" className="fc-marker-fill-done" />
+                  </marker>
+                  <marker
                     id="fc-arrow-auto"
                     viewBox="0 0 10 10"
                     refX="8.5"
@@ -1761,11 +1781,15 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                       ? 'url(#fc-arrow-yes)'
                       : edge.branch === 'no'
                         ? 'url(#fc-arrow-no)'
-                        : isEdgeSelected
-                          ? 'url(#fc-arrow-active)'
-                          : edge.autoDetected
-                            ? 'url(#fc-arrow-auto)'
-                            : 'url(#fc-arrow-default)';
+                        : edge.branch === 'loop'
+                          ? 'url(#fc-arrow-loop)'
+                          : edge.branch === 'done'
+                            ? 'url(#fc-arrow-done)'
+                            : isEdgeSelected
+                              ? 'url(#fc-arrow-active)'
+                              : edge.autoDetected
+                                ? 'url(#fc-arrow-auto)'
+                                : 'url(#fc-arrow-default)';
 
                   return (
                     <g key={edge.id} className="base-flowchart-svg-edge-group">
@@ -1803,7 +1827,13 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     <span className={`base-flowchart-edge-branch-tag branch-${edge.branch}`}>
                       {edge.branch === 'yes'
                         ? t('evet_kisa', 'Evet')
-                        : t('hayir_kisa', 'Hayır')}
+                        : edge.branch === 'no'
+                          ? t('hayir_kisa', 'Hayır')
+                          : edge.branch === 'loop'
+                            ? 'loop'
+                            : edge.branch === 'done'
+                              ? 'done'
+                              : edge.branch}
                     </span>
                   )}
 
