@@ -163,6 +163,7 @@ export interface BaseDocumentPageProps {
     pageTitle?: string;
     onBack?: () => void;
     onAiApply?: (aiData: any, bulutDosyaId?: number | null) => void;
+    onUpdateItems?: (updatePayload: any) => void;
     enableAiAssistant?: boolean;
     // Gelişmiş UX ve Aksiyon Butonları
     currencyProps?: DocumentCurrencyProps;
@@ -263,6 +264,7 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
     pageTitle,
     onBack,
     onAiApply,
+    onUpdateItems,
     enableAiAssistant = true,
     currencyProps,
     isSaving,
@@ -596,6 +598,32 @@ const BaseDocumentPage: React.FC<BaseDocumentPageProps> = ({
             window.removeEventListener('akalin:mcp-apply', handleMcpApplyEvent);
         };
     }, [documentType, onAiApply, t]);
+
+    // Canlı MCP / AI Ajan açık form satır güncelleme dinleyicisi (UPDATE_ACTIVE_FORM_ITEMS)
+    useEffect(() => {
+        const handleUpdateItemsEvent = (event: Event) => {
+            const customEvt = event as CustomEvent;
+            const detail = customEvt.detail;
+            if (!detail) return;
+
+            // Eğer belirli bir belge türü hedeflendiyse kontrol et
+            if (detail.belgeTuru && documentType &&
+                detail.belgeTuru.toLowerCase() !== documentType.toLowerCase()) {
+                return;
+            }
+
+            if (onUpdateItems) {
+                onUpdateItems(detail);
+            }
+        };
+
+        window.addEventListener('akalin:mcp-update-active-form-items', handleUpdateItemsEvent);
+        window.addEventListener('ai-update-active-form-items', handleUpdateItemsEvent);
+        return () => {
+            window.removeEventListener('akalin:mcp-update-active-form-items', handleUpdateItemsEvent);
+            window.removeEventListener('ai-update-active-form-items', handleUpdateItemsEvent);
+        };
+    }, [documentType, onUpdateItems]);
 
     const [internalGuid] = useState(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)));
     const effectiveGuid = documentGuid || internalGuid;
