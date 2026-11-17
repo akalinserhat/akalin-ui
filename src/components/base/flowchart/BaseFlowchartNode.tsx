@@ -322,7 +322,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        className={`base-flowchart-node base-flowchart-node--${shape} variant-${variant} ${selected ? 'is-selected' : ''} ${inactive ? 'is-inactive' : ''} ${className}`}
+        className={`base-flowchart-node base-flowchart-node--${shape} variant-${variant} ${selected ? 'is-selected' : ''} ${inactive ? 'is-inactive' : ''} ${warningText ? 'has-warning' : ''} ${className}`}
         title={t('cift_tikla_duzenle', 'Düzenlemek için çift tıklayın')}
       >
         {shape === 'page' && renderBody ? (
@@ -342,7 +342,8 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
                 )}
                 {warningText && (
                   <span className="base-flowchart-warning-pill" title={warningText}>
-                    <AlertTriangle size={11} />
+                    <AlertTriangle size={11} className="shrink-0 text-amber-500 animate-pulse" />
+                    <span>{warningText}</span>
                   </span>
                 )}
               </div>
