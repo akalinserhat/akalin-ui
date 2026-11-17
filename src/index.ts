@@ -74,6 +74,7 @@ export {
   type FlowchartPaletteItem,
   type FlowchartAttachedToolItem,
   type FlowchartPoint,
+  type FlowchartLoopMeta,
   type FlowchartConnectionBranch,
   type BaseFlowchartProps,
   type FlowchartNodeShape,

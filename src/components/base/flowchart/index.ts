@@ -20,6 +20,7 @@ export {
   type FlowchartNodeShape,
   type FlowchartNodeVariant,
   type FlowchartPoint,
+  type FlowchartLoopMeta,
   type FlowchartConnectionBranch,
   type FlowchartAttachedToolItem,
   type BaseFlowchartNodeProps,

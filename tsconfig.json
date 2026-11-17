@@ -33,6 +33,9 @@
       ],
       "@akalin/ai-assistants/*": [
         "../akalin-ai-assistants/src/*"
+      ],
+      "@akalin/notification_module": [
+        "../akalin-ai-assistants/src/types/notification_module.d.ts"
       ]
     }
   },

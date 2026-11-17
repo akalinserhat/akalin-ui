@@ -531,33 +531,33 @@
   color: #fbbf24;
 }
 
-/* 5D. Döngü (Loop / Tekrarlayıcı Düğüm Kutusu) */
+/* 5D. Döngü (Loop Over Items / Tekrarlayıcı Düğüm Kutusu) */
 .base-flowchart-sidebar-item.palette-shape-loop {
-  border-color: rgba(99, 102, 241, 0.45);
-  border-left: 3.5px solid #6366f1;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(79, 70, 229, 0.04) 100%);
+  border-color: rgba(139, 92, 246, 0.48);
+  border-left: 3.5px solid #8b5cf6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.14) 0%, rgba(109, 40, 217, 0.04) 100%);
   padding: 8px 10px;
 }
 
 .base-flowchart-sidebar-item.palette-shape-loop:hover {
-  border-color: #6366f1;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22) 0%, rgba(79, 70, 229, 0.08) 100%);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
+  border-color: #8b5cf6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.24) 0%, rgba(109, 40, 217, 0.09) 100%);
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.22);
 }
 
 .base-flowchart-sidebar-item.palette-shape-loop .base-flowchart-sidebar-item-icon {
-  background: #6366f1;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
   color: #ffffff;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .base-flowchart-sidebar-item.palette-shape-loop .base-flowchart-sidebar-item-title {
-  color: #4f46e5;
+  color: #7c3aed;
   font-weight: 800;
 }
 
 [data-theme='dark'] .base-flowchart-sidebar-item.palette-shape-loop .base-flowchart-sidebar-item-title {
-  color: #818cf8;
+  color: #c4b5fd;
 }
 
 /* 6. Sol Palet: Alt Grup Başlığı & Bağlanabilir AI Araç (Tool) Öğesi */
@@ -1035,19 +1035,283 @@
   color: #c084fc;
 }
 
-/* ─── Şekil 4D: Loop / Döngü İşlem Düğümü ────────────────────────────────────── */
+/* ─── Şekil 4D: Loop / Döngü İşlem Düğümü (n8n Loop Over Items Düzeni) ─────── */
+.base-flowchart-loop-crest {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border: 2px solid var(--bg-secondary);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.36);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: -16px;
+  z-index: 4;
+}
+
+.base-flowchart-loop-crest-icon {
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .base-flowchart-node--loop {
-  border-left: 4px solid #6366f1;
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.06) 0%, transparent 35%), var(--bg-secondary);
+  padding-top: 20px;
+  border: 1.5px solid rgba(139, 92, 246, 0.48);
+  border-left: 4px solid #8b5cf6;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, transparent 45%), var(--bg-secondary);
+}
+
+[data-theme='dark'] .base-flowchart-node--loop {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.12) 0%, transparent 48%), var(--surface-card, #14141a);
+}
+
+.base-flowchart-node--loop:hover {
+  border-color: #8b5cf6;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.16);
+}
+
+.base-flowchart-node--loop.is-selected {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22), 0 10px 28px rgba(139, 92, 246, 0.2);
 }
 
 .base-flowchart-node--loop .base-flowchart-shape-badge {
-  background: rgba(99, 102, 241, 0.14);
-  color: #4f46e5;
+  background: rgba(139, 92, 246, 0.14);
+  color: #7c3aed;
 }
 
 [data-theme='dark'] .base-flowchart-node--loop .base-flowchart-shape-badge {
-  color: #818cf8;
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+
+/* Döngü İçi Adım Rozeti (Loop Body Member Badge) */
+.base-flowchart-node.is-in-loop-body {
+  box-shadow: 0 3px 12px rgba(139, 92, 246, 0.08);
+}
+
+.base-flowchart-loop-member-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  background: rgba(139, 92, 246, 0.13);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #7c3aed;
+  line-height: 1.2;
+}
+
+[data-theme='dark'] .base-flowchart-loop-member-pill {
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(167, 139, 250, 0.42);
+  color: #c4b5fd;
+}
+
+/* n8n Döngü Gövde Özeti (Veri Kaynağı + İterasyon Değişkeni + Hız/Limit Rozetleri) */
+.base-flowchart-loop-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-ground, var(--bg-primary));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.base-flowchart-loop-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.base-flowchart-loop-source-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.base-flowchart-loop-source-icon {
+  color: #8b5cf6;
+  flex-shrink: 0;
+}
+
+.base-flowchart-loop-source-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.base-flowchart-loop-var-code {
+  display: inline-flex;
+  align-items: center;
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .base-flowchart-loop-var-code {
+  background: rgba(139, 92, 246, 0.22);
+  color: #ddd6fe;
+}
+
+.base-flowchart-loop-specs-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.base-flowchart-loop-spec-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.base-flowchart-loop-spec-chip.is-async {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #d97706;
+}
+
+[data-theme='dark'] .base-flowchart-loop-spec-chip.is-async {
+  color: #fbbf24;
+}
+
+.base-flowchart-loop-spec-chip.is-sync {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.28);
+  color: #4f46e5;
+}
+
+[data-theme='dark'] .base-flowchart-loop-spec-chip.is-sync {
+  color: #a5b4fc;
+}
+
+/* n8n Çift Çıkış Port Rayı (Üst: Tamamlandı / done, Alt: Her Öğe / loop) */
+.base-flowchart-loop-ports-rail {
+  margin: 2px -14px -12px -14px;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.base-flowchart-loop-port-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 6px 14px;
+  min-height: 31px;
+  transition: background-color 0.15s ease;
+}
+
+.base-flowchart-loop-port-row + .base-flowchart-loop-port-row {
+  border-top: 1px dashed var(--glass-border);
+}
+
+.base-flowchart-loop-port-row.is-done {
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.base-flowchart-loop-port-row.is-done:hover {
+  background: rgba(16, 185, 129, 0.09);
+}
+
+.base-flowchart-loop-port-row.is-loop {
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: 0 0 10px 8px;
+}
+
+.base-flowchart-loop-port-row.is-loop:hover {
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.base-flowchart-loop-port-row.is-loop.is-unconnected {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.base-flowchart-loop-port-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.base-flowchart-loop-port-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.base-flowchart-loop-port-badge.is-done {
+  color: #059669;
+}
+
+[data-theme='dark'] .base-flowchart-loop-port-badge.is-done {
+  color: #34d399;
+}
+
+.base-flowchart-loop-port-badge.is-loop {
+  color: #7c3aed;
+}
+
+[data-theme='dark'] .base-flowchart-loop-port-badge.is-loop {
+  color: #c4b5fd;
+}
+
+.base-flowchart-loop-port-key {
+  font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  opacity: 0.72;
+  padding: 0.5px 4px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.base-flowchart-loop-port-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 132px;
+  text-align: right;
+}
+
+.base-flowchart-loop-port-row.is-connected .base-flowchart-loop-port-sub {
+  color: var(--text-primary);
 }
 
 /* ─── Şekil 5: Decision / Karar & Onay Düğümü (Baklava / Diamond + Dallanma) ─ */
@@ -1705,14 +1969,88 @@
   stroke-opacity: 0.88;
 }
 
+/* n8n Döngü İterasyon Kapsam Kutusu (Loop Iteration Scope Backdrop) */
+.base-flowchart-loop-scope-box {
+  position: absolute;
+  border-radius: 18px;
+  border: 1.5px dashed rgba(139, 92, 246, 0.32);
+  background: radial-gradient(
+      circle at top left,
+      rgba(139, 92, 246, 0.06) 0%,
+      rgba(139, 92, 246, 0.02) 70%
+    );
+  pointer-events: none;
+  z-index: 1;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme='dark'] .base-flowchart-loop-scope-box {
+  border-color: rgba(167, 139, 250, 0.28);
+  background: radial-gradient(
+      circle at top left,
+      rgba(139, 92, 246, 0.1) 0%,
+      rgba(139, 92, 246, 0.03) 70%
+    );
+}
+
+.base-flowchart-loop-scope-box.is-active {
+  border-color: rgba(139, 92, 246, 0.58);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08);
+}
+
+.base-flowchart-loop-scope-label {
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(139, 92, 246, 0.42);
+  color: #7c3aed;
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.12);
+}
+
+[data-theme='dark'] .base-flowchart-loop-scope-label {
+  background: var(--surface-card, #14141a);
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+@keyframes fcLoopBackDash {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
 .base-flowchart-svg-edge.branch-loop {
   stroke: #8b5cf6;
-  stroke-opacity: 0.92;
+  stroke-opacity: 0.94;
+}
+
+.base-flowchart-svg-edge.branch-loop_back {
+  stroke: #8b5cf6;
+  stroke-width: 2.1px;
+  stroke-dasharray: 7 4;
+  stroke-opacity: 0.85;
+  animation: fcLoopBackDash 1.15s linear infinite;
+}
+
+.base-flowchart-svg-edge.branch-loop_back.is-active {
+  stroke: #7c3aed;
+  stroke-width: 2.6px;
+  stroke-opacity: 1;
 }
 
 .base-flowchart-svg-edge.branch-done {
   stroke: #10b981;
-  stroke-opacity: 0.92;
+  stroke-opacity: 0.94;
 }
 
 .base-flowchart-svg-tool-edge {
@@ -1795,24 +2133,28 @@
   color: #f87171;
 }
 
-.base-flowchart-edge-branch-tag.branch-loop {
+.base-flowchart-edge-branch-tag.branch-loop,
+.base-flowchart-edge-branch-tag.branch-loop_back {
   color: #7c3aed;
-  border-color: rgba(139, 92, 246, 0.45);
-  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.48);
+  background: var(--bg-secondary);
 }
 
-[data-theme='dark'] .base-flowchart-edge-branch-tag.branch-loop {
-  color: #a78bfa;
+[data-theme='dark'] .base-flowchart-edge-branch-tag.branch-loop,
+[data-theme='dark'] .base-flowchart-edge-branch-tag.branch-loop_back {
+  color: #c4b5fd;
+  background: var(--surface-card, #18181f);
 }
 
 .base-flowchart-edge-branch-tag.branch-done {
   color: #059669;
-  border-color: rgba(16, 185, 129, 0.45);
-  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.48);
+  background: var(--bg-secondary);
 }
 
 [data-theme='dark'] .base-flowchart-edge-branch-tag.branch-done {
   color: #34d399;
+  background: var(--surface-card, #18181f);
 }
 
 .base-flowchart-edge-btn {
@@ -1860,6 +2202,10 @@
 
 .base-flowchart-canvas-node.is-terminal-node {
   width: 248px;
+}
+
+.base-flowchart-canvas-node.is-loop-node {
+  width: 304px;
 }
 
 .base-flowchart-canvas-node.is-z-top {
@@ -1910,7 +2256,8 @@
   align-items: stretch;
 }
 
-.base-flowchart-node-wrapper.is-horizontal .base-flowchart-diamond-crest {
+.base-flowchart-node-wrapper.is-horizontal .base-flowchart-diamond-crest,
+.base-flowchart-node-wrapper.is-horizontal .base-flowchart-loop-crest {
   align-self: center;
 }
 
@@ -1946,6 +2293,11 @@
 
 .base-flowchart-handle.handle-left.handle-decision {
   border-color: #f59e0b;
+}
+
+.base-flowchart-handle.handle-left.handle-loop-in {
+  top: 34%;
+  border-color: #8b5cf6;
 }
 
 .base-flowchart-node-wrapper.is-connect-target .base-flowchart-handle.handle-left {
@@ -2053,55 +2405,64 @@
   color: #f87171;
 }
 
-/* Döngü (Loop) Çift Sağ Çıkış Portu (Döngü & Bitti) */
-.base-flowchart-decision-port-group.is-loop {
-  top: 38%;
-}
-
-.base-flowchart-decision-port-group.is-done {
-  top: 72%;
-}
-
-.base-flowchart-decision-port-group .base-flowchart-handle.handle-loop {
-  border-color: #8b5cf6;
+/* n8n Döngü (Loop) Çift Çıkış Rayı Sağ & Sol Geri Dönüş Portları */
+.base-flowchart-handle.handle-rail-right {
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
   cursor: crosshair;
+  z-index: 8;
 }
 
-.base-flowchart-decision-port-group .base-flowchart-handle.handle-loop:hover {
-  transform: scale(1.28);
-  background: #8b5cf6;
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.25);
-}
-
-.base-flowchart-decision-port-group .base-flowchart-handle.handle-done {
+.base-flowchart-handle.handle-rail-right.handle-done {
   border-color: #10b981;
-  cursor: crosshair;
 }
 
-.base-flowchart-decision-port-group .base-flowchart-handle.handle-done:hover {
-  transform: scale(1.28);
+.base-flowchart-handle.handle-rail-right.handle-done:hover {
+  transform: translateY(-50%) scale(1.28);
   background: #10b981;
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
 }
 
-.base-flowchart-decision-port-label.is-loop {
+.base-flowchart-handle.handle-rail-right.handle-loop {
+  border-color: #8b5cf6;
+}
+
+.base-flowchart-handle.handle-rail-right.handle-loop:hover {
+  transform: translateY(-50%) scale(1.28);
+  background: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.28);
+}
+
+.base-flowchart-handle.handle-rail-left.handle-loop-return {
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgba(139, 92, 246, 0.55);
+  background: var(--bg-secondary);
   color: #7c3aed;
-  border-color: rgba(139, 92, 246, 0.45);
-  background: rgba(139, 92, 246, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 8;
 }
 
-[data-theme='dark'] .base-flowchart-decision-port-label.is-loop {
-  color: #a78bfa;
+[data-theme='dark'] .base-flowchart-handle.handle-rail-left.handle-loop-return {
+  background: var(--surface-card, #14141a);
+  color: #c4b5fd;
 }
 
-.base-flowchart-decision-port-label.is-done {
-  color: #059669;
-  border-color: rgba(16, 185, 129, 0.45);
-  background: rgba(16, 185, 129, 0.08);
-}
-
-[data-theme='dark'] .base-flowchart-decision-port-label.is-done {
-  color: #34d399;
+.base-flowchart-handle.handle-rail-left.handle-loop-return.is-connected {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
 }
 
 /* AI İşlemi Alt Tool Portu & Ekleme Rozeti */

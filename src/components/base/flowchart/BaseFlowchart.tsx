@@ -35,20 +35,23 @@ import {
   type FlowchartNodeShape,
   type FlowchartAttachedToolItem,
   type FlowchartPoint,
-  type FlowchartConnectionBranch
+  type FlowchartConnectionBranch,
+  type FlowchartLoopMeta
 } from './BaseFlowchartNode';
 import './BaseFlowchart.css';
 
 const GRID_SIZE = 16;
 const DEFAULT_NODE_WIDTH = 276;
+const DEFAULT_LOOP_WIDTH = 304;
 const DEFAULT_PAGE_NODE_WIDTH = 280;
 const DEFAULT_TERMINAL_WIDTH = 248;
 const DEFAULT_NODE_HEIGHT = 114;
+const DEFAULT_LOOP_HEIGHT = 204;
 const DEFAULT_PAGE_NODE_HEIGHT = 276;
 const DEFAULT_TOOL_WIDTH = 224;
 const DEFAULT_TOOL_HEIGHT = 96;
-const H_SPACING = 352;
-const V_SPACING = 196;
+const H_SPACING = 368;
+const V_SPACING = 216;
 
 const snapToGrid = (value: number, gridSize: number = GRID_SIZE): number => {
   if (gridSize <= 1) {
@@ -77,6 +80,7 @@ export interface FlowchartStepItem {
   loopStepId?: string;
   doneStepId?: string;
   loopTargetTitle?: string;
+  loopMeta?: FlowchartLoopMeta;
   position?: FlowchartPoint;
   supportsTools?: boolean;
   attachedTools?: FlowchartAttachedToolItem[];
@@ -251,19 +255,68 @@ function buildHorizontalBezier(
     };
   }
 
-  // Hedef düğüm kaynağın soluna taşınmışsa geri dönüş eğrisi (n8n Loop-Back Curve)
-  const isTargetBelow = sy > ty + 60;
-  const archY = isTargetBelow ? Math.max(sy, ty) + 80 : Math.min(sy, ty) - 80;
-  const c1x = sx + 80;
-  const c1y = archY;
-  const c2x = tx - 80;
-  const c2y = archY;
-  const midX = 0.5 * (sx + tx);
-  const midY = archY;
+  // Hedef düğüm kaynağın soluna taşınmışsa n8n yuvarlatılmış alt geri dönüş yolu
+  return buildLoopBackPath(sx, sy, tx, ty, Math.max(sy, ty) + 56, tx, sx);
+}
+
+/**
+ * n8n Tarzı Yuvarlatılmış Köşeli Döngü Geri Dönüş (Loop-Back) SVG Yolu
+ * Döngü içi son düğümün sağ çıkışından çıkar, düğüm kartlarının altından dolaşarak
+ * Loop düğümünün sol alt geri dönüş (↺) portuna hiçbir kartı kesmeden temiz biçimde girer.
+ */
+function buildLoopBackPath(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  maxBottomY: number,
+  minLeftX: number,
+  maxRightX: number
+): { path: string; midX: number; midY: number } {
+  const trackY = Math.max(maxBottomY + 42, sy + 44, ty + 44);
+  const rightTurnX = Math.max(sx, maxRightX) + 32;
+  const leftTurnX = Math.min(tx, minLeftX) - 32;
+  const rDown = Math.max(4, Math.min(16, (trackY - sy) * 0.45, Math.max(8, (rightTurnX - sx) * 0.8)));
+  const rUp = Math.max(4, Math.min(16, (trackY - ty) * 0.45, Math.max(8, (tx - leftTurnX) * 0.8)));
+
+  if (sx >= tx - 16) {
+    const rHoriz = Math.max(4, Math.min(16, Math.abs(rightTurnX - leftTurnX) * 0.25));
+    const midX = 0.5 * (rightTurnX + leftTurnX);
+    const midY = trackY;
+    const path = [
+      `M ${sx} ${sy}`,
+      `L ${rightTurnX - rDown} ${sy}`,
+      `Q ${rightTurnX} ${sy}, ${rightTurnX} ${sy + rDown}`,
+      `L ${rightTurnX} ${trackY - rHoriz}`,
+      `Q ${rightTurnX} ${trackY}, ${rightTurnX - rHoriz} ${trackY}`,
+      `L ${leftTurnX + rHoriz} ${trackY}`,
+      `Q ${leftTurnX} ${trackY}, ${leftTurnX} ${trackY - rHoriz}`,
+      `L ${leftTurnX} ${ty + rUp}`,
+      `Q ${leftTurnX} ${ty}, ${leftTurnX + rUp} ${ty}`,
+      `L ${tx} ${ty}`
+    ].join(' ');
+    return { path, midX, midY };
+  }
+
+  const startOutX = sx + 26;
+  const endInX = tx - 26;
+  const rHoriz = Math.max(4, Math.min(16, Math.abs(endInX - startOutX) * 0.25));
+  const path = [
+    `M ${sx} ${sy}`,
+    `L ${startOutX - rDown} ${sy}`,
+    `Q ${startOutX} ${sy}, ${startOutX} ${sy + rDown}`,
+    `L ${startOutX} ${trackY - rHoriz}`,
+    `Q ${startOutX} ${trackY}, ${startOutX + rHoriz} ${trackY}`,
+    `L ${endInX - rHoriz} ${trackY}`,
+    `Q ${endInX} ${trackY}, ${endInX} ${trackY - rHoriz}`,
+    `L ${endInX} ${ty + rUp}`,
+    `Q ${endInX} ${ty}, ${endInX + rUp} ${ty}`,
+    `L ${tx} ${ty}`
+  ].join(' ');
   return {
-    path: `M ${sx} ${sy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tx} ${ty}`,
-    midX,
-    midY
+    path,
+    midX: 0.5 * (startOutX + endInX),
+    midY: trackY
   };
 }
 
@@ -411,12 +464,12 @@ export function computeAutoLayoutPositions(
           list.push({ targetId: item.noStepId, rowDelta: 0.75 });
         }
       } else if (item.type === 'LOOP' || item.type === 'DONGU' || item.shape === 'loop') {
-        if (item.loopStepId && byId.has(item.loopStepId)) {
-          list.push({ targetId: item.loopStepId, rowDelta: -0.75 });
-        }
         const doneId = item.doneStepId || item.nextStepId;
         if (doneId && byId.has(doneId)) {
-          list.push({ targetId: doneId, rowDelta: 0.75 });
+          list.push({ targetId: doneId, rowDelta: 0 });
+        }
+        if (item.loopStepId && byId.has(item.loopStepId)) {
+          list.push({ targetId: item.loopStepId, rowDelta: 1.15 });
         }
       } else if (item.nextStepId && byId.has(item.nextStepId)) {
         list.push({ targetId: item.nextStepId, rowDelta: 0 });
@@ -570,6 +623,20 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [nodeSizes, setNodeSizes] = useState<Record<string, { w: number; h: number }>>({});
+  const [nodePortOffsets, setNodePortOffsets] = useState<
+    Record<
+      string,
+      {
+        inputY?: number;
+        loopReturnY?: number;
+        nextY?: number;
+        yesY?: number;
+        noY?: number;
+        doneY?: number;
+        loopY?: number;
+      }
+    >
+  >({});
   const [localNodePositions, setLocalNodePositions] = useState<Record<string, FlowchartPoint>>({});
   const [localToolPositions, setLocalToolPositions] = useState<Record<string, FlowchartPoint>>({});
 
@@ -721,18 +788,65 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     activeGridSize
   ]);
 
-  // Düğüm DOM boyutlarını ölç ve ResizeObserver ile izle (port ve okların milimetrik hizalanması için)
+  // Düğüm DOM boyutlarını ve gerçek port merkezlerini ölç ve ResizeObserver ile izle
   useEffect(() => {
     const measureAll = () => {
       const updates: Record<string, { w: number; h: number }> = {};
+      const portUpdates: Record<
+        string,
+        {
+          inputY?: number;
+          loopReturnY?: number;
+          nextY?: number;
+          yesY?: number;
+          noY?: number;
+          doneY?: number;
+          loopY?: number;
+        }
+      > = {};
       let changed = false;
+      let portsChanged = false;
 
       steps.forEach((step) => {
         const el = nodeDomRefs.current[step.id];
         if (!el) return;
-        const w = el.offsetWidth || (step.shape === 'page' ? DEFAULT_PAGE_NODE_WIDTH : DEFAULT_NODE_WIDTH);
-        const h = el.offsetHeight || (step.shape === 'page' ? DEFAULT_PAGE_NODE_HEIGHT : DEFAULT_NODE_HEIGHT);
+        const isLoopStep =
+          step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop';
+        const w =
+          el.offsetWidth ||
+          (step.shape === 'page'
+            ? DEFAULT_PAGE_NODE_WIDTH
+            : isLoopStep
+              ? DEFAULT_LOOP_WIDTH
+              : DEFAULT_NODE_WIDTH);
+        const h =
+          el.offsetHeight ||
+          (step.shape === 'page'
+            ? DEFAULT_PAGE_NODE_HEIGHT
+            : isLoopStep
+              ? DEFAULT_LOOP_HEIGHT
+              : DEFAULT_NODE_HEIGHT);
         updates[step.id] = { w, h };
+
+        const nodeRect = el.getBoundingClientRect();
+        const scaleY = nodeRect.height > 0 && h > 0 ? nodeRect.height / h : zoomRef.current || 1;
+        const readCenterY = (selector: string): number | undefined => {
+          const portEl = el.querySelector<HTMLElement>(selector);
+          if (!portEl) return undefined;
+          const pRect = portEl.getBoundingClientRect();
+          if (pRect.height === 0 && nodeRect.height === 0) return undefined;
+          return (pRect.top + pRect.height * 0.5 - nodeRect.top) / (scaleY || 1);
+        };
+
+        portUpdates[step.id] = {
+          inputY: readCenterY('[data-port-role="input"]'),
+          loopReturnY: readCenterY('[data-port-role="loop-return"]'),
+          nextY: readCenterY('[data-port-branch="next"]'),
+          yesY: readCenterY('[data-port-branch="yes"]'),
+          noY: readCenterY('[data-port-branch="no"]'),
+          doneY: readCenterY('[data-port-branch="done"]'),
+          loopY: readCenterY('[data-port-branch="loop"]')
+        };
       });
 
       setNodeSizes((prev) => {
@@ -744,6 +858,37 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           }
         }
         return changed ? { ...prev, ...updates } : prev;
+      });
+
+      setNodePortOffsets((prev) => {
+        const keys: Array<keyof (typeof portUpdates)[string]> = [
+          'inputY',
+          'loopReturnY',
+          'nextY',
+          'yesY',
+          'noY',
+          'doneY',
+          'loopY'
+        ];
+        for (const [id, pInfo] of Object.entries(portUpdates)) {
+          const cur = prev[id];
+          if (!cur) {
+            portsChanged = true;
+            break;
+          }
+          const diff = keys.some((k) => {
+            const v1 = cur[k];
+            const v2 = pInfo[k];
+            if (v1 === undefined && v2 === undefined) return false;
+            if (v1 === undefined || v2 === undefined) return true;
+            return Math.abs(v1 - v2) > 1;
+          });
+          if (diff) {
+            portsChanged = true;
+            break;
+          }
+        }
+        return portsChanged ? { ...prev, ...portUpdates } : prev;
       });
     };
 
@@ -763,12 +908,12 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     let maxX = 1280;
     let maxY = 720;
     Object.values(effectiveNodePositions).forEach((p) => {
-      if (p.x + 480 > maxX) maxX = p.x + 480;
-      if (p.y + 420 > maxY) maxY = p.y + 420;
+      if (p.x + 520 > maxX) maxX = p.x + 520;
+      if (p.y + 480 > maxY) maxY = p.y + 480;
     });
     Object.values(effectiveToolPositions).forEach((p) => {
       if (p.x + 380 > maxX) maxX = p.x + 380;
-      if (p.y + 260 > maxY) maxY = p.y + 260;
+      if (p.y + 300 > maxY) maxY = p.y + 300;
     });
     return { width: maxX, height: maxY };
   }, [effectiveNodePositions, effectiveToolPositions]);
@@ -778,14 +923,25 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
     (step: FlowchartStepItem) => {
       const pos = effectiveNodePositions[step.id] || { x: 80, y: 144 };
       const isBasla = step.type === 'BASLA' || step.type === 'START';
+      const isLoopStep =
+        step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop';
       const defaultW = isBasla
         ? DEFAULT_TERMINAL_WIDTH
         : step.shape === 'page'
           ? DEFAULT_PAGE_NODE_WIDTH
-          : DEFAULT_NODE_WIDTH;
+          : isLoopStep
+            ? DEFAULT_LOOP_WIDTH
+            : DEFAULT_NODE_WIDTH;
+      const defaultH = isBasla
+        ? 68
+        : step.shape === 'page'
+          ? DEFAULT_PAGE_NODE_HEIGHT
+          : isLoopStep
+            ? DEFAULT_LOOP_HEIGHT
+            : DEFAULT_NODE_HEIGHT;
       const size = nodeSizes[step.id] || {
         w: defaultW,
-        h: isBasla ? 68 : step.shape === 'page' ? DEFAULT_PAGE_NODE_HEIGHT : DEFAULT_NODE_HEIGHT
+        h: defaultH
       };
       return { pos, size };
     },
@@ -795,26 +951,159 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
   const getOutputPortCoords = useCallback(
     (step: FlowchartStepItem, branch: FlowchartConnectionBranch): FlowchartPoint => {
       const { pos, size } = getNodeRect(step);
+      const measured = nodePortOffsets[step.id];
       if (step.type === 'KARAR_ONAY') {
-        const ratio = branch === 'yes' ? 0.38 : 0.72;
-        return { x: pos.x + size.w, y: pos.y + size.h * ratio };
+        const dy =
+          branch === 'yes'
+            ? (measured?.yesY ?? size.h * 0.38)
+            : (measured?.noY ?? size.h * 0.72);
+        return { x: pos.x + size.w, y: pos.y + dy };
       }
       if (step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop') {
-        const ratio = branch === 'loop' ? 0.38 : 0.72;
-        return { x: pos.x + size.w, y: pos.y + size.h * ratio };
+        // n8n v3 standardı: Üst port = Tamamlandı (done), Alt port = Her Öğe (loop)
+        const dy =
+          branch === 'done'
+            ? (measured?.doneY ?? size.h * 0.68)
+            : (measured?.loopY ?? size.h * 0.87);
+        return { x: pos.x + size.w, y: pos.y + dy };
       }
-      return { x: pos.x + size.w, y: pos.y + size.h * 0.5 };
+      const dy = measured?.nextY ?? size.h * 0.5;
+      return { x: pos.x + size.w, y: pos.y + dy };
     },
-    [getNodeRect]
+    [getNodeRect, nodePortOffsets]
   );
 
   const getInputPortCoords = useCallback(
     (step: FlowchartStepItem): FlowchartPoint => {
       const { pos, size } = getNodeRect(step);
-      return { x: pos.x, y: pos.y + size.h * 0.5 };
+      const measured = nodePortOffsets[step.id];
+      const isLoopStep =
+        step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop';
+      const dy = measured?.inputY ?? (isLoopStep ? size.h * 0.34 : size.h * 0.5);
+      return { x: pos.x, y: pos.y + dy };
     },
-    [getNodeRect]
+    [getNodeRect, nodePortOffsets]
   );
+
+  const getLoopReturnPortCoords = useCallback(
+    (step: FlowchartStepItem): FlowchartPoint => {
+      const { pos, size } = getNodeRect(step);
+      const measured = nodePortOffsets[step.id];
+      const dy = measured?.loopReturnY ?? measured?.loopY ?? size.h * 0.87;
+      return { x: pos.x, y: pos.y + dy };
+    },
+    [getNodeRect, nodePortOffsets]
+  );
+
+  // n8n Döngü (Loop) Gövde Zincirleri ve Otomatik/Açık Geri Dönüş (Loop-Back) Devreleri
+  const loopCircuitAnalysis = useMemo(() => {
+    const byId = new Map<string, FlowchartStepItem>();
+    steps.forEach((s) => byId.set(s.id, s));
+
+    const memberStepIds = new Set<string>();
+    const explicitBackSourceToLoop = new Map<string, string>();
+    const circuits: Array<{
+      loopStep: FlowchartStepItem;
+      chainSteps: FlowchartStepItem[];
+      tailStep: FlowchartStepItem;
+      explicitBackEdge: boolean;
+      maxBottomY: number;
+      minLeftX: number;
+      maxRightX: number;
+      scopeBox: { x: number; y: number; width: number; height: number };
+    }> = [];
+
+    steps.forEach((step) => {
+      const isLoopStep =
+        step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop';
+      if (!isLoopStep || !step.loopStepId || !byId.has(step.loopStepId)) {
+        return;
+      }
+
+      const chainSteps: FlowchartStepItem[] = [];
+      const seen = new Set<string>([step.id]);
+      const doneTargetId = step.doneStepId || step.nextStepId || '';
+      let currId: string | undefined = step.loopStepId;
+      let explicitBackEdge = false;
+
+      while (currId && byId.has(currId) && !seen.has(currId)) {
+        if (doneTargetId && currId === doneTargetId && chainSteps.length > 0) {
+          break;
+        }
+        seen.add(currId);
+        const currStep = byId.get(currId)!;
+        chainSteps.push(currStep);
+        memberStepIds.add(currStep.id);
+
+        if (currStep.nextStepId === step.id) {
+          explicitBackEdge = true;
+          explicitBackSourceToLoop.set(currStep.id, step.id);
+          break;
+        }
+        if (
+          !currStep.nextStepId ||
+          currStep.type === 'KARAR_ONAY' ||
+          currStep.type === 'LOOP' ||
+          currStep.type === 'DONGU' ||
+          currStep.shape === 'loop'
+        ) {
+          break;
+        }
+        currId = currStep.nextStepId;
+      }
+
+      if (chainSteps.length === 0) return;
+
+      const tailStep = chainSteps[chainSteps.length - 1];
+      const loopRect = getNodeRect(step);
+      let minX = loopRect.pos.x;
+      let minY = loopRect.pos.y;
+      let maxRightX = loopRect.pos.x + loopRect.size.w;
+      let maxBottomY = loopRect.pos.y + loopRect.size.h;
+
+      chainSteps.forEach((cStep) => {
+        const r = getNodeRect(cStep);
+        if (r.pos.x < minX) minX = r.pos.x;
+        if (r.pos.y < minY) minY = r.pos.y;
+        if (r.pos.x + r.size.w > maxRightX) maxRightX = r.pos.x + r.size.w;
+        if (r.pos.y + r.size.h > maxBottomY) maxBottomY = r.pos.y + r.size.h;
+
+        (cStep.attachedTools || []).forEach((tool) => {
+          const tp = effectiveToolPositions[tool.id];
+          if (tp) {
+            if (tp.x < minX) minX = tp.x;
+            if (tp.x + DEFAULT_TOOL_WIDTH > maxRightX) maxRightX = tp.x + DEFAULT_TOOL_WIDTH;
+            if (tp.y + DEFAULT_TOOL_HEIGHT > maxBottomY) maxBottomY = tp.y + DEFAULT_TOOL_HEIGHT;
+          }
+        });
+      });
+
+      const padX = 44;
+      const padTop = 26;
+      const padBottom = 64;
+      circuits.push({
+        loopStep: step,
+        chainSteps,
+        tailStep,
+        explicitBackEdge,
+        maxBottomY,
+        minLeftX: minX,
+        maxRightX,
+        scopeBox: {
+          x: Math.max(12, minX - padX),
+          y: Math.max(12, minY - padTop),
+          width: maxRightX - minX + padX * 2,
+          height: maxBottomY - minY + padTop + padBottom
+        }
+      });
+    });
+
+    return {
+      memberStepIds,
+      explicitBackSourceToLoop,
+      circuits
+    };
+  }, [steps, getNodeRect, effectiveToolPositions]);
 
   // Ana akış SVG bağlantıları (Açık Çoklu Kenarlar veya Adım Bağlantıları -> Dinamik Oklar)
   const computedEdges = useMemo<ComputedEdge[]>(() => {
@@ -943,25 +1232,6 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
           });
         }
       } else if (step.type === 'LOOP' || step.type === 'DONGU' || step.shape === 'loop') {
-        if (step.loopStepId && byId.has(step.loopStepId)) {
-          const target = byId.get(step.loopStepId)!;
-          const outPt = getOutputPortCoords(step, 'loop');
-          const inPt = getInputPortCoords(target);
-          const bez = buildHorizontalBezier(outPt.x, outPt.y, inPt.x, inPt.y);
-          list.push({
-            id: `${step.id}__loop__${target.id}`,
-            sourceId: step.id,
-            targetId: target.id,
-            branch: 'loop',
-            sx: outPt.x,
-            sy: outPt.y,
-            tx: inPt.x,
-            ty: inPt.y,
-            path: bez.path,
-            midX: bez.midX,
-            midY: bez.midY
-          });
-        }
         const doneTargetId = step.doneStepId || step.nextStepId;
         if (doneTargetId && byId.has(doneTargetId)) {
           const target = byId.get(doneTargetId)!;
@@ -982,7 +1252,30 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
             midY: bez.midY
           });
         }
+        if (step.loopStepId && byId.has(step.loopStepId)) {
+          const target = byId.get(step.loopStepId)!;
+          const outPt = getOutputPortCoords(step, 'loop');
+          const inPt = getInputPortCoords(target);
+          const bez = buildHorizontalBezier(outPt.x, outPt.y, inPt.x, inPt.y);
+          list.push({
+            id: `${step.id}__loop__${target.id}`,
+            sourceId: step.id,
+            targetId: target.id,
+            branch: 'loop',
+            sx: outPt.x,
+            sy: outPt.y,
+            tx: inPt.x,
+            ty: inPt.y,
+            path: bez.path,
+            midX: bez.midX,
+            midY: bez.midY
+          });
+        }
       } else if (step.nextStepId && byId.has(step.nextStepId)) {
+        // Döngü gövdesinin son adımından Loop'a dönen bağlantı aşağıda özel 'loop_back' olarak çizilir
+        if (loopCircuitAnalysis.explicitBackSourceToLoop.get(step.id) === step.nextStepId) {
+          return;
+        }
         const target = byId.get(step.nextStepId)!;
         const outPt = getOutputPortCoords(step, 'next');
         const inPt = getInputPortCoords(target);
@@ -1003,8 +1296,48 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
       }
     });
 
+    // n8n Döngü Geri Dönüş (Loop-Back) Kenarları
+    loopCircuitAnalysis.circuits.forEach((circuit) => {
+      const outPt = getOutputPortCoords(circuit.tailStep, 'next');
+      const returnInPt = getLoopReturnPortCoords(circuit.loopStep);
+      const backBez = buildLoopBackPath(
+        outPt.x,
+        outPt.y,
+        returnInPt.x,
+        returnInPt.y,
+        circuit.maxBottomY,
+        circuit.minLeftX,
+        circuit.maxRightX
+      );
+      list.push({
+        id: `${circuit.tailStep.id}__loop_back__${circuit.loopStep.id}`,
+        sourceId: circuit.tailStep.id,
+        targetId: circuit.loopStep.id,
+        branch: 'loop_back',
+        dashed: true,
+        autoDetected: !circuit.explicitBackEdge,
+        deletable: circuit.explicitBackEdge,
+        sx: outPt.x,
+        sy: outPt.y,
+        tx: returnInPt.x,
+        ty: returnInPt.y,
+        path: backBez.path,
+        midX: backBez.midX,
+        midY: backBez.midY
+      });
+    });
+
     return list;
-  }, [steps, edges, edgeRouting, getNodeRect, getOutputPortCoords, getInputPortCoords]);
+  }, [
+    steps,
+    edges,
+    edgeRouting,
+    getNodeRect,
+    getOutputPortCoords,
+    getInputPortCoords,
+    getLoopReturnPortCoords,
+    loopCircuitAnalysis
+  ]);
 
   // Alt Araç (Tool Sub-Node) SVG bağlantıları (AI İşlemi Alt Port -> Tool Üst Port)
   const computedToolEdges = useMemo<ComputedToolEdge[]>(() => {
@@ -1472,6 +1805,14 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
         icon: <Cpu size={13} />
       },
       {
+        id: 'default_loop',
+        type: 'LOOP',
+        title: t('loop_dongu', 'Döngü (Loop)'),
+        subTitle: t('dongu_senkron_asenkron_islem', 'Sync / Async Liste & Sayfa Döngüsü'),
+        shape: 'loop',
+        icon: <Repeat size={13} />
+      },
+      {
         id: 'default_hafiza',
         type: 'HAFIZA',
         title: t('hafiza', 'Hafıza'),
@@ -1661,6 +2002,33 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                 zoom
               }}
             >
+              {/* 0. KATMAN: n8n DÖNGÜ (LOOP) İTERASYON KAPSAM KUTULARI */}
+              {loopCircuitAnalysis.circuits.map((circuit) => {
+                const isLoopZoneActive =
+                  selectedStepId === circuit.loopStep.id ||
+                  circuit.chainSteps.some((cs) => cs.id === selectedStepId);
+                return (
+                  <div
+                    key={`loop_scope_${circuit.loopStep.id}`}
+                    className={`base-flowchart-loop-scope-box ${isLoopZoneActive ? 'is-active' : ''}`}
+                    style={{
+                      left: `${circuit.scopeBox.x}px`,
+                      top: `${circuit.scopeBox.y}px`,
+                      width: `${circuit.scopeBox.width}px`,
+                      height: `${circuit.scopeBox.height}px`
+                    }}
+                  >
+                    <span className="base-flowchart-loop-scope-label">
+                      <Repeat size={11} />
+                      <span>
+                        {t('dongu_iterasyon_blogu_etiketi', 'Döngü İterasyon Bloğu')} (
+                        {circuit.chainSteps.length} {t('adim_kisa', 'adım')})
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+
               {/* 1. KATMAN: DİNAMİK SVG BAĞLANTI EĞRİLERİ (MAIN EDGES + TOOL EDGES + LIVE DRAFT) */}
               <svg
                 className="base-flowchart-edges-svg"
@@ -1781,7 +2149,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                       ? 'url(#fc-arrow-yes)'
                       : edge.branch === 'no'
                         ? 'url(#fc-arrow-no)'
-                        : edge.branch === 'loop'
+                        : edge.branch === 'loop' || edge.branch === 'loop_back'
                           ? 'url(#fc-arrow-loop)'
                           : edge.branch === 'done'
                             ? 'url(#fc-arrow-done)'
@@ -1796,7 +2164,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                       <path d={edge.path} className="base-flowchart-svg-edge-hit" />
                       <path
                         d={edge.path}
-                        className={`base-flowchart-svg-edge branch-${edge.branch} ${isEdgeSelected ? 'is-active' : ''} ${edge.dashed ? 'is-dashed' : ''} ${edge.autoDetected ? 'is-auto' : ''}`}
+                        className={`base-flowchart-svg-edge branch-${edge.branch} ${isEdgeSelected ? 'is-active' : ''} ${edge.dashed ? 'is-dashed' : ''} ${edge.autoDetected && edge.branch !== 'loop_back' ? 'is-auto' : ''}`}
                         markerEnd={markerId}
                       />
                     </g>
@@ -1830,10 +2198,12 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                         : edge.branch === 'no'
                           ? t('hayir_kisa', 'Hayır')
                           : edge.branch === 'loop'
-                            ? 'loop'
+                            ? `↻ ${t('loop_edge_her_oge', 'Her Öğe')}`
                             : edge.branch === 'done'
-                              ? 'done'
-                              : edge.branch}
+                              ? `✓ ${t('loop_edge_tamamlandi', 'Tamamlandı')}`
+                              : edge.branch === 'loop_back'
+                                ? `↺ ${t('loop_edge_geri_donus', 'Sonraki Öğe')}`
+                                : edge.branch}
                     </span>
                   )}
 
@@ -1847,7 +2217,11 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     <button
                       type="button"
                       className="base-flowchart-edge-btn is-insert"
-                      title={t('araya_adim_ekle', 'Bu Bağlantıya Yeni Düğüm Ekle')}
+                      title={
+                        edge.branch === 'loop_back'
+                          ? t('dongu_icine_adim_ekle', 'Döngü Gövdesine Yeni Adım Ekle')
+                          : t('araya_adim_ekle', 'Bu Bağlantıya Yeni Düğüm Ekle')
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         onAddStep(
@@ -1859,8 +2233,11 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                           },
                           {
                             sourceId: edge.sourceId,
-                            branch: edge.branch,
-                            previousTargetId: edge.targetId
+                            branch: edge.branch === 'loop_back' ? 'next' : edge.branch,
+                            previousTargetId:
+                              edge.branch === 'loop_back' && edge.autoDetected
+                                ? ''
+                                : edge.targetId
                           }
                         );
                       }}
@@ -1888,7 +2265,10 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                             deletable: edge.deletable
                           });
                         } else if (onDisconnectSteps) {
-                          onDisconnectSteps(edge.sourceId, edge.branch);
+                          onDisconnectSteps(
+                            edge.sourceId,
+                            edge.branch === 'loop_back' ? 'next' : edge.branch
+                          );
                         }
                       }}
                     >
@@ -1998,6 +2378,10 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                     : allowInputOnStartNodes || !isBasla;
                 const showRightHandle =
                   step.allowOutputPort !== undefined ? step.allowOutputPort : true;
+                const isMemberOfLoop = loopCircuitAnalysis.memberStepIds.has(step.id);
+                const hasLoopBack =
+                  isLoop &&
+                  loopCircuitAnalysis.circuits.some((c) => c.loopStep.id === step.id);
 
                 return (
                   <div
@@ -2006,7 +2390,7 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                       nodeDomRefs.current[step.id] = el;
                     }}
                     onPointerDown={(e) => handleNodePointerDown(step, e)}
-                    className={`base-flowchart-canvas-node ${resolvedShape === 'terminal' ? 'is-terminal-node' : ''} ${resolvedShape === 'page' ? 'is-page-node' : ''} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-z-top' : ''}`}
+                    className={`base-flowchart-canvas-node ${resolvedShape === 'terminal' ? 'is-terminal-node' : ''} ${resolvedShape === 'loop' ? 'is-loop-node' : ''} ${resolvedShape === 'page' ? 'is-page-node' : ''} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-z-top' : ''}`}
                     style={{
                       left: `${pos.x}px`,
                       top: `${pos.y}px`
@@ -2043,6 +2427,9 @@ export const BaseFlowchart: React.FC<BaseFlowchartProps> = ({
                         inactive={step.inactive}
                         promptPreview={step.prompt}
                         loopTargetTitle={step.loopTargetTitle}
+                        loopMeta={step.loopMeta}
+                        inLoopBody={isMemberOfLoop}
+                        hasLoopBackConnection={hasLoopBack}
                         toolCode={step.toolCode}
                         uiActionLabel={step.uiActionLabel}
                         routePath={step.routePath}

@@ -28,7 +28,11 @@ import {
   Search,
   AlertTriangle,
   Globe,
-  Repeat
+  Repeat,
+  Zap,
+  Clock,
+  Layers,
+  RotateCcw
 } from 'lucide-react';
 import './BaseFlowchart.css';
 
@@ -58,11 +62,23 @@ export type FlowchartNodeVariant =
   | 'loop'
   | 'tool';
 
-export type FlowchartConnectionBranch = 'next' | 'yes' | 'no' | 'loop' | 'done';
+export type FlowchartConnectionBranch = 'next' | 'yes' | 'no' | 'loop' | 'done' | 'loop_back';
 
 export interface FlowchartPoint {
   x: number;
   y: number;
+}
+
+export interface FlowchartLoopMeta {
+  isAsync?: boolean;
+  modeLabel?: string;
+  sourceLabel?: string;
+  variableName?: string;
+  maxIterations?: number;
+  concurrency?: number;
+  mergeLabel?: string;
+  loopBodyTitle?: string;
+  doneTargetTitle?: string;
 }
 
 export interface FlowchartAttachedToolItem {
@@ -124,6 +140,12 @@ export interface BaseFlowchartNodeProps {
   hideSummary?: boolean;
   /** Döngü (Loop) düğümünde döngü içi bağlı düğümün başlığı */
   loopTargetTitle?: string;
+  /** n8n tarzı Döngü (Loop Over Items) yapılandırma ve çıkış özet bilgileri */
+  loopMeta?: FlowchartLoopMeta;
+  /** Bu düğüm bir Döngü (Loop) düğümünün iterasyon gövdesi içinde mi yer alıyor? */
+  inLoopBody?: boolean;
+  /** Döngü düğümüne geri dönüş (loop-back) bağlantısı mevcut mu? */
+  hasLoopBackConnection?: boolean;
   /** Sol giriş portu ipucu metni */
   leftPortTitle?: string;
   /** Sağ çıkış portu ipucu metni */
@@ -166,6 +188,9 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
   renderBody,
   hideSummary = false,
   loopTargetTitle,
+  loopMeta,
+  inLoopBody = false,
+  hasLoopBackConnection = false,
   leftPortTitle,
   rightPortTitle,
   children,
@@ -226,6 +251,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
           <div
             className="base-flowchart-handle handle-left handle-end"
             data-node-input-id={id}
+            data-port-role="input"
             title={t('flowchart_giris_portu', 'Giriş Bağlantı Noktası')}
           />
         )}
@@ -280,6 +306,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         {effectiveRightPort && (
           <button
             type="button"
+            data-port-branch="next"
             className="base-flowchart-handle handle-right handle-start-out"
             title={t('baglanti_cekmek_icin_surukle', 'Bağlantı kurmak için sürükleyin')}
             onPointerDown={(e) => {
@@ -292,6 +319,8 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
     );
   }
 
+  const resolvedLoopBodyTarget = loopMeta?.loopBodyTitle || loopTargetTitle;
+
   return (
     <div
       className={`base-flowchart-node-wrapper is-horizontal ${isConnectTarget ? 'is-connect-target' : ''}`}
@@ -300,9 +329,15 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
       {/* SOL GİRİŞ PORTU */}
       {effectiveLeftPort && (
         <div
-          className={`base-flowchart-handle handle-left ${isDecision ? 'handle-decision' : ''}`}
+          className={`base-flowchart-handle handle-left ${isDecision ? 'handle-decision' : ''} ${isLoop ? 'handle-loop-in' : ''}`}
           data-node-input-id={id}
-          title={leftPortTitle || t('flowchart_giris_portu', 'Giriş Bağlantı Noktası')}
+          data-port-role="input"
+          title={
+            leftPortTitle ||
+            (isLoop
+              ? t('loop_giris_portu', 'Döngü Veri Girişi (Liste / Döküman)')
+              : t('flowchart_giris_portu', 'Giriş Bağlantı Noktası'))
+          }
         />
       )}
 
@@ -318,11 +353,26 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
         </div>
       )}
 
+      {/* DÖNGÜ (LOOP) DÜĞÜMÜ ÜST n8n İTERASYON ROZETİ */}
+      {isLoop && (
+        <div
+          className="base-flowchart-loop-crest"
+          title={t(
+            'dongu_iterasyon_noktasi',
+            'Döngü (Loop Over Items) — Öğeleri tek tek işler, tamamlanınca devam eder'
+          )}
+        >
+          <span className="base-flowchart-loop-crest-icon">
+            {icon || <Repeat size={15} />}
+          </span>
+        </div>
+      )}
+
       {/* ANA DÜĞÜM KARTI */}
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        className={`base-flowchart-node base-flowchart-node--${shape} variant-${variant} ${selected ? 'is-selected' : ''} ${inactive ? 'is-inactive' : ''} ${warningText ? 'has-warning' : ''} ${className}`}
+        className={`base-flowchart-node base-flowchart-node--${shape} variant-${variant} ${selected ? 'is-selected' : ''} ${inactive ? 'is-inactive' : ''} ${warningText ? 'has-warning' : ''} ${inLoopBody && !isLoop ? 'is-in-loop-body' : ''} ${className}`}
         title={t('cift_tikla_duzenle', 'Düzenlemek için çift tıklayın')}
       >
         {shape === 'page' && renderBody ? (
@@ -338,6 +388,18 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
                   <span className="base-flowchart-shape-badge">
                     {icon}
                     <span>{shapeBadgeText}</span>
+                  </span>
+                )}
+                {inLoopBody && !isLoop && (
+                  <span
+                    className="base-flowchart-loop-member-pill"
+                    title={t(
+                      'dongu_ici_adim_ipucu',
+                      'Bu düğüm Döngü (Loop) içerisinde her öğe için tekrar çalıştırılır'
+                    )}
+                  >
+                    <Repeat size={10} />
+                    <span>{t('dongu_ici_kisa_etiket', 'Döngü İçi')}</span>
                   </span>
                 )}
                 {warningText && (
@@ -385,12 +447,68 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             {/* 1. Sabit Düğüm Başlığı */}
             <div className="base-flowchart-node-title">{title}</div>
 
-            {/* 2. Özelleştirilmiş Görsel Gövde (ör. Web Sayfası Görsel Önizlemesi) veya Standart Özet */}
+            {/* 2. Özelleştirilmiş Görsel Gövde (ör. Web Sayfası Görsel Önizlemesi), n8n Loop Gövdesi veya Standart Özet */}
             {renderBody && (
               <div className="base-flowchart-node-custom-body">{renderBody()}</div>
             )}
 
-            {!hideSummary &&
+            {isLoop && !renderBody && (
+              <div className="base-flowchart-loop-body">
+                <div className="base-flowchart-loop-source-row">
+                  <span
+                    className="base-flowchart-loop-source-main"
+                    title={loopMeta?.sourceLabel || resolvedSummary}
+                  >
+                    <Layers size={12} className="base-flowchart-loop-source-icon" />
+                    <span className="base-flowchart-loop-source-text">
+                      {loopMeta?.sourceLabel ||
+                        ( !warningText ? resolvedSummary : '' ) ||
+                        t('dongu_veri_kaynagi_varsayilan', 'Liste Elemanları')}
+                    </span>
+                  </span>
+                  {loopMeta?.variableName && (
+                    <code
+                      className="base-flowchart-loop-var-code"
+                      title={t(
+                        'dongu_iterasyon_degiskeni_ipucu',
+                        'Her iterasyonda döngü içi düğümlere aktarılan aktif öğe değişkeni'
+                      )}
+                    >
+                      {`{{${loopMeta.variableName.replace(/^\{\{|\}\}$/g, '').trim()}}}`}
+                    </code>
+                  )}
+                </div>
+
+                <div className="base-flowchart-loop-specs-row">
+                  <span
+                    className={`base-flowchart-loop-spec-chip ${loopMeta?.isAsync ? 'is-async' : 'is-sync'}`}
+                  >
+                    {loopMeta?.isAsync ? <Zap size={10} /> : <Clock size={10} />}
+                    <span>
+                      {loopMeta?.modeLabel ||
+                        (loopMeta?.isAsync
+                          ? t('dongu_mod_paralel_kisa', 'Paralel')
+                          : t('dongu_mod_sirali_kisa', 'Sıralı'))}
+                    </span>
+                  </span>
+                  {loopMeta?.maxIterations ? (
+                    <span className="base-flowchart-loop-spec-chip">
+                      <span>
+                        {t('dongu_maks_kisa', 'Maks')}: {loopMeta.maxIterations}
+                      </span>
+                    </span>
+                  ) : null}
+                  {loopMeta?.mergeLabel ? (
+                    <span className="base-flowchart-loop-spec-chip">
+                      <span>{loopMeta.mergeLabel}</span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {!isLoop &&
+              !hideSummary &&
               !renderBody &&
               (resolvedSummary ? (
                 <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
@@ -402,14 +520,14 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
                 </div>
               ))}
 
-            {!hideSummary && renderBody && resolvedSummary && (
+            {!isLoop && !hideSummary && renderBody && resolvedSummary && (
               <div className="base-flowchart-node-summary-box" title={resolvedSummary}>
                 {resolvedSummary}
               </div>
             )}
 
             {/* 3. Teknik MCP / Rota Kodu Etiketi (Varsa) */}
-            {toolCode && (
+            {toolCode && !isLoop && (
               <div className="base-flowchart-node-tags">
                 <span className="base-flowchart-tag">
                   <Wrench size={10} />
@@ -419,14 +537,110 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             )}
 
             {children}
+
+            {/* 4. n8n Tarzı Döngü (Loop Over Items) 2 Satırlı Çıkış Port Rayı (Üst: Tamamlandı / done, Alt: Her Öğe / loop + Sol Geri Dönüş) */}
+            {effectiveRightPort && isLoop && (
+              <div
+                className="base-flowchart-loop-ports-rail"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* ÇIKIŞ 0 (ÜST): DONE / TAMAMLANDI */}
+                <div
+                  className={`base-flowchart-loop-port-row is-done ${loopMeta?.doneTargetTitle ? 'is-connected' : ''}`}
+                >
+                  <div className="base-flowchart-loop-port-info">
+                    <span className="base-flowchart-loop-port-badge is-done">
+                      <CheckCircle2 size={11} />
+                      <span>{t('loop_cikis_tamamlandi', 'Tamamlandı')}</span>
+                      <span className="base-flowchart-loop-port-key">done</span>
+                    </span>
+                    <span
+                      className="base-flowchart-loop-port-sub"
+                      title={
+                        loopMeta?.doneTargetTitle ||
+                        t('loop_done_ipucu_kisa', 'Tüm öğeler bittiğinde devam eder')
+                      }
+                    >
+                      {loopMeta?.doneTargetTitle
+                        ? `→ ${loopMeta.doneTargetTitle}`
+                        : t('loop_done_ipucu_kisa', 'Tüm öğeler bittiğinde devam eder')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    data-port-branch="done"
+                    className="base-flowchart-handle handle-rail-right handle-done"
+                    title={t(
+                      'loop_done_port_ipucu',
+                      'Tamamlandı (done) Çıkışı — Tüm iterasyonlar bittiğinde çalışacak adıma sürükleyin'
+                    )}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      if (onStartConnection) onStartConnection(id, 'done', e);
+                    }}
+                  />
+                </div>
+
+                {/* ÇIKIŞ 1 (ALT): LOOP / HER ÖĞE + SOL GERİ DÖNÜŞ PORTU */}
+                <div
+                  className={`base-flowchart-loop-port-row is-loop ${resolvedLoopBodyTarget ? 'is-connected' : 'is-unconnected'}`}
+                >
+                  {effectiveLeftPort && (
+                    <div
+                      data-node-input-id={id}
+                      data-port-role="loop-return"
+                      className={`base-flowchart-handle handle-rail-left handle-loop-return ${hasLoopBackConnection || resolvedLoopBodyTarget ? 'is-connected' : ''}`}
+                      title={t(
+                        'loop_geri_donus_portu',
+                        '↺ Döngü Geri Dönüşü — Döngü içi adım tamamlandığında sıradaki öğe için buraya döner'
+                      )}
+                    >
+                      <RotateCcw size={8} />
+                    </div>
+                  )}
+                  <div className="base-flowchart-loop-port-info">
+                    <span className="base-flowchart-loop-port-badge is-loop">
+                      <Repeat size={11} />
+                      <span>{t('loop_cikis_her_oge', 'Her Öğe')}</span>
+                      <span className="base-flowchart-loop-port-key">loop</span>
+                    </span>
+                    <span
+                      className="base-flowchart-loop-port-sub"
+                      title={
+                        resolvedLoopBodyTarget ||
+                        t('loop_iterasyon_ipucu_kisa', 'Tekrarlanacak adıma bağlayın')
+                      }
+                    >
+                      {resolvedLoopBodyTarget
+                        ? `↻ ${resolvedLoopBodyTarget}`
+                        : t('loop_iterasyon_ipucu_kisa', 'Tekrarlanacak adıma bağlayın')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    data-port-branch="loop"
+                    className="base-flowchart-handle handle-rail-right handle-loop"
+                    title={t(
+                      'loop_iterasyon_port_ipucu',
+                      'Her Öğe (loop) Çıkışı — Her iterasyonda tekrarlanacak adıma sürükleyin'
+                    )}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      if (onStartConnection) onStartConnection(id, 'loop', e);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır, Döngü Düğümünde loop & done Portları) */}
+      {/* SAĞ ÇIKIŞ PORTLARI (Normal Düğümde Tek Port, Karar Düğümünde Evet & Hayır Portları) */}
       {effectiveRightPort && !isDecision && !isLoop && (
         <button
           type="button"
+          data-port-branch="next"
           className="base-flowchart-handle handle-right"
           title={rightPortTitle || t('baglanti_cekmek_icin_surukle', 'Bağlantı kurmak için sürükleyin')}
           onPointerDown={(e) => {
@@ -434,40 +648,6 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             if (onStartConnection) onStartConnection(id, 'next', e);
           }}
         />
-      )}
-
-      {effectiveRightPort && isLoop && (
-        <>
-          <div className="base-flowchart-decision-port-group is-loop">
-            <span className="base-flowchart-decision-port-label is-loop">
-              <Repeat size={10} /> loop
-            </span>
-            <button
-              type="button"
-              className="base-flowchart-handle handle-right handle-loop"
-              title="loop (Her İterasyon Çıkışı)"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                if (onStartConnection) onStartConnection(id, 'loop', e);
-              }}
-            />
-          </div>
-
-          <div className="base-flowchart-decision-port-group is-done">
-            <span className="base-flowchart-decision-port-label is-done">
-              <CheckCircle2 size={10} /> done
-            </span>
-            <button
-              type="button"
-              className="base-flowchart-handle handle-right handle-done"
-              title="done (Döngü Tamamlandı Çıkışı)"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                if (onStartConnection) onStartConnection(id, 'done', e);
-              }}
-            />
-          </div>
-        </>
       )}
 
       {effectiveRightPort && isDecision && (
@@ -478,6 +658,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             </span>
             <button
               type="button"
+              data-port-branch="yes"
               className="base-flowchart-handle handle-right handle-yes"
               title={t('evet_cikis_baglantisi', 'EVET Çıkışı — Bağlantı kurmak için sürükleyin')}
               onPointerDown={(e) => {
@@ -493,6 +674,7 @@ export const BaseFlowchartNode: React.FC<BaseFlowchartNodeProps> = ({
             </span>
             <button
               type="button"
+              data-port-branch="no"
               className="base-flowchart-handle handle-right handle-no"
               title={t('hayir_cikis_baglantisi', 'HAYIR Çıkışı — Bağlantı kurmak için sürükleyin')}
               onPointerDown={(e) => {
